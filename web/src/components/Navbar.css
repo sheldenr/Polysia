@@ -1,0 +1,138 @@
+/* Navbar Styles */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 5rem;
+  background: #F4F9FFF0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+  color: #131413;
+  border-bottom: 1px solid rgba(19, 20, 19, 0.1);
+}
+
+.navbar img {
+  height: 40px;
+}
+
+.right-section {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.nav-items {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-weight: 400;
+  font-size: 0.95rem;
+  align-items: center;
+  color: #131413;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.nav-button {
+  background: #131413;
+  color: #ffffff;
+  border: none;
+  padding: 0.6rem 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.nav-button .arrow-icon {
+  font-size: 1rem;
+  line-height: 1;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-button:hover {
+  background: #131413;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 1rem 2rem;
+    position: relative;
+  }
+
+  .nav-items {
+    gap: 1.5rem;
+    font-size: 0.9rem;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  .nav-button {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.8rem;
+  }
+
+  .navbar img {
+    height: 35px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    padding: 1rem 1.5rem;
+    position: relative;
+  }
+
+  .right-section {
+    gap: 1rem;
+  }
+
+  .nav-items {
+    gap: 1rem;
+    font-size: 0.8rem;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  .nav-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+  }
+
+  .navbar img {
+    height: 30px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .nav-items {
+    display: none;
+  }
+
+  .right-section {
+    margin-left: auto;
+  }
+}

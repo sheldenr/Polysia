@@ -1,0 +1,219 @@
+.hero {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem 0 6rem;
+  margin-top: 80px;
+  background: #F4F9FF;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+  min-height: 70vh;
+}
+
+.hero-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 900px;
+  padding: 0 5rem;
+  box-sizing: border-box;
+  gap: 1.5rem;
+}
+
+.hero-row {
+  width: 100%;
+  text-align: center;
+}
+
+.start-learning {
+  font-size: 1.2rem;
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  color: #131413;
+  opacity: 0.7;
+}
+
+.square-bullet {
+  margin-right: 0.5rem;
+  font-size: 1.4rem;
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: 300;
+  margin: 0;
+  color: #131413;
+  line-height: 1.2;
+}
+
+.hero-description {
+  font-size: 1rem;
+  color: #131413;
+  opacity: 0.7;
+  margin: 0;
+  line-height: 1.6;
+  max-width: 85%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.action-button {
+  background: #008EC2;
+  color: #ffffff;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 9999px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto;
+}
+
+.action-button:hover {
+  background: #131414;
+}
+
+.action-button .arrow {
+  font-size: 1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Chinese Scroll Section */
+.chinese-scroll-section {
+  background: #131413;
+  padding: 2rem 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.chinese-scroll-container {
+  display: flex;
+  gap: 4rem;
+  width: fit-content;
+  animation: scroll 90s linear infinite;
+}
+
+.chinese-scroll-content {
+  display: flex;
+  gap: 4rem;
+  align-items: center;
+}
+
+.chinese-scroll-content span {
+  /* Clean, non-calligraphic Chinese sans-serif stack */
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1.5rem;
+  color: #ffffff;
+  white-space: nowrap;
+  opacity: 0.8;
+  font-weight: 5  00
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .hero {
+    padding: 0rem 0 4rem;
+  }
+
+  .hero-container {
+    padding: 0 2rem;
+    gap: 1.25rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-description {
+    font-size: 0.9rem;
+  }
+
+  .start-learning {
+    font-size: 0.85rem;
+  }
+
+  .action-button {
+    padding: 0.75rem 1.75rem;
+    font-size: 0.9rem;
+  }
+
+  .chinese-scroll-section {
+    padding: 1.5rem 0;
+  }
+
+  .chinese-scroll-content span {
+    font-size: 1.5rem;
+    font-weight: 500;
+  }
+
+  .chinese-scroll-content {
+    gap: 3rem;
+  }
+
+  .chinese-scroll-container {
+    gap: 3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    padding: 0rem 0 1.5rem;
+    min-height: 50vh;
+  }
+
+  .hero-container {
+    padding: 0 1.5rem;
+    gap: 1rem;
+  }
+
+  .hero-title {
+    font-size: 1.5rem;
+  }
+
+  .hero-description {
+    font-size: 0.85rem;
+  }
+
+  .start-learning {
+    font-size: 0.8rem;
+  }
+
+  .action-button {
+    padding: 0.7rem 1.5rem;
+    font-size: 0.85rem;
+  }
+
+  .chinese-scroll-section {
+    padding: 1rem 0;
+  }
+
+  .chinese-scroll-content span {
+    font-size: 1.2rem;
+    font-weight: 500;
+  }
+
+  .chinese-scroll-content {
+    gap: 2rem;
+  }
+
+  .chinese-scroll-container {
+    gap: 2rem;
+  }
+}

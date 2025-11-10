@@ -1,0 +1,282 @@
+.what-we-offer {
+  background: #ffffff;
+  padding: 8rem 0;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.what-we-offer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 40px,
+      rgba(0, 142, 194, 0.03) 40px,
+      rgba(0, 142, 194, 0.03) 41px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 40px,
+      rgba(167, 139, 250, 0.03) 40px,
+      rgba(167, 139, 250, 0.03) 41px
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.divider {
+  border-top: 1px solid rgba(19, 20, 19, 0.15);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 4rem auto;
+  position: relative;
+  z-index: 1;
+}
+
+.offer-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 5rem;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+.offer-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.square-bullet {
+  font-size: 1.4rem;
+  color: #131413;
+}
+
+.header-label {
+  font-size: 1rem;
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  color: #131413;
+  opacity: 0.7;
+}
+
+.offer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.offer-title {
+  font-size: 3.75rem;
+  font-weight: 300;
+  color: #131413;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.offer-description {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #131413;
+  opacity: 0.8;
+  margin: 0;
+  max-width: 800px;
+}
+
+.alm-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+  margin-top: 3rem;
+}
+
+.alm-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 3rem;
+}
+
+/* Desktop: flip second ALM row (glyph left, text right) */
+.alm-sections .alm-item:nth-child(2) {
+  flex-direction: row-reverse;
+}
+
+.alm-info {
+  flex: 0 0 60%;
+}
+
+.alm-title {
+  font-size: 2.25rem;
+  font-weight: 300;
+  color: #131413;
+  margin: 0 0 0.75rem 0;
+}
+
+.alm-description {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #131413;
+  opacity: 0.8;
+  margin: 0;
+}
+
+.alm-placeholder {
+  width: 280px;
+  height: 280px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+  position: relative;
+  background: #131413;
+  overflow: hidden;
+  --blueOpacity: 0;
+}
+
+.alm-placeholder::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #008EC2;
+  opacity: var(--blueOpacity, 0);
+  transition: opacity 80ms linear;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.alm-placeholder svg {
+  width: 120px;
+  height: 120px;
+}
+
+/* Glyph inside ALM boxes */
+.alm-box-glyph {
+  margin: 0;
+  font-size: 6rem;
+  font-weight: 300;
+  line-height: 1;
+  text-align: center;
+  position: relative;
+  color: #ffffffef;
+  z-index: 1;
+}
+
+.alm-placeholder.purple {
+  background: #131413;
+}
+
+.alm-placeholder.blue {
+  background: #131413;
+}
+
+.alm-placeholder.teal {  
+  background: #131413;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .what-we-offer {
+    padding: 4rem 0;
+  }
+
+  .offer-container {
+    padding: 0 2rem;
+  }
+
+  .offer-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .offer-title {
+    font-size: 2.5rem;
+  }
+
+  .offer-description {
+    font-size: 1rem;
+  }
+
+  .alm-item {
+    flex-direction: column;
+    gap: 2rem;
+    align-items: center;
+  }
+
+  /* Mobile: ensure second ALM row stacks in normal order */
+  .alm-sections .alm-item:nth-child(2) {
+    flex-direction: column;
+  }
+
+  .alm-placeholder {
+    width: 150px;
+    height: 150px;
+  }
+
+  .alm-box-glyph {
+    font-size: 3rem;
+  }
+
+  .alm-title {
+    font-size: 2rem;
+  }
+
+  .alm-description {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .what-we-offer {
+    padding: 3rem 0;
+  }
+
+  .offer-container {
+    padding: 0 1.5rem;
+  }
+
+  .offer-title {
+    font-size: 1.75rem;
+  }
+
+  .offer-description {
+    font-size: 0.95rem;
+  }
+
+  .alm-sections {
+    gap: 2rem;
+  }
+
+  .alm-title {
+    font-size: 1.75rem;
+  }
+
+  .alm-description {
+    font-size: 0.9rem;
+  }
+
+  .alm-placeholder {
+    width: 120px;
+    height: 120px;
+  }
+
+  .alm-box-glyph {
+    font-size: 2.25rem;
+  }
+}
