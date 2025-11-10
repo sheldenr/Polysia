@@ -28,7 +28,3 @@ The app tracks user performance across tones, grammar, and recall, using an inte
 | Auth | Firebase Authentication |
 | Deployment | Vercel (web) + Firebase (functions) |
 
----
-
-## 🏗️ Project Structure
-
