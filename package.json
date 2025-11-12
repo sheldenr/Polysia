@@ -2,6 +2,8 @@
   "name": "polysia-monorepo",
   "private": true,
   "version": "0.1.0",
+  "description": "Monorepo for Polysia (frontend + backend).",
+  "license": "MIT",
   "workspaces": [
     "web",
     "backend"
@@ -13,5 +15,8 @@
     "build": "npm --prefix web run build",
     "preview": "npm --prefix web run preview",
     "lint": "npm --prefix web run lint"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

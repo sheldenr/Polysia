@@ -73,7 +73,7 @@
 .email-input {
   flex: 1;
   padding: 0.875rem 1.5rem;
-  border: 2px solid #008EC2;
+  border: 2px solid #131414;
   border-radius: 8px;
   font-size: 1rem;
   color: #131413;
@@ -88,13 +88,13 @@
 }
 
 .email-input:focus {
-  border-color: #008EC2;
+  border-color: #131414;
 }
 
 .submit-button {
-  background: #008EC2;
+  background: #131414;
   color: #ffffff;
-  border: 2px solid #008EC2;
+  border: 2px solid #131414;
   padding: 0.875rem 2rem;
   border-radius: 8px;
   font-size: 1rem;

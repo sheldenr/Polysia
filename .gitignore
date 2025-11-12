@@ -1,24 +1,24 @@
+# Node.js
+node_modules/
+dist/
+build/
+coverage/
+.eslintcache
+
+# Vite
+.vite/
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
+yarn-error.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# OS
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+
+# Env
+.env
+.env.*
+
