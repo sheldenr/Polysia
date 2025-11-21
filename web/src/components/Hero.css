@@ -118,7 +118,7 @@
   color: #ffffff;
   white-space: nowrap;
   opacity: 0.8;
-  font-weight: 5  00
+  font-weight: 500
 }
 
 @keyframes scroll {
@@ -167,7 +167,7 @@
 
   .chinese-scroll-content span {
     font-size: 2rem;
-    font-weight: 600;
+    font-weight: 500;
   }
 
   .chinese-scroll-content {
@@ -216,7 +216,7 @@
 
   .chinese-scroll-content span {
     font-size: 1.6rem;
-    font-weight: 600;
+    font-weight: 500;
   }
 
   .chinese-scroll-content {
