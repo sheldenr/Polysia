@@ -5,7 +5,7 @@ function EarlyAccess() {
     <section className="early-access">
       <div className="early-access-container">
         <div className="early-access-header">
-          <span className="square-bullet">▪</span>
+          <span className="square-bullet" aria-hidden="true"></span>
           <span className="header-label">Join the waitlist</span>
         </div>
         

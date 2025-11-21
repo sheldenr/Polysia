@@ -51,7 +51,7 @@ function WhatWeOffer() {
       <div className="divider"></div>
       <div className="offer-container">
         <div className="offer-header">
-          <span className="square-bullet">▪</span>
+          <span className="square-bullet" aria-hidden="true"></span>
           <span className="header-label">What we offer</span>
         </div>
         

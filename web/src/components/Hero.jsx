@@ -8,7 +8,7 @@ function Hero() {
         <div className="hero-container">
           <div className="hero-row">
             <span className="start-learning">
-              <span className="square-bullet">▪</span> Start learning now
+              <span className="square-bullet" aria-hidden="true"></span> Start learning now
             </span>
           </div>
 

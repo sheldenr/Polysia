@@ -36,9 +36,20 @@
   opacity: 0.7;
 }
 
+/* Ensure the square bullet is vertically centered with the text */
+.start-learning {
+  display: inline-flex;
+  align-items: center;
+}
+
 .square-bullet {
-  margin-right: 0.5rem;
-  font-size: 1.4rem;
+  display: inline-block;
+  width: 1.05rem;
+  height: 1.05rem;
+  background: #131413;
+  border-radius: 3px;
+  margin-right: 0.6rem;
+  vertical-align: middle;
 }
 
 .hero-title {

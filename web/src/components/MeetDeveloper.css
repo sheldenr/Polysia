@@ -1,7 +1,7 @@
 .meet-developer {
   background: #ffffff;
-  padding: 4rem 0;
-  padding-bottom: 6rem;
+  padding: 8rem 0;
+  padding-bottom: 10rem;
   width: 100%;
 }
 
@@ -69,7 +69,7 @@
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
   .meet-developer {
-    padding: 3rem 0;
+    padding: 6rem 0;
   }
 
   .meet-developer-container {
@@ -96,7 +96,7 @@
 
 @media (max-width: 480px) {
   .meet-developer {
-    padding: 2rem 0;
+    padding: 5rem 0;
   }
 
   .meet-developer-container {

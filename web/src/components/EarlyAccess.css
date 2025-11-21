@@ -24,8 +24,13 @@
 }
 
 .square-bullet {
-  font-size: 1.4rem;
-  color: #131413;
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: #131413;
+  border-radius: 0.5px;
+  margin-right: 0.6rem;
+  vertical-align: middle;
 }
 
 .header-label {
