@@ -139,7 +139,7 @@ function Dashboard() {
           ) : active === "Recall" ? (
             <RecallModeContent />
           ) : active === "Dashboard" ? (
-            <DashboardContent />
+            <DashboardContent setActive={setActive} />
           ) : (
             <PlaceholderMode title={active} />
           )}
@@ -402,7 +402,7 @@ function RecallModeContent() {
   );
 }
 
-function DashboardContent() {
+function DashboardContent({ setActive }) {
   const headerHeight = 120;
   const weeklyData = [
     { day: "Mon", minutes: 15, bar: 65 },
@@ -429,7 +429,6 @@ function DashboardContent() {
         <div className="dash-hero">
           <div className="dash-hero-top">
             <div className="dash-hello">Hello, Shelden</div>
-            <img src={favicon} alt="Polysia" className="dash-favicon" />
           </div>
           <div className="dash-subline">You have studied for 2.3 hours today.</div>
           <div className="dash-hero-stats">
@@ -470,10 +469,18 @@ function DashboardContent() {
             </div>
           </div>
           <div className="dash-box dash-box-reco">
-            <div className="dash-box-title">Recommended mode</div>
-            <div className="dash-reco-body">
-              Try <strong>Chat Mode</strong> to reinforce dialogues after your Recall streak.
-            </div>
+            <button
+              type="button"
+              className="dash-reco-button"
+              onClick={() => typeof setActive === "function" && setActive("Chat Mode")}
+              aria-label="Open Chat Mode"
+            >
+              <div className="reco-icon" aria-hidden>
+                <NavIcon name="Chat Mode" />
+              </div>
+              <div className="reco-label">Chat Mode</div>
+              <div className="reco-desc">Recommended based on your recent activity, try a short conversation to reinforce progress. →</div>
+            </button>
           </div>
         </div>
       </div>
