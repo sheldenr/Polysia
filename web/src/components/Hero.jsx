@@ -25,8 +25,8 @@ function Hero() {
           </div>
 
           <div className="hero-row">
-            <Link to="/learning-hub" className="action-button">
-              See it in Action
+            <Link className="action-button">
+              Request a Demo
               <span className="arrow">→</span>
             </Link>
           </div>
