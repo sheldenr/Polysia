@@ -2,6 +2,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  /* Restored original, larger desktop spacing */
   padding: 4rem 0 6rem;
   margin-top: 80px;
   background: #F4F9FF;
@@ -63,16 +64,19 @@
   background: #008EC2;
   color: #ffffff;
   border: none;
-  padding: 0.875rem 2rem;
+  padding: 0.75rem 1.5rem;
   border-radius: 9999px;
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin: 0 auto;
+  width: auto;
+  white-space: nowrap;
+  text-decoration: none;
 }
 
 .action-button:hover {
@@ -129,20 +133,23 @@
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
   .hero {
-    padding: 0rem 0 4rem;
+    /* increase top/bottom white space on tablet */
+    padding: 2.5rem 0 4rem;
+    margin-top: 30px;
+    min-height: 60vh;
   }
 
   .hero-container {
-    padding: 0 2rem;
-    gap: 1.25rem;
+    padding: 0 4rem; /* doubled horizontal padding on tablet */
+    gap: 2rem; /* increased spacing between sections */
   }
 
   .hero-title {
-    font-size: 2rem;
+    font-size: 2.8rem; /* larger title on tablet */
   }
 
   .hero-description {
-    font-size: 0.9rem;
+    font-size: 1.1rem;
   }
 
   .start-learning {
@@ -150,17 +157,17 @@
   }
 
   .action-button {
-    padding: 0.75rem 1.75rem;
-    font-size: 0.9rem;
+    padding: 0.9rem 1.3rem; /* increase vertical padding (bottom included) */
+    font-size: 0.95rem;
   }
 
   .chinese-scroll-section {
-    padding: 1.5rem 0;
+    padding: 3rem 0; /* increased to make section taller on tablet */
   }
 
   .chinese-scroll-content span {
-    font-size: 1.5rem;
-    font-weight: 500;
+    font-size: 2rem;
+    font-weight: 600;
   }
 
   .chinese-scroll-content {
@@ -174,39 +181,42 @@
 
 @media (max-width: 480px) {
   .hero {
-    padding: 0rem 0 1.5rem;
-    min-height: 50vh;
+    /* slightly more vertical space on small phones */
+    padding: 1.6rem 0 2.2rem;
+    margin-top: 20px;
+    min-height: 48vh;
   }
 
   .hero-container {
-    padding: 0 1.5rem;
-    gap: 1rem;
+    padding: 0 3rem; /* doubled small-screen horizontal padding */
+    gap: 1.25rem; /* slight decrease to keep sections closer while increasing text size */
   }
 
   .hero-title {
-    font-size: 1.5rem;
+    font-size: 2.4rem; /* slightly larger title on small phones */
+    line-height: 1.1;
   }
 
   .hero-description {
-    font-size: 0.85rem;
+    font-size: 1.1rem;
   }
 
   .start-learning {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
   }
 
   .action-button {
-    padding: 0.7rem 1.5rem;
-    font-size: 0.85rem;
+    padding: 1rem 1.5rem 1.25rem; /* more bottom padding on the smallest screens */
+    font-size: 0.9rem;
   }
 
   .chinese-scroll-section {
-    padding: 1rem 0;
+    padding: 2rem 0; /* increased to make section taller on small phones */
   }
 
   .chinese-scroll-content span {
-    font-size: 1.2rem;
-    font-weight: 500;
+    font-size: 1.6rem;
+    font-weight: 600;
   }
 
   .chinese-scroll-content {

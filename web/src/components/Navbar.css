@@ -6,9 +6,9 @@
   right: 0;
   z-index: 1000;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 0.75rem 5rem;
+  padding: 0.75rem 0;
   background: #F4F9FFF0;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -17,6 +17,16 @@
   box-sizing: border-box;
   color: #131413;
   border-bottom: 1px solid rgba(19, 20, 19, 0.1);
+}
+
+.navbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1200px;
+  padding: 0 5rem;
+  position: relative;
 }
 
 .navbar img {
@@ -75,33 +85,42 @@
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
   .navbar {
-    padding: 1rem 2rem;
+    padding: 1rem 0;
     position: relative;
+  }
+
+  .navbar-inner {
+    padding: 0 4rem;
+    max-width: 100%;
   }
 
   .nav-items {
     gap: 1.5rem;
-    font-size: 0.9rem;
-    position: absolute;
+    font-size: 1rem;
+    white-space: nowrap;
     left: 50%;
     transform: translateX(-50%);
-    white-space: nowrap;
   }
 
   .nav-button {
-    padding: 0.6rem 1.2rem;
-    font-size: 0.8rem;
+    padding: 0.7rem 1.3rem;
+    font-size: 0.95rem; /* larger sign-in on tablet */
   }
 
   .navbar img {
-    height: 35px !important;
+    height: 40px !important; /* slightly smaller logo on tablet/mobile */
   }
 }
 
 @media (max-width: 480px) {
   .navbar {
-    padding: 1rem 1.5rem;
+    padding: 1rem 0;
     position: relative;
+  }
+
+  .navbar-inner {
+    padding: 0 3rem;
+    max-width: 100%;
   }
 
   .right-section {
@@ -110,20 +129,31 @@
 
   .nav-items {
     gap: 1rem;
-    font-size: 0.8rem;
-    position: absolute;
+    font-size: 0.95rem;
+    white-space: nowrap;
     left: 50%;
     transform: translateX(-50%);
-    white-space: nowrap;
   }
 
   .nav-button {
-    padding: 0.5rem 1rem;
-    font-size: 0.75rem;
+    padding: 0.75rem 1.4rem;
+    font-size: 1rem; /* make sign-in button bigger on small phones */
+    border-radius: 12px;
   }
 
   .navbar img {
-    height: 30px !important;
+    height: 42px !important; /* slightly smaller logo for small screens */
+  }
+}
+
+/* Hide centered nav items on narrow screens and pin right-section to the right */
+@media (max-width: 580px) {
+  .nav-items {
+    display: none;
+  }
+
+  .right-section {
+    margin-left: auto;
   }
 }
 

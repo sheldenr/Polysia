@@ -3,7 +3,7 @@ import WhatWeOffer from "../components/WhatWeOffer";
 import EarlyAccess from "../components/EarlyAccess";
 import MeetDeveloper from "../components/MeetDeveloper";
 
-function Home() {
+function LandingPage() {
   return (
     <main>
       <Hero />
@@ -14,4 +14,4 @@ function Home() {
   );
 }
 
-export default Home;
+export default LandingPage;

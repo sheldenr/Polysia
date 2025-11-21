@@ -40,3 +40,21 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Mobile typography scale-up: slightly increase base font-size on narrow screens */
+@media (max-width: 768px) {
+  html { font-size: 112%; }
+}
+
+@media (max-width: 480px) {
+  html { font-size: 120%; }
+}
+
+/* Double the app container padding on mobile to increase horizontal margins */
+@media (max-width: 768px) {
+  #root { padding: 4rem; }
+}
+
+@media (max-width: 480px) {
+  #root { padding: 6rem; }
+}

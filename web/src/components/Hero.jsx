@@ -1,4 +1,5 @@
 import "./Hero.css";
+import { Link } from "react-router-dom";
 
 function Hero() {
   return (
@@ -24,10 +25,10 @@ function Hero() {
           </div>
 
           <div className="hero-row">
-            <button className="action-button">
+            <Link to="/learning-hub" className="action-button">
               See it in Action
               <span className="arrow">→</span>
-            </button>
+            </Link>
           </div>
         </div>
       </section>

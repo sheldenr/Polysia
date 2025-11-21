@@ -139,6 +139,8 @@
   width: 280px;
   height: 280px;
   border-radius: 20px;
+  border: none;
+  box-shadow: none;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -198,7 +200,7 @@
   }
 
   .offer-container {
-    padding: 0 2rem;
+    padding: 0 4rem; /* doubled horizontal padding on tablet */
   }
 
   .offer-header {
@@ -206,17 +208,17 @@
   }
 
   .offer-title {
-    font-size: 2.5rem;
+    font-size: 2.8rem;
   }
 
   .offer-description {
-    font-size: 1rem;
+    font-size: 1.05rem;
   }
 
   .alm-item {
     flex-direction: column;
-    gap: 2rem;
-    align-items: center;
+    gap: 1.25rem;
+    align-items: stretch; /* allow placeholders to take full width */
   }
 
   /* Mobile: ensure second ALM row stacks in normal order */
@@ -224,21 +226,35 @@
     flex-direction: column;
   }
 
+  /* make placeholders visually full-bleed across the viewport while still
+     living inside the centered container. This centers the element and makes
+     it span the viewport width without changing markup. */
   .alm-placeholder {
-    width: 150px;
-    height: 150px;
+    /* Constrain the placeholder to the page/container width and keep it square */
+    width: 100%;
+    max-width: 560px; /* keep it within expected page width */
+    margin: 0 auto;
+    aspect-ratio: 1 / 1; /* ensure square */
+    height: auto; /* governed by aspect-ratio */
+    border-radius: 12px;
+    border: none;
+    box-shadow: none;
+    overflow: hidden;
   }
 
+  .alm-info { order: 0; }
+  .alm-placeholder { order: 1; }
+
   .alm-box-glyph {
-    font-size: 3rem;
+    font-size: 6.8rem; /* doubled size on tablet/mobile per request */
   }
 
   .alm-title {
-    font-size: 2rem;
+    font-size: 2.2rem;
   }
 
   .alm-description {
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
 }
 
@@ -248,15 +264,15 @@
   }
 
   .offer-container {
-    padding: 0 1.5rem;
+    padding: 0 3rem; /* doubled horizontal padding on small phones */
   }
 
   .offer-title {
-    font-size: 1.75rem;
+    font-size: 2rem;
   }
 
   .offer-description {
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
 
   .alm-sections {
@@ -264,19 +280,26 @@
   }
 
   .alm-title {
-    font-size: 1.75rem;
+    font-size: 1.9rem;
   }
 
   .alm-description {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
   }
 
+  /* On very small screens make ALM placeholders full-bleed as well */
   .alm-placeholder {
-    width: 120px;
-    height: 120px;
+    width: 100%;
+    max-width: 420px; /* slightly smaller square on very small phones */
+    margin: 0 auto;
+    aspect-ratio: 1 / 1;
+    height: auto;
+    border-radius: 10px;
+    border: none;
+    box-shadow: none;
   }
 
   .alm-box-glyph {
-    font-size: 2.25rem;
+    font-size: 11rem; /* increased per request for mobile displays */
   }
 }
