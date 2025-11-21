@@ -18,6 +18,15 @@
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+/* Consistent square bullet used across headers/components */
+.square-bullet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);

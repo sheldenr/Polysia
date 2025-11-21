@@ -200,7 +200,7 @@
   }
 
   .offer-container {
-    padding: 0 4rem; /* doubled horizontal padding on tablet */
+    padding: 0 5rem; /* increased horizontal padding on tablet for larger side margins */
   }
 
   .offer-header {
@@ -217,8 +217,10 @@
 
   .alm-item {
     flex-direction: column;
-    gap: 1.25rem;
-    align-items: stretch; /* allow placeholders to take full width */
+    gap: 1.5rem;
+    align-items: center; /* center placeholders horizontally */
+    padding: 2rem 0; /* add vertical whitespace around each item */
+    margin-top: 0; /* base reset for desktop */
   }
 
   /* Mobile: ensure second ALM row stacks in normal order */
@@ -230,9 +232,9 @@
      living inside the centered container. This centers the element and makes
      it span the viewport width without changing markup. */
   .alm-placeholder {
-    /* Constrain the placeholder to the page/container width and keep it square */
+    /* smaller square placeholder on tablet with larger side margins */
     width: 100%;
-    max-width: 560px; /* keep it within expected page width */
+    max-width: 240px; /* reduced to increase visible side margins */
     margin: 0 auto;
     aspect-ratio: 1 / 1; /* ensure square */
     height: auto; /* governed by aspect-ratio */
@@ -240,14 +242,22 @@
     border: none;
     box-shadow: none;
     overflow: hidden;
+    padding: 1.25rem; /* inner white space */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #131413;
   }
 
   .alm-info { order: 0; }
   .alm-placeholder { order: 1; }
 
   .alm-box-glyph {
-    font-size: 6.8rem; /* doubled size on tablet/mobile per request */
+    font-size: 2.4rem; /* reduced to match smaller placeholders */
   }
+
+  /* disable blue overlay effect on mobile/tablet */
+  .alm-placeholder::after { display: none; }
 
   .alm-title {
     font-size: 2.2rem;
@@ -259,47 +269,51 @@
 }
 
 @media (max-width: 480px) {
-  .what-we-offer {
-    padding: 3rem 0;
-  }
+  .what-we-offer { padding: 3rem 0; }
 
-  .offer-container {
-    padding: 0 3rem; /* doubled horizontal padding on small phones */
-  }
+  /* larger side margins on very small phones */
+  .offer-container { padding: 0 4rem; display: flex; flex-direction: column; align-items: center; text-align: center; }
 
-  .offer-title {
-    font-size: 2rem;
-  }
+  .offer-title { font-size: 2rem; }
 
-  .offer-description {
-    font-size: 1rem;
-  }
+  .offer-description { font-size: 1rem; }
 
-  .alm-sections {
-    gap: 2rem;
-  }
+  .alm-sections { gap: 2rem; }
 
-  .alm-title {
-    font-size: 1.9rem;
-  }
+  .alm-title { font-size: 1.9rem; }
 
-  .alm-description {
-    font-size: 0.95rem;
-  }
+  /* make textual ALM info center-aligned when stacked on very small screens */
+  .alm-info { text-align: center; }
 
-  /* On very small screens make ALM placeholders full-bleed as well */
+  .alm-description { font-size: 0.95rem; }
+
+  /* On very small screens remove outer top margin on the ALM item container */
+  .alm-item { gap: 0.75rem; padding: 1.25rem 0; margin-top: 0; padding-top: 0; }
+
   .alm-placeholder {
     width: 100%;
-    max-width: 420px; /* slightly smaller square on very small phones */
-    margin: 0 auto;
+    max-width: 200px; /* constrained square on small phones to create larger side margins */
+    margin: 2.5rem auto 0; /* larger top margin on the placeholder itself */
     aspect-ratio: 1 / 1;
     height: auto;
     border-radius: 10px;
     border: none;
     box-shadow: none;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #131413;
   }
 
-  .alm-box-glyph {
-    font-size: 11rem; /* increased per request for mobile displays */
-  }
+  /* no extra per-item first-child margin on mobile */
+  .alm-sections .alm-item:first-child { margin-top: 0; }
+
+  /* increase spacing between subtitle/description and the placeholder icon */
+  .alm-description { margin-bottom: 1.25rem; }
+
+  .alm-placeholder::after { display: none; }
+
+  .alm-box-glyph { font-size: 2.8rem; line-height: 1; }
+
 }

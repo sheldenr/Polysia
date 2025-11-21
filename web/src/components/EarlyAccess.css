@@ -146,43 +146,38 @@
     flex-direction: column;
     gap: 1rem;
     width: 100%;
-    max-width: 360px;
+    max-width: 280px; /* match ALM placeholder constraints on tablet */
     margin: 0 auto;
   }
 
   .email-input {
-    width: 75%;
+    width: 100%;
   }
 
   .submit-button {
-    width: auto;
-    align-self: center;
+    width: 100%;
+    align-self: stretch;
     justify-content: center;
+    /* match MeetDeveloper button sizing on tablet */
+    padding: 0.8rem 1rem;
+    font-size: 1rem;
+    min-width: 120px;
   }
 }
 
 @media (max-width: 480px) {
-  .early-access {
-    padding: 3rem 0;
-  }
+  .early-access { padding: 3rem 0; }
 
-  .early-access-container {
-    padding: 0 1.5rem;
-  }
+  .early-access-container { padding: 0 1.5rem; }
 
-  .early-access-title {
-    font-size: 1.5rem;
-  }
+  .early-access-title { font-size: 1.5rem; }
 
-  .early-access-description {
-    font-size: 0.95rem;
-  }
+  .early-access-description { font-size: 0.95rem; }
 
-  .submit-button {
-    padding: 0.75rem 1.5rem;
-    font-size: 0.95rem;
-    width: auto;
-    align-self: center;
-  }
+  /* Small-phone sizing: match MeetDeveloper button width constraints */
+  .early-access-form { max-width: 280px; width: 100%; margin: 0 auto; gap: 1rem; flex-direction: column; }
+  .email-input, .submit-button { width: 100%; align-self: stretch; }
+  .submit-button { padding: 0.7rem 1.5rem; font-size: 0.9rem; }
+
 }
 
