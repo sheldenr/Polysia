@@ -151,16 +151,19 @@
   }
 
   .hero-container {
-    padding: 0 4rem; /* doubled horizontal padding on tablet */
+    /* allow hero text to take more horizontal space on tablet */
+    padding: 0 2rem;
     gap: 2rem; /* increased spacing between sections */
   }
 
   .hero-title {
-    font-size: 2.8rem; /* larger title on tablet */
+    font-size: 2.6rem; /* larger title on tablet */
   }
 
   .hero-description {
-    font-size: 1.1rem;
+    /* slightly smaller subtitle on tablet for better balance */
+    font-size: 1rem;
+    max-width: 95%;
   }
 
   .start-learning {
@@ -199,17 +202,20 @@
   }
 
   .hero-container {
-    padding: 0 3rem; /* doubled small-screen horizontal padding */
-    gap: 1.25rem; /* slight decrease to keep sections closer while increasing text size */
+    /* give the hero content more usable width on small phones */
+    padding: 0 1.5rem;
+    gap: 1.25rem;
   }
 
   .hero-title {
-    font-size: 2.4rem; /* slightly larger title on small phones */
+    font-size: 2.2rem; /* slightly larger title on small phones */
     line-height: 1.1;
   }
 
   .hero-description {
-    font-size: 1.1rem;
+    /* smaller subtitle on phones so it wraps less awkwardly */
+    font-size: 0.95rem;
+    max-width: 98%;
   }
 
   .start-learning {

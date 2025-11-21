@@ -90,7 +90,8 @@
   }
 
   .navbar-inner {
-    padding: 0 4rem;
+    /* match hero container on tablet for consistent horizontal rhythm */
+    padding: 0 2rem;
     max-width: 100%;
   }
 
@@ -119,7 +120,8 @@
   }
 
   .navbar-inner {
-    padding: 0 3rem;
+    /* match hero container on small phones for consistent horizontal rhythm */
+    padding: 0 1.5rem;
     max-width: 100%;
   }
 
