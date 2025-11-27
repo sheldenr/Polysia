@@ -4,89 +4,63 @@ Modern web app scaffold for Polysia with a React + Vite frontend and a simple Ex
 
 The current codebase provides a functional starting point with routing on the frontend and a basic API on the backend â€” ready to iterate on and publish as an open-source project.
 
----
+# Polysia
 
-## Overview
+Polysia is a React + Vite single-page app (frontend) paired with a small Express backend. This repository is organized as a simple monorepo and includes a landing site and a Learning Hub (dashboard).
 
-- Frontend: React (Vite) app with basic routing (`/` and `/learning-hub`).
-- Backend: Express server exposing `GET /api/health` and `POST /api/echo`.
-- Local dev proxy: Vite proxies `/api` requests to the backend on port `3001`.
+Quick highlights
+- Frontend: React (Vite) app with client routing and a Learning Hub UI.
+- Backend: Express server used for small API endpoints and proxying external services (recommended for securing API keys).
 
----
+Contents
+- `web/` — frontend app (React + Vite)
+- `backend/` — Express API server
+- `package.json` — workspace scripts
+- `README.md`, `LICENSE`
 
-## Monorepo Layout
+Getting started (local)
+1. Prerequisites: Node.js 18+ and npm
+2. Install dependencies:
 
-- `web/` â€” React + Vite frontend
-- `backend/` â€” Express API server
-- `package.json` â€” npm workspaces root
-- `LICENSE` â€” MIT License
-
----
-
-## Getting Started
-
-Prerequisites
-- Node.js 18+ and npm 9+
-
-Install dependencies (workspace-aware):
-
-```
+```powershell
 npm install
 ```
 
-Run the backend (port 3001):
+3. Start the backend (default port used by this project is `3001`):
 
-```
+```powershell
 npm run dev:backend
 ```
 
-Run the frontend (port 5173, proxies /api to 3001):
+4. Start the frontend dev server (Vite, proxies `/api` to the backend):
 
-```
+```powershell
 npm run dev:web
 ```
 
-Build the frontend for production:
+Available scripts (root)
+- `dev:web` — start Vite dev server for the frontend
+- `dev:backend` — start the Express backend
+- `build` — build the frontend for production
+- `preview` — preview the built frontend
+- `lint` — run frontend linters
 
-```
-npm run build
-```
+New pages & routes
+- `/about`, `/research`, `/contact` — simple pages matching the landing site's "What we offer" style
+- `/learning-hub` — the Learning Hub (dashboard)
 
-Lint frontend code:
+Testing & debugging
+- Start backend and frontend, open the Reading Mode page and try the mock. If the backend is proxied correctly, requests to `/api/*` from the frontend will be forwarded to the backend.
 
-```
-npm run lint
-```
+Security
+- Never store API keys in frontend code or commit them to Git. Use server-side environment variables and a proxy endpoint so keys remain secret.
 
----
+Contributing
+- PRs welcome. Keep changes focused and test the dev server locally.
 
-## API
-
-- `GET /api/health` â†’ `{ status: "ok", service: "polysia-backend" }`
-- `POST /api/echo` with JSON body â†’ `{ youSent: <body> }`
-
----
-
-## Scripts (root)
-
-- `dev:web` â€” Start Vite dev server for the frontend
-- `dev:backend` â€” Start the Express API server
-- `build` â€” Build the frontend app
-- `preview` â€” Preview the production build
-- `lint` â€” Lint the frontend
-
----
-
-## Contributing
-
-Issues and pull requests are welcome. Before submitting a PR:
-- Keep changes focused and include a brief summary.
-- Ensure the app builds and lints locally.
-
----
-
+License
+- MIT — see `LICENSE`
 ## License
 
-MIT â€” see `LICENSE`.
 
 
