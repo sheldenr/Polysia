@@ -58,9 +58,8 @@ Security
 Contributing
 - PRs welcome. Keep changes focused and test the dev server locally.
 
-License
-- MIT — see `LICENSE`
 ## License
+- MIT — see `LICENSE`
 
 
 
