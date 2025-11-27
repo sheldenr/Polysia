@@ -478,8 +478,10 @@ function DashboardContent({ setActive }) {
               <div className="reco-icon" aria-hidden>
                 <NavIcon name="Chat Mode" />
               </div>
-              <div className="reco-label">Chat Mode</div>
-              <div className="reco-desc">Recommended based on your recent activity, try a short conversation to reinforce progress. →</div>
+              <div className="reco-body">
+                <div className="reco-label">Chat Mode</div>
+                <div className="reco-desc">Recommended based on your recent activity, try a short conversation to reinforce progress. →</div>
+              </div>
             </button>
           </div>
         </div>

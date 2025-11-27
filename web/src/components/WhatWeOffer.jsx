@@ -56,18 +56,18 @@ function WhatWeOffer() {
         </div>
         
         <div className="offer-content">
-          <h2 className="offer-title">Our custom Adaptive Learning Module.</h2>
+          <h2 className="offer-title">What Polysia can offer</h2>
           <p className="offer-description">
-            Our comprehensive Mandarin learning platform combines cutting-edge AI technology with proven language acquisition methods. We provide personalized learning experiences that adapt to your unique needs, helping you achieve fluency faster and more effectively than traditional methods.
+            Polysia combines the latest AI technology with proven language acquisition methods. We provide personalized learning experiences that adapt to your unique needs, helping you achieve fluency faster and more effectively than traditional methods.
           </p>
         </div>
 
         <div className="alm-sections">
           <div className="alm-item">
             <div className="alm-info">
-              <h3 className="alm-title">Daily Priority</h3>
+              <h3 className="alm-title">Personalized Learning Paths</h3>
               <p className="alm-description">
-                Start every session with intent. Polysia pinpoints what matters most for your memory graph each day from forgotten tones to weak contextual links so your study time always targets the highest-impact concepts. No guessing, no clutter, just the next most meaningful step toward fluency.
+                Polysia adapts to your unique skill level, memory patterns, and learning pace, ensuring every session meets you exactly where you are. As you practice, the system learns what you remember, what you forget, and what you're ready for next. This creates a personalized progression that makes learning feel natural, efficient, and built entirely around you.
               </p>
             </div>
             <div className="alm-placeholder purple">
@@ -77,9 +77,9 @@ function WhatWeOffer() {
 
           <div className="alm-item">
             <div className="alm-info">
-              <h3 className="alm-title">Progress at a Glance</h3>
+              <h3 className="alm-title">Real-World Conversation Practice</h3>
               <p className="alm-description">
-                See your learning graph come to life. Track growth through intuitive visuals showing mastered characters, strengthened tone connections, and evolving comprehension zones. Every node, edge, and review reflects how your brain not a generic leaderboard is truly learning.
+                Speak naturally with an adaptive AI tutor that adjusts tone, formality, vocabulary, and complexity based on your goals. Whether you're preparing for casual conversations with friends or professional interactions with coworkers, Polysia tailors responses to fit the situation. Every dialogue strengthens your ability to communicate confidently in real-world contexts.
               </p>
             </div>
             <div className="alm-placeholder blue">
@@ -89,9 +89,9 @@ function WhatWeOffer() {
 
           <div className="alm-item">
             <div className="alm-info">
-              <h3 className="alm-title">Explore Modules</h3>
+              <h3 className="alm-title">Multi-Mode Skill Learning</h3>
               <p className="alm-description">
-                Dive into dynamic modules built around real-world Mandarin use from everyday dialogue and idioms to cultural nuance and media comprehension. Each module expands your cognitive graph, letting you explore, connect, and internalize language through interactive discovery rather than rote memorization.
+                Polysia offers targeted learning modes, flashcards, reading, listening, grammar drills, and visual association  to reinforce every aspect of communication. Each mode plays a different role in developing vocabulary, fluency, comprehension, and tone awareness. Together, they create a holistic learning experience that builds lasting confidence across all language skills.
               </p>
             </div>
             <div className="alm-placeholder teal">

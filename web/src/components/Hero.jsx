@@ -8,19 +8,19 @@ function Hero() {
         <div className="hero-container">
           <div className="hero-row">
             <span className="start-learning">
-              <span className="square-bullet" aria-hidden="true"></span> Start learning now
+              <span className="square-bullet" aria-hidden="true"></span> Start your journey now
             </span>
           </div>
 
           <div className="hero-row">
             <h1 className="hero-title">
-              The only adaptive system built for the complexities of Mandarin.
+              The only adaptive system built for conversational language learning.
             </h1>
           </div>
 
           <div className="hero-row">
             <p className="hero-description">
-              We analyze your tones, characters, and weak spots in real-time. Start the adaptive task below to optimize your daily memory retention.
+              Built around your goals, from casual conversation to professional communication, with lessons that adapt to your pace and progress. Currently built around learning Mandarin Chinese.
             </p>
           </div>
 
