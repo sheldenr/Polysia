@@ -1,6 +1,6 @@
 # Polysia
 
-Full-stack React + Vite starter with an optional Express API.
+Built with Full-stack React + Vite starter with an optional Express API.
 
 ## Scripts
 
