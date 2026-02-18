@@ -18,7 +18,7 @@ export default function Index() {
 
             {/* Main Heading */}
             <h1 className="text-5xl md:text-6xl font-bold text-foreground leading-tight">
-              Master Mandarin <span className="text-primary">Efficiently</span>
+              Speak Fluently<span className="text-primary">Faster.</span>
             </h1>
 
             {/* Subheading */}
