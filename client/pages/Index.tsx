@@ -7,18 +7,18 @@ export default function Index() {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="py-20 md:py-32 px-4 bg-gradient-to-b from-blue-50 via-white to-white">
+      <section className="py-20 md:py-32 px-4 bg-gradient-to-b from-primary/10 via-background to-background">
         <div className="container max-w-5xl mx-auto">
           <div className="text-center space-y-8">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-200">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30">
               <Zap className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-primary">AI-Powered Learning</span>
             </div>
 
             {/* Main Heading */}
             <h1 className="text-5xl md:text-6xl font-bold text-foreground leading-tight">
-              Master Mandarin <span className="text-primary">Fluently</span>
+              Master Mandarin <span className="text-primary">Efficiently</span>
             </h1>
 
             {/* Subheading */}
@@ -44,22 +44,22 @@ export default function Index() {
             {/* Trust indicators */}
             <div className="flex flex-col sm:flex-row gap-8 justify-center pt-8 text-sm text-foreground/60">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center">✓</div>
+                <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center">✓</div>
                 No credit card required
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center">✓</div>
+                <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center">✓</div>
                 Join 10,000+ learners
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center">✓</div>
+                <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center">✓</div>
                 100% HSK certified
               </div>
             </div>
           </div>
 
           {/* Hero Visual */}
-          <div className="mt-16 md:mt-24 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 border border-blue-200 p-8 md:p-12 aspect-video flex items-center justify-center">
+          <div className="mt-16 md:mt-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 p-8 md:p-12 aspect-video flex items-center justify-center">
             <div className="text-center space-y-4">
               <Brain className="w-16 h-16 text-primary mx-auto opacity-50" />
               <p className="text-foreground/60 font-medium">Interactive Learning Dashboard</p>
@@ -83,8 +83,8 @@ export default function Index() {
           {/* Feature Grid */}
           <div className="grid md:grid-cols-2 gap-8">
             {/* Feature 1 */}
-            <div className="p-8 rounded-2xl border border-border bg-white hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-6">
+            <div className="p-8 rounded-2xl border border-border bg-card hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-6">
                 <MessageSquare className="w-6 h-6 text-primary" />
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">
@@ -96,8 +96,8 @@ export default function Index() {
             </div>
 
             {/* Feature 2 */}
-            <div className="p-8 rounded-2xl border border-border bg-white hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-6">
+            <div className="p-8 rounded-2xl border border-border bg-card hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-6">
                 <Brain className="w-6 h-6 text-primary" />
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">
@@ -109,8 +109,8 @@ export default function Index() {
             </div>
 
             {/* Feature 3 */}
-            <div className="p-8 rounded-2xl border border-border bg-white hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-6">
+            <div className="p-8 rounded-2xl border border-border bg-card hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-6">
                 <BarChart3 className="w-6 h-6 text-primary" />
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">
@@ -122,8 +122,8 @@ export default function Index() {
             </div>
 
             {/* Feature 4 */}
-            <div className="p-8 rounded-2xl border border-border bg-white hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-6">
+            <div className="p-8 rounded-2xl border border-border bg-card hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-6">
                 <Globe className="w-6 h-6 text-primary" />
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">
@@ -138,7 +138,7 @@ export default function Index() {
       </section>
 
       {/* How it Works Section */}
-      <section className="py-20 md:py-32 px-4 bg-gradient-to-b from-blue-50 to-white">
+      <section className="py-20 md:py-32 px-4 bg-gradient-to-b from-primary/5 to-background">
         <div className="container max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
@@ -194,7 +194,7 @@ export default function Index() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* Testimonial 1 */}
-            <div className="p-8 rounded-2xl border border-border bg-white">
+            <div className="p-8 rounded-2xl border border-border bg-card">
               <div className="flex gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="text-yellow-400">★</span>
@@ -208,7 +208,7 @@ export default function Index() {
             </div>
 
             {/* Testimonial 2 */}
-            <div className="p-8 rounded-2xl border border-border bg-white">
+            <div className="p-8 rounded-2xl border border-border bg-card">
               <div className="flex gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="text-yellow-400">★</span>
@@ -222,7 +222,7 @@ export default function Index() {
             </div>
 
             {/* Testimonial 3 */}
-            <div className="p-8 rounded-2xl border border-border bg-white">
+            <div className="p-8 rounded-2xl border border-border bg-card">
               <div className="flex gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="text-yellow-400">★</span>
@@ -239,11 +239,12 @@ export default function Index() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 md:py-32 px-4 bg-gradient-to-r from-primary/5 to-blue-100">
+      <section className="py-20 md:py-32 px-4 bg-gradient-to-r from-primary/10 to-primary/5">
         <div className="container max-w-3xl mx-auto text-center space-y-8">
           <h2 className="text-4xl md:text-5xl font-bold text-foreground">
             Ready to Master Mandarin?
           </h2>
+          <br></br>
           <p className="text-lg text-foreground/70">
             Start your journey to fluency today. No credit card required—just pure, effective learning.
           </p>

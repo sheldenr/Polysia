@@ -18,20 +18,15 @@ export function Layout({ children }: LayoutProps) {
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 font-bold text-xl text-primary hover:opacity-80 transition-opacity">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <span>Polysia</span>
+            <Link to="/" className="flex items-center gap-2 font-bold text-xl hover:opacity-80 transition-opacity">
+              <img src="/logo.svg" alt="Polysia Logo" className="w-8 h-8" />
+              <span className="text-foreground">Polysia</span>
             </Link>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-8">
               <Link to="/" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
                 Home
-              </Link>
-              <Link to="/learn" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
-                Learn
               </Link>
               <Link to="/features" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
                 Features
@@ -43,9 +38,11 @@ export function Layout({ children }: LayoutProps) {
 
             {/* CTA Button (Desktop) */}
             <div className="hidden md:flex items-center gap-4">
-              <Button variant="default" className="bg-primary hover:bg-primary/90">
-                Get Started
-              </Button>
+              <Link to="/learn">
+                <Button variant="default" className="bg-primary hover:bg-primary/90">
+                  Get Started
+                </Button>
+              </Link>
             </div>
 
             {/* Mobile Menu Button */}
@@ -65,18 +62,17 @@ export function Layout({ children }: LayoutProps) {
                 <Link to="/" className="text-sm font-medium text-foreground/70 hover:text-foreground py-2">
                   Home
                 </Link>
-                <Link to="/learn" className="text-sm font-medium text-foreground/70 hover:text-foreground py-2">
-                  Learn
-                </Link>
                 <Link to="/features" className="text-sm font-medium text-foreground/70 hover:text-foreground py-2">
                   Features
                 </Link>
                 <Link to="/pricing" className="text-sm font-medium text-foreground/70 hover:text-foreground py-2">
                   Pricing
                 </Link>
-                <Button variant="default" className="bg-primary hover:bg-primary/90 w-full mt-2">
-                  Get Started
-                </Button>
+                <Link to="/learn">
+                  <Button variant="default" className="bg-primary hover:bg-primary/90 w-full mt-2">
+                    Get Started
+                  </Button>
+                </Link>
               </div>
             </nav>
           )}
@@ -94,11 +90,9 @@ export function Layout({ children }: LayoutProps) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             {/* Brand */}
             <div>
-              <div className="flex items-center gap-2 font-bold text-lg text-primary mb-4">
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <span>Polysia</span>
+              <div className="flex items-center gap-2 font-bold text-lg mb-4">
+                <img src="/logo.svg" alt="Polysia Logo" className="w-8 h-8" />
+                <span className="text-foreground">Polysia</span>
               </div>
               <p className="text-sm text-foreground/60">
                 Master Mandarin through conversational AI-powered learning.
@@ -154,7 +148,7 @@ export function Layout({ children }: LayoutProps) {
           {/* Bottom */}
           <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-foreground/60">
-              © 2024 Polysia. All rights reserved.
+              © {new Date().getFullYear()} Polysia. All rights reserved.
             </p>
             <div className="flex gap-4">
               <a href="#" className="text-sm text-foreground/60 hover:text-foreground transition-colors">

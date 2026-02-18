@@ -22,19 +22,19 @@
     --popover: 0 0% 100%;
     --popover-foreground: 217 33% 17%;
 
-    /* Primary: Deep blue - trustworthy and professional */
-    --primary: 217 91% 40%;
+    /* Primary: Bright cyan blue #008ec2 */
+    --primary: 196 100% 38%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Soft light blue - airy accent */
-    --secondary: 208 100% 50%;
+    /* Secondary: Bright cyan blue */
+    --secondary: 196 100% 38%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 96%;
     --muted-foreground: 217 8% 48%;
 
-    /* Accent: Soft blue for interactive elements */
-    --accent: 208 100% 50%;
+    /* Accent: Bright cyan blue for interactive elements */
+    --accent: 196 100% 38%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
@@ -42,18 +42,18 @@
 
     --border: 217 12% 90%;
     --input: 0 0% 96%;
-    --ring: 217 91% 40%;
+    --ring: 196 100% 38%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 217 33% 17%;
-    --sidebar-primary: 217 91% 40%;
+    --sidebar-primary: 196 100% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 208 100% 50%;
+    --sidebar-accent: 196 100% 38%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 217 12% 90%;
-    --sidebar-ring: 208 100% 50%;
+    --sidebar-ring: 196 100% 38%;
   }
 
 }
