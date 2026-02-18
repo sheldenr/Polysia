@@ -1,4 +1,4 @@
-import { Layout } from "@/components/Layout";
+import { SimpleLayout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Zap, Target, Clock, BarChart3, Award } from "lucide-react";
@@ -36,7 +36,7 @@ export default function Learn() {
   ];
 
   return (
-    <Layout>
+    <SimpleLayout>
       {/* Header Section */}
       <section className="py-12 px-4 bg-gradient-to-b from-blue-50 to-white border-b border-border">
         <div className="container max-w-6xl mx-auto">
@@ -192,6 +192,6 @@ export default function Learn() {
           </div>
         </div>
       </div>
-    </Layout>
+    </SimpleLayout>
   );
 }

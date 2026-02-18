@@ -1,7 +1,7 @@
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { ArrowRight, Zap, Users, Brain, MessageSquare, BarChart3, Globe } from "lucide-react";
+import { ArrowRight, Zap, Users, Brain, MessageSquare, BarChart3, Globe, Play } from "lucide-react";
 
 export default function Index() {
   return (
@@ -18,7 +18,7 @@ export default function Index() {
 
             {/* Main Heading */}
             <h1 className="text-5xl md:text-6xl font-bold text-foreground leading-tight">
-              Speak Fluently<span className="text-primary">Faster.</span>
+              Speak Fluently <span className="text-primary">Faster.</span>
             </h1>
 
             {/* Subheading */}
@@ -28,9 +28,9 @@ export default function Index() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <Link to="/learn">
+              <Link to="/signup">
                 <Button size="lg" className="bg-primary hover:bg-primary/90 text-white w-full sm:w-auto">
-                  Start Free Trial
+                  Get Started
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
@@ -59,11 +59,13 @@ export default function Index() {
           </div>
 
           {/* Hero Visual */}
-          <div className="mt-16 md:mt-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 p-8 md:p-12 aspect-video flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <Brain className="w-16 h-16 text-primary mx-auto opacity-50" />
-              <p className="text-foreground/60 font-medium">Interactive Learning Dashboard</p>
-            </div>
+          <div className="mt-16 md:mt-24 rounded-2xl border border-primary/30 p-8 md:p-12 overflow-hidden relative">
+            <img src="https://cdn.discordapp.com/attachments/751118567486783589/1473526455450468626/IMG_2251.jpg?ex=699687f3&is=69953673&hm=d268305a3b803e95e45042c458b5b0aaffecd440ae54f1fb342fc64c4c3b7587&" alt="Interactive Learning Dashboard" className="w-full h-auto rounded-lg" />
+            <button className="absolute inset-0 flex items-center justify-center group">
+              <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center group-hover:bg-primary/90 transition-colors">
+                <Play className="w-8 h-8 text-white fill-white" />
+              </div>
+            </button>
           </div>
         </div>
       </section>
@@ -203,7 +205,7 @@ export default function Index() {
               <p className="text-foreground/80 mb-4">
                 "Polysia completely changed my Mandarin learning. I went from struggling with tones to having real conversations in just 3 months!"
               </p>
-              <p className="font-semibold text-foreground">Sarah Chen</p>
+              <p className="font-semibold text-foreground">Learner 1</p>
               <p className="text-sm text-foreground/60">Intermediate Learner</p>
             </div>
 
@@ -217,7 +219,7 @@ export default function Index() {
               <p className="text-foreground/80 mb-4">
                 "The AI feedback is incredibly detailed and personalized. It feels like having a native speaker coaching me 24/7."
               </p>
-              <p className="font-semibold text-foreground">Michael Zhang</p>
+              <p className="font-semibold text-foreground">Learner 2</p>
               <p className="text-sm text-foreground/60">Business Professional</p>
             </div>
 
@@ -231,7 +233,7 @@ export default function Index() {
               <p className="text-foreground/80 mb-4">
                 "Finally, a learning app that feels modern and doesn't waste my time with boring exercises. Highly recommended!"
               </p>
-              <p className="font-semibold text-foreground">Lisa Wang</p>
+              <p className="font-semibold text-foreground">Learner 3</p>
               <p className="text-sm text-foreground/60">Advanced Learner</p>
             </div>
           </div>
@@ -244,16 +246,17 @@ export default function Index() {
           <h2 className="text-4xl md:text-5xl font-bold text-foreground">
             Ready to Master Mandarin?
           </h2>
-          <br></br>
           <p className="text-lg text-foreground/70">
             Start your journey to fluency today. No credit card required—just pure, effective learning.
           </p>
-          <Link to="/learn">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-white">
-              Get Started Free
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </Link>
+          <div className="pt-6">
+            <Link to="/signup">
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-white">
+                Get Started Free
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
     </Layout>

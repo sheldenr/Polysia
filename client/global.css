@@ -23,18 +23,18 @@
     --popover-foreground: 217 33% 17%;
 
     /* Primary: Bright cyan blue #008ec2 */
-    --primary: 196 100% 38%;
+    --primary: 196 60% 40%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: Bright cyan blue */
-    --secondary: 196 100% 38%;
+    --secondary: 196 60% 40%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 96%;
     --muted-foreground: 217 8% 48%;
 
     /* Accent: Bright cyan blue for interactive elements */
-    --accent: 196 100% 38%;
+    --accent: 196 60% 40%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
@@ -42,7 +42,7 @@
 
     --border: 217 12% 90%;
     --input: 0 0% 96%;
-    --ring: 196 100% 38%;
+    --ring: 196 60% 40%;
 
     --radius: 0.5rem;
 
