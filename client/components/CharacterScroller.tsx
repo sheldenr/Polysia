@@ -10,9 +10,9 @@ export default function CharacterScroller() {
       {characters.map((character, index) => (
         <div
           key={`${trackKey}-${index}`}
-          className="flex-shrink-0 w-40 h-28 sm:w-52 sm:h-32 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 flex items-center justify-center transition-colors duration-300"
+          className="group flex-shrink-0 w-40 h-28 sm:w-52 sm:h-32 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 flex items-center justify-center transition-colors duration-300"
         >
-          <span className="text-3xl sm:text-4xl font-light text-black dark:text-zinc-100 leading-none select-none transition-colors duration-300">
+          <span className="text-3xl sm:text-4xl font-light text-black dark:text-zinc-100 leading-none select-none transition-colors duration-300 group-hover:text-[#3491b2]">
             {character}
           </span>
         </div>
