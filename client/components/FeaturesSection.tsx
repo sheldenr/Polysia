@@ -59,7 +59,7 @@ export default function FeaturesSection() {
                 hello / hi
               </p>
               <p className="text-sm text-gray-500 dark:text-zinc-400 mt-8 leading-relaxed">
-                A common greeting used in Mandarin Chinese.
+                A common versatile greeting used in formal and informal settings.
               </p>
             </div>
           </div>

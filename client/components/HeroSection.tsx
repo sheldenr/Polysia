@@ -37,7 +37,7 @@ export default function HeroSection() {
 
         {/* Subheading */}
         <p className="text-lg sm:text-xl text-gray-700 dark:text-zinc-300 mb-8 max-w-2xl mx-auto leading-relaxed">
-          A minimalist language engine powered by spaced repetition and dynamic AI. Read and review only the words you actually care about learning.
+          An adaptive language-learning platform powered by spaced repetition and DeepSeek V3.2. Read and review only the words you actually care about learning.
         </p>
 
         {/* CTA Button */}

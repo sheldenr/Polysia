@@ -3,8 +3,8 @@ import { Globe, Lightbulb, MessageCircle, TrendingUp } from "lucide-react";
 export default function WhyChooseSection() {
   const reasons = [
     {
-      title: "Real Conversations",
-      description: "Learn with authentic dialogues that matter in real life",
+      title: "Authentic Conversations",
+      description: "Learn with authentic dialogues you can use in real life",
       icon: MessageCircle,
       iconClassName: "text-[#3491b2]",
     },
@@ -22,7 +22,7 @@ export default function WhyChooseSection() {
     },
     {
       title: "Cultural Context",
-      description: "Understand language within its cultural nuances and expressions",
+      description: "Understand language beyond flat objective translations",
       icon: Globe,
       iconClassName: "text-[#3491b2]",
     },
