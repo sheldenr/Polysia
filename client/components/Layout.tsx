@@ -128,10 +128,10 @@ export default function Layout({ children }: LayoutProps) {
           {/* Logo */}
           <Link
             to="/"
-            className="flex items-center gap-2"
+            className="flex items-center gap-1.5"
           >
             <img src="/logo only.svg" alt="Polysia logo" className="w-8 h-8" />
-            <span className="font-sans font-semibold text-lg hidden sm:inline">Polysia</span>
+            <span className="font-sans font-medium text-lg hidden sm:inline">Polysia</span>
           </Link>
 
           {/* Right Side - Login + Sign Up */}
@@ -164,8 +164,11 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Logo on Left */}
-            <Link to="/" className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-1.5">
               <img src="/logo only.svg" alt="Polysia logo" className="w-6 h-6" />
+              <span className="font-sans font-medium text-base text-black dark:text-zinc-100 transition-colors duration-300">
+                Polysia
+              </span>
             </Link>
 
             {/* Links in Middle */}
