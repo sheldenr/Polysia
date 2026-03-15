@@ -1,5 +1,6 @@
 /** @import must precede all other statements */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -12,48 +13,51 @@
    * A different format will require also updating the theme in tailwind.config.ts.
   */
   :root {
-    /* Light theme - clean, airy, professional */
     --background: 0 0% 100%;
-    --foreground: 217 33% 17%;
+    --foreground: 0 0% 0%;
 
     --card: 0 0% 100%;
-    --card-foreground: 217 33% 17%;
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 217 33% 17%;
+    --popover-foreground: 0 0% 0%;
 
-    /* Primary: Bright cyan blue #008ec2 */
-    --primary: 196 60% 40%;
+    --primary: 0 0% 0%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Bright cyan blue */
-    --secondary: 196 60% 40%;
+    --secondary: 196 55% 45%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 217 8% 48%;
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 40%;
 
-    /* Accent: Bright cyan blue for interactive elements */
-    --accent: 196 60% 40%;
+    --accent: 196 55% 45%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 217 12% 90%;
-    --input: 0 0% 96%;
-    --ring: 196 60% 40%;
+    --border: 0 0% 92%;
+    --input: 0 0% 95%;
+    --ring: 196 55% 45%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 217 33% 17%;
-    --sidebar-primary: 196 100% 38%;
+
+    --sidebar-foreground: 0 0% 20%;
+
+    --sidebar-primary: 196 55% 45%;
+
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 196 100% 38%;
+
+    --sidebar-accent: 196 55% 45%;
+
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 217 12% 90%;
-    --sidebar-ring: 196 100% 38%;
+
+    --sidebar-border: 0 0% 92%;
+
+    --sidebar-ring: 196 55% 45%;
   }
 
 }
@@ -64,37 +68,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: "Inter", sans-serif;
-    letter-spacing: -0.01em;
-  }
-
-  h1 {
-    @apply text-4xl font-bold tracking-tight;
-  }
-
-  h2 {
-    @apply text-3xl font-bold tracking-tight;
-  }
-
-  h3 {
-    @apply text-2xl font-semibold tracking-tight;
-  }
-
-  h4 {
-    @apply text-xl font-semibold;
-  }
-
-  h5 {
-    @apply text-lg font-semibold;
-  }
-
-  h6 {
-    @apply text-base font-semibold;
-  }
-
-  p {
-    @apply leading-relaxed;
+    @apply bg-background text-foreground font-sans;
   }
 
   :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
@@ -106,5 +80,39 @@
   code {
     overflow-x: auto;
     white-space: pre;
+  }
+}
+
+@layer components {
+  @keyframes marquee-scroll {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  .marquee-viewport {
+    overflow: hidden;
+  }
+
+  .marquee-strip {
+    animation: marquee-scroll 28s linear infinite;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .marquee-track {
+    will-change: auto;
+  }
+
+  .serif-font {
+    @apply font-serif;
+  }
+
+  .italic-serif {
+    @apply font-serif italic;
   }
 }

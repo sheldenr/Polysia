@@ -1,9 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import { Layout } from "@/components/Layout";
-import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import Layout from "@/components/Layout";
 
 const NotFound = () => {
   const location = useLocation();
@@ -11,37 +9,24 @@ const NotFound = () => {
   useEffect(() => {
     console.error(
       "404 Error: User attempted to access non-existent route:",
-      location.pathname
+      location.pathname,
     );
   }, [location.pathname]);
 
   return (
     <Layout>
-      <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 rounded-lg bg-red-100 mx-auto mb-6 flex items-center justify-center text-4xl font-bold text-red-600">
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <h1 className="font-serif text-6xl sm:text-7xl font-bold mb-4 text-black">
             404
-          </div>
-          
-          <h1 className="mb-4">Page Not Found</h1>
-          
-          <p className="text-foreground/60 mb-8 leading-relaxed">
-            Sorry, we couldn't find the page you're looking for. It might have been moved or doesn't exist yet.
-          </p>
-
-          <div className="flex gap-4 justify-center">
-            <Link to="/">
-              <Button variant="outline">
-                Back to Home
-              </Button>
-            </Link>
-            <Link to="/learn">
-              <Button className="bg-primary hover:bg-primary/90">
-                Start Learning
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
+          </h1>
+          <p className="text-2xl text-gray-700 mb-8">Page not found</p>
+          <Link
+            to="/"
+            className="inline-block px-8 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors font-semibold"
+          >
+            Back to Home
+          </Link>
         </div>
       </div>
     </Layout>

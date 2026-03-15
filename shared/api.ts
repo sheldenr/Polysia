@@ -10,3 +10,24 @@
 export interface DemoResponse {
   message: string;
 }
+
+export interface DeepSeekMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+export interface DeepSeekV3Request {
+  messages: DeepSeekMessage[];
+  temperature?: number;
+  max_tokens?: number;
+}
+
+export interface DeepSeekV3Response {
+  content: string;
+  model: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+}
