@@ -109,7 +109,10 @@ export default function Layout({ children }: LayoutProps) {
       {showBetaBanner && (
         <div className="w-full bg-black text-white py-2 px-4 text-sm dark:bg-zinc-900">
           <div className="max-w-7xl mx-auto flex items-center">
-            <p className="w-full text-center">Polysia is currently in alpha. This is a solo-development project, thanks for helping us improve.</p>
+            <p className="w-full text-center">
+              <span className="text-[#3491b2]">Note: </span>
+              Polysia is currently in alpha. This is a solo-development project, thanks for helping us improve.
+            </p>
             <button
               type="button"
               onClick={() => setShowBetaBanner(false)}
@@ -173,9 +176,9 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* Links in Middle */}
             <div className="flex gap-6 text-sm text-gray-600 dark:text-zinc-400">
-              <a href="#" className="hover:text-[#3491b2] transition-colors">Privacy</a>
-              <a href="#" className="hover:text-[#3491b2] transition-colors">Terms</a>
-              <a href="#" className="hover:text-[#3491b2] transition-colors">Contact</a>
+              <Link to="/privacy" className="hover:text-[#3491b2] transition-colors">Privacy</Link>
+              <Link to="/terms" className="hover:text-[#3491b2] transition-colors">Terms</Link>
+              <Link to="/contact" className="hover:text-[#3491b2] transition-colors">Contact</Link>
             </div>
 
             {/* Github Icon on Right */}

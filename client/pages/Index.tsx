@@ -7,16 +7,9 @@ import FeaturesSection from "@/components/FeaturesSection";
 export default function Index() {
   return (
     <Layout>
-      {/* Hero Section */}
       <HeroSection />
-
-      {/* Character Scroller */}
       <CharacterScroller />
-
-      {/* Why Choose Polysia Section */}
       <WhyChooseSection />
-
-      {/* Features Section */}
       <FeaturesSection />
     </Layout>
   );
