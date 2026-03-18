@@ -15,7 +15,7 @@ import Careers from "./pages/Careers";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
-import LearningHub from "./pages/LearningHub";
+import LearningHub from "@/pages/LearningHub";
 
 const queryClient = new QueryClient();
 
