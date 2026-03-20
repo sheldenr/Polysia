@@ -52,7 +52,7 @@ export default function FeaturesSection() {
             </div>
           </div>
 
-          <div className="w-full lg:w-2/5 flex justify-center lg:justify-end mt-8 lg:mt-0">
+          <div className="mt-8 flex w-full justify-center md:mt-0 md:self-center lg:w-2/5 lg:justify-end">
             <div className="w-full max-w-sm rounded-[1.75rem] bg-white dark:bg-zinc-800 px-10 py-16 text-center shadow-[0_42px_95px_-26px_rgba(0,0,0,0.4),0_18px_40px_-24px_rgba(52,145,178,0.22)] dark:shadow-[0_42px_95px_-26px_rgba(0,0,0,0.62),0_18px_40px_-24px_rgba(52,145,178,0.2)] transition-colors duration-300">
               <p className="text-5xl font-bold text-black dark:text-zinc-100 mb-6">你好</p>
               <p className="text-base text-gray-700 dark:text-zinc-200 leading-relaxed">
