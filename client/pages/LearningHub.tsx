@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
+  Circle,
+  Clock3,
   Layers,
   MessageCircle,
   Mic,
@@ -20,6 +22,7 @@ import { Link } from "react-router-dom";
 type Mode = "dashboard" | "flow";
 
 const slideIcons = [Layers, BookOpen, MessageCircle] as const;
+const FLOW_SLIDE_ACTIVATION_THRESHOLD = 0.9;
 
 export default function LearningHub() {
   const streakDays = 14;
@@ -31,9 +34,24 @@ export default function LearningHub() {
   const slideRefs = useRef<Array<HTMLElement | null>>([]);
 
   const [isCardFlipped, setIsCardFlipped] = useState(false);
+  const [selectedReviewOption, setSelectedReviewOption] = useState<number | null>(null);
   const [roleplayMessages, setRoleplayMessages] = useState<Array<{ role: "ai" | "user"; text: string }>>([{ role: "ai", text: "你好！今天我们练习一个关于日常生活的对话。你能告诉我你今天做了什么吗？" }]);
   const [selectedScenario, setSelectedScenario] = useState("daily");
   const [roleplayInput, setRoleplayInput] = useState("");
+
+  const reviewOptions = [
+    { label: "Again", key: "1", classes: "bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-950/60 dark:text-rose-200 dark:hover:bg-rose-900/60" },
+    { label: "Poor", key: "2", classes: "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/60" },
+    { label: "Good", key: "3", classes: "bg-sky-100 text-sky-900 hover:bg-sky-200 dark:bg-sky-950/60 dark:text-sky-200 dark:hover:bg-sky-900/60" },
+    { label: "Perfect", key: "4", classes: "bg-emerald-100 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:hover:bg-emerald-900/60" },
+  ] as const;
+
+  const flashcardStats = [
+    { label: "Total Cards", value: "248", classes: "bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-100", icon: Layers },
+    { label: "Mastered", value: "126", classes: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-100", icon: CheckCircle2 },
+    { label: "In Progress", value: "82", classes: "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-100", icon: Clock3 },
+    { label: "Not Started", value: "40", classes: "bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100", icon: Circle },
+  ] as const;
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("theme");
@@ -61,7 +79,7 @@ export default function LearningHub() {
       (entries) => {
         let nextActive = activeSlide;
         for (const entry of entries) {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          if (entry.isIntersecting && entry.intersectionRatio >= FLOW_SLIDE_ACTIVATION_THRESHOLD) {
             const idx = Number(entry.target.getAttribute("data-slide-index") ?? 0);
             nextActive = idx;
           }
@@ -72,7 +90,7 @@ export default function LearningHub() {
       },
       {
         root: container,
-        threshold: [0.4, 0.6, 0.8],
+        threshold: [0.6, FLOW_SLIDE_ACTIVATION_THRESHOLD, 0.98],
       }
     );
 
@@ -112,6 +130,31 @@ export default function LearningHub() {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, []);
+
+  useEffect(() => {
+    if (mode !== "flow" || activeSlide !== 0) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) {
+        return;
+      }
+
+      const optionIndex = Number(event.key) - 1;
+      if (optionIndex < 0 || optionIndex > 3) {
+        return;
+      }
+
+      event.preventDefault();
+      setSelectedReviewOption(optionIndex);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mode, activeSlide]);
 
   const enterFlow = (slideIndex: number) => {
     setMode("flow");
@@ -193,6 +236,7 @@ export default function LearningHub() {
           width: 100vw;
           height: 100vh;
           scroll-snap-align: center;
+          scroll-snap-stop: always;
           position: relative;
           display: flex;
           align-items: center;
@@ -382,8 +426,9 @@ export default function LearningHub() {
               data-slide-index={0}
               className="flow-slide"
             >
-              <div className="w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8">
-                <div className="max-w-6xl w-full flex flex-col items-center">
+              <div className="w-full h-full flex items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+                <div className="max-w-6xl w-full grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+                  <div className="min-w-0">
                   <p
                     className={`entry-item mb-8 text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-zinc-400 ${
                       contentVisible[0] ? "is-visible" : ""
@@ -393,7 +438,7 @@ export default function LearningHub() {
                     Flashcards
                   </p>
                   <div
-                    className={`entry-item flex aspect-video w-full max-w-2xl cursor-pointer flex-col items-center justify-center rounded-2xl border border-black/10 bg-white p-10 shadow-sm transition-all duration-300 dark:border-white/15 dark:bg-zinc-900 sm:p-14 ${
+                    className={`entry-item flex min-h-[370px] w-full cursor-pointer flex-col items-center justify-center rounded-2xl border border-black/10 bg-white p-8 text-center shadow-sm transition-all duration-300 dark:border-white/15 dark:bg-zinc-900 sm:min-h-[420px] sm:p-12 ${
                       contentVisible[0] ? "is-visible" : ""
                     }`}
                     style={{ transitionDelay: "90ms" }}
@@ -403,40 +448,74 @@ export default function LearningHub() {
                       <div className="text-center">
                         <p className="mb-6 text-6xl font-bold text-black dark:text-zinc-100 sm:text-7xl">你好</p>
                         <p className="mb-2 text-base text-gray-700 dark:text-zinc-300">他每天都向朋友说「你好」。</p>
-                        <p className="text-xs font-medium text-gray-500 dark:text-zinc-400">Click to reveal</p>
                       </div>
                     ) : (
-                      <div className="text-center space-y-4 w-full">
-                        <div>
-                          <p className="mb-1 text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-zinc-400">Pronunciation</p>
-                          <p className="text-lg font-semibold text-black dark:text-zinc-100">nǐ hǎo</p>
+                      <div className="w-full space-y-8 text-center">
+                        <div className="space-y-3">
+                          <p className="text-5xl font-bold text-black dark:text-zinc-100 sm:text-6xl">你好</p>
+                          <p className="text-3xl font-semibold text-zinc-900 dark:text-zinc-100 sm:text-4xl">nǐ hǎo</p>
+                          <p className="text-base text-gray-800 dark:text-zinc-300">Hello; How are you?</p>
                         </div>
-                        <div className="border-t border-black/10 pt-3 dark:border-white/10">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-zinc-400">Example Sentence</p>
-                          <p className="text-sm text-gray-800 dark:text-zinc-300">他每天都向朋友说「你好」。</p>
-                        </div>
-                        <div className="border-t border-black/10 pt-3 dark:border-white/10">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-zinc-400">Sentence Pronunciation</p>
-                          <p className="text-xs text-gray-700 dark:text-zinc-300">Tā měi tiān dōu xiàng péngyou shuō "nǐ hǎo".</p>
-                        </div>
-                        <div className="border-t border-black/10 pt-3 dark:border-white/10">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-zinc-400">Word Meaning</p>
-                          <p className="text-sm text-gray-800 dark:text-zinc-300">Hello; How are you?</p>
-                        </div>
-                        <div className="border-t border-black/10 pt-3 dark:border-white/10">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-zinc-400">Sentence Meaning</p>
-                          <p className="text-sm text-gray-800 dark:text-zinc-300">He greets his friend with "hello" every day.</p>
+                        <div className="space-y-3">
+                          <p className="text-base text-gray-900 dark:text-zinc-200">他每天都向朋友说「你好」。</p>
+                          <p className="text-sm text-gray-700 dark:text-zinc-300">Tā měi tiān dōu xiàng péngyou shuō "nǐ hǎo".</p>
+                          <p className="text-base text-gray-800 dark:text-zinc-300">He greets his friend with "hello" every day.</p>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="mt-12 flex gap-3 flex-wrap justify-center">
-                    <button className="rounded-full bg-gray-200 px-6 py-3 font-semibold text-black transition-colors hover:bg-gray-300 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700">Again</button>
-                    <button className="rounded-full bg-gray-400 px-6 py-3 font-semibold text-white transition-colors hover:bg-gray-500 dark:bg-zinc-700 dark:hover:bg-zinc-600">Poor</button>
-                    <button className="px-6 py-3 rounded-full bg-[#3491b2] text-white font-semibold hover:bg-[#2b7f9d] transition-colors">Good</button>
-                    <button className="rounded-full bg-black px-6 py-3 font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">Perfect</button>
+                  <div
+                    className={`entry-item mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 ${
+                      contentVisible[0] ? "is-visible" : ""
+                    }`}
+                    style={{ transitionDelay: "160ms" }}
+                  >
+                    {reviewOptions.map((option, index) => {
+                      const isSelected = selectedReviewOption === index;
+                      return (
+                        <button
+                          key={option.label}
+                          type="button"
+                          onClick={() => setSelectedReviewOption(index)}
+                          className={`rounded-xl border px-4 py-3 text-sm font-semibold transition-all sm:text-base ${option.classes} ${
+                            isSelected
+                              ? "border-[#3491b2] ring-2 ring-[#3491b2]/45"
+                              : "border-black/10 dark:border-white/10"
+                          }`}
+                          aria-label={`${option.label} review quality`}
+                        >
+                          <span className="mr-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded bg-white/70 px-1 text-xs font-bold text-zinc-700 dark:bg-black/20 dark:text-zinc-200">
+                            {option.key}
+                          </span>
+                          {option.label}
+                        </button>
+                      );
+                    })}
                   </div>
+
+                  </div>
+
+                  <aside
+                    className={`entry-item rounded-2xl border border-black/10 bg-white/95 p-4 shadow-sm dark:border-white/10 dark:bg-zinc-900/95 ${
+                      contentVisible[0] ? "is-visible" : ""
+                    }`}
+                    style={{ transitionDelay: "210ms" }}
+                  >
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Study Stats</p>
+                    <div className="space-y-2.5">
+                      {flashcardStats.map((stat) => {
+                        const Icon = stat.icon;
+                        return (
+                          <article key={stat.label} className={`relative overflow-hidden rounded-xl px-3 py-3 ${stat.classes}`}>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-80">{stat.label}</p>
+                            <p className="mt-1 text-2xl font-semibold leading-none">{stat.value}</p>
+                            <Icon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 opacity-85" />
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </aside>
                 </div>
               </div>
             </section>
