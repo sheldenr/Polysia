@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useLayoutEffect } from "react";
 import { Moon, Sun } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -21,13 +21,14 @@ export default function Layout({ children }: LayoutProps) {
     window.localStorage.setItem("theme", isDarkMode ? "dark" : "light");
   }, [isDarkMode]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const supportsObserver = typeof IntersectionObserver !== "undefined";
     const revealTargets = Array.from(
       document.querySelectorAll<HTMLElement>(
         "main > *, main section, nav"
       )
     );
+    let revealRafId: number | null = null;
 
     if (revealTargets.length === 0) {
       return;
@@ -39,8 +40,19 @@ export default function Layout({ children }: LayoutProps) {
     });
 
     if (!supportsObserver) {
-      revealTargets.forEach((target) => target.classList.add("is-visible"));
-      return;
+      revealRafId = window.requestAnimationFrame(() => {
+        revealTargets.forEach((target) => target.classList.add("is-visible"));
+      });
+
+      return () => {
+        if (revealRafId !== null) {
+          window.cancelAnimationFrame(revealRafId);
+        }
+        revealTargets.forEach((target) => {
+          target.classList.remove("reveal-on-scroll", "is-visible");
+          target.style.removeProperty("--reveal-delay");
+        });
+      };
     }
 
     const observer = new IntersectionObserver(
@@ -58,9 +70,14 @@ export default function Layout({ children }: LayoutProps) {
       }
     );
 
-    revealTargets.forEach((target) => observer.observe(target));
+    revealRafId = window.requestAnimationFrame(() => {
+      revealTargets.forEach((target) => observer.observe(target));
+    });
 
     return () => {
+      if (revealRafId !== null) {
+        window.cancelAnimationFrame(revealRafId);
+      }
       observer.disconnect();
       revealTargets.forEach((target) => {
         target.classList.remove("reveal-on-scroll", "is-visible");
