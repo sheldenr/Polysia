@@ -2,7 +2,31 @@ import { Link } from "react-router-dom";
 
 export default function HeroSection() {
   return (
-    <section className="w-full px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-32">
+    <section className="relative isolate w-full overflow-hidden px-6 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-0 h-[52rem] w-[100rem] -translate-x-1/2 -translate-y-[58%] rounded-full"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(52,145,178,0.14) 0%, rgba(52,145,178,0.075) 36%, rgba(52,145,178,0.03) 62%, rgba(52,145,178,0) 82%)",
+          filter: "blur(90px)",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[36rem]"
+        style={{
+          opacity: 0.16,
+          mixBlendMode: "multiply",
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E\")",
+          backgroundSize: "220px 220px",
+          maskImage:
+            "linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.5) 55%, rgba(0,0,0,0))",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.5) 55%, rgba(0,0,0,0))",
+        }}
+      />
       <style>{`
         @keyframes pill-border-glow {
           0% {
@@ -22,7 +46,7 @@ export default function HeroSection() {
           animation: pill-border-glow 3.5s ease-in-out infinite;
         }
       `}</style>
-      <div className="max-w-4xl mx-auto text-center">
+      <div className="relative z-10 mx-auto max-w-4xl text-center">
         {/* Animated Top Label */}
         <div className="mb-4 flex justify-center">
           <div className="inline-flex items-center rounded-full px-4 py-1 text-xs font-medium uppercase tracking-wide border border-gray-300 bg-white text-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 pill-border-animate">

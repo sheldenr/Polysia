@@ -22,6 +22,54 @@ export default function Layout({ children }: LayoutProps) {
   }, [isDarkMode]);
 
   useEffect(() => {
+    const supportsObserver = typeof IntersectionObserver !== "undefined";
+    const revealTargets = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        "main > *, main section, nav"
+      )
+    );
+
+    if (revealTargets.length === 0) {
+      return;
+    }
+
+    revealTargets.forEach((target, index) => {
+      target.classList.add("reveal-on-scroll");
+      target.style.setProperty("--reveal-delay", `${Math.min(index * 55, 330)}ms`);
+    });
+
+    if (!supportsObserver) {
+      revealTargets.forEach((target) => target.classList.add("is-visible"));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        threshold: 0.12,
+        rootMargin: "0px 0px -8% 0px",
+      }
+    );
+
+    revealTargets.forEach((target) => observer.observe(target));
+
+    return () => {
+      observer.disconnect();
+      revealTargets.forEach((target) => {
+        target.classList.remove("reveal-on-scroll", "is-visible");
+        target.style.removeProperty("--reveal-delay");
+      });
+    };
+  }, []);
+
+  useEffect(() => {
     const targets = Array.from(
       document.querySelectorAll<HTMLElement>("section, nav, footer")
     );
@@ -102,17 +150,31 @@ export default function Layout({ children }: LayoutProps) {
   }, [isDarkMode]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-white text-black dark:bg-zinc-950 dark:text-zinc-100 transition-colors duration-300">
+    <div className="site-animations flex min-h-screen flex-col bg-white text-black transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100">
       {/* Header: beta banner + nav */}
       <div className="z-50">
       {/* Top Notification Bar */}
       {showBetaBanner && (
-        <div className="w-full bg-black text-white py-2 px-4 text-sm dark:bg-zinc-900">
-          <div className="max-w-7xl mx-auto flex items-center">
-            <p className="w-full text-center">
-              <span className="text-[#3491b2]">Note: </span>
-              Polysia is currently in alpha. This is a solo-development project, thanks for helping us improve.
-            </p>
+        <div className="w-full bg-black px-6 py-2 text-sm text-white dark:bg-zinc-900 sm:px-4">
+          <div className="mx-auto flex max-w-7xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="marquee-viewport sm:hidden">
+                <div className="marquee-strip flex w-max items-center gap-10 pr-10 whitespace-nowrap">
+                  <p className="m-0 inline-flex items-center">
+                    <span className="text-[#3491b2]">Note: </span>
+                    <span className="ml-1">Polysia is currently in alpha. This is a solo-development project, thanks for helping us improve.</span>
+                  </p>
+                  <p className="m-0 inline-flex items-center" aria-hidden="true">
+                    <span className="text-[#3491b2]">Note: </span>
+                    <span className="ml-1">Polysia is currently in alpha. This is a solo-development project, thanks for helping us improve.</span>
+                  </p>
+                </div>
+              </div>
+              <p className="hidden w-full text-center sm:block">
+                <span className="text-[#3491b2]">Note: </span>
+                Polysia is currently in alpha. This is a solo-development project, thanks for helping us improve.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => setShowBetaBanner(false)}
@@ -127,7 +189,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Navigation Bar */}
       <nav className="w-full bg-white/90 backdrop-blur-md dark:bg-zinc-950/90 border-b border-black/5 dark:border-white/10 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-6 lg:px-8">
           {/* Logo */}
           <Link
             to="/"
@@ -164,7 +226,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Footer */}
       <footer className="w-full bg-white dark:bg-zinc-950 border-t border-gray-200 dark:border-zinc-800 mt-20 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mx-auto max-w-7xl px-6 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Logo on Left */}
             <Link to="/" className="flex items-center gap-1.5">

@@ -29,7 +29,7 @@ export default function WhyChooseSection() {
   ];
 
   return (
-    <section className="w-full px-4 sm:px-6 lg:px-8 py-16 sm:py-24 transition-colors duration-300">
+    <section className="w-full px-6 py-16 transition-colors duration-300 sm:px-6 sm:py-24 lg:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Section Title */}
         <div className="text-center mb-12 sm:mb-16">
@@ -48,9 +48,9 @@ export default function WhyChooseSection() {
             return (
             <div
               key={index}
-              className="p-6 sm:p-8 transition-colors duration-300 bg-[#f5f5f5] dark:bg-zinc-900 rounded-2xl"
+              className="rounded-2xl bg-[#f5f5f5] p-6 text-center transition-colors duration-300 dark:bg-zinc-900 sm:p-8 md:text-left"
             >
-              <div className="w-12 h-12 bg-white dark:bg-zinc-800 rounded-full mb-4 flex items-center justify-center shadow-sm transition-colors duration-300">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm transition-colors duration-300 dark:bg-zinc-800 md:mx-0">
                 <Icon className={`w-5 h-5 ${reason.iconClassName}`} strokeWidth={2.1} />
               </div>
 
