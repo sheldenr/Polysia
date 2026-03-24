@@ -22,6 +22,12 @@ export default function Layout({ children }: LayoutProps) {
   }, [isDarkMode]);
 
   useLayoutEffect(() => {
+    const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
+
+    if (isMobileViewport) {
+      return;
+    }
+
     const supportsObserver = typeof IntersectionObserver !== "undefined";
     const revealTargets = Array.from(
       document.querySelectorAll<HTMLElement>(

@@ -109,6 +109,16 @@
     transform: translate3d(0, 0, 0);
   }
 
+  @media (max-width: 767px) {
+    .site-animations .reveal-on-scroll,
+    .site-animations .reveal-on-scroll.is-visible {
+      opacity: 1;
+      transform: none;
+      transition: none;
+      will-change: auto;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .site-animations .reveal-on-scroll,
     .site-animations .reveal-on-scroll.is-visible {
