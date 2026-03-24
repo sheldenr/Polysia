@@ -227,9 +227,9 @@ export default function Layout({ children }: LayoutProps) {
       {/* Footer */}
       <footer className="w-full bg-white dark:bg-zinc-950 border-t border-gray-200 dark:border-zinc-800 mt-20 transition-colors duration-300">
         <div className="mx-auto max-w-7xl px-6 py-8 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center justify-center gap-6 md:justify-between">
             {/* Logo on Left */}
-            <Link to="/" className="flex items-center gap-1.5">
+            <Link to="/" className="hidden items-center gap-1.5 md:flex">
               <img src="/logo only.svg" alt="Polysia logo" className="w-6 h-6" />
               <span className="font-sans font-medium text-base text-black dark:text-zinc-100 transition-colors duration-300">
                 Polysia
@@ -246,7 +246,7 @@ export default function Layout({ children }: LayoutProps) {
             {/* Github Icon on Right */}
             <a
               href="https://github.com/sheldenr/polysia"
-              className="text-gray-600 dark:text-zinc-400 hover:text-[#3491b2] transition-colors"
+              className="hidden text-gray-600 transition-colors hover:text-[#3491b2] dark:text-zinc-400 md:block"
               aria-label="GitHub"
             >
               <svg
