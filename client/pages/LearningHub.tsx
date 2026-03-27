@@ -21,7 +21,11 @@ import { Link } from "react-router-dom";
 
 type Mode = "dashboard" | "flow";
 
-const slideIcons = [Layers, BookOpen, MessageCircle] as const;
+const slideModes = [
+  { label: "Flashcards", icon: Layers },
+  { label: "Reading", icon: BookOpen },
+  { label: "Roleplay", icon: MessageCircle },
+] as const;
 const FLOW_SLIDE_ACTIVATION_THRESHOLD = 0.9;
 
 export default function LearningHub() {
@@ -37,20 +41,22 @@ export default function LearningHub() {
   const [selectedReviewOption, setSelectedReviewOption] = useState<number | null>(null);
   const [roleplayMessages, setRoleplayMessages] = useState<Array<{ role: "ai" | "user"; text: string }>>([{ role: "ai", text: "你好！今天我们练习一个关于日常生活的对话。你能告诉我你今天做了什么吗？" }]);
   const [selectedScenario, setSelectedScenario] = useState("daily");
+  const [customScenario, setCustomScenario] = useState("");
   const [roleplayInput, setRoleplayInput] = useState("");
+  const [selectedReadingTf, setSelectedReadingTf] = useState<Record<number, "true" | "false">>({});
 
   const reviewOptions = [
-    { label: "Again", key: "1", classes: "bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-950/60 dark:text-rose-200 dark:hover:bg-rose-900/60" },
-    { label: "Poor", key: "2", classes: "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/60" },
-    { label: "Good", key: "3", classes: "bg-sky-100 text-sky-900 hover:bg-sky-200 dark:bg-sky-950/60 dark:text-sky-200 dark:hover:bg-sky-900/60" },
-    { label: "Perfect", key: "4", classes: "bg-emerald-100 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:hover:bg-emerald-900/60" },
+    { label: "Again", key: "1", classes: "bg-[#edf4f8] text-[#24586f] hover:bg-[#e2edf4] dark:bg-[#123447]/65 dark:text-[#d4ecf7] dark:hover:bg-[#1a445a]/75" },
+    { label: "Poor", key: "2", classes: "bg-[#e5f0f6] text-[#1f5369] hover:bg-[#dbe9f2] dark:bg-[#143a50]/65 dark:text-[#d4ecf7] dark:hover:bg-[#1d4a61]/75" },
+    { label: "Good", key: "3", classes: "bg-[#d7e9f3] text-[#1a4f64] hover:bg-[#cee4f0] dark:bg-[#17415a]/65 dark:text-[#d4ecf7] dark:hover:bg-[#20516c]/75" },
+    { label: "Perfect", key: "4", classes: "bg-[#cbe3ef] text-[#184a5e] hover:bg-[#c1dcea] dark:bg-[#1a4862]/65 dark:text-[#d4ecf7] dark:hover:bg-[#245a74]/75" },
   ] as const;
 
   const flashcardStats = [
-    { label: "Total Cards", value: "248", classes: "bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-100", icon: Layers },
-    { label: "Mastered", value: "126", classes: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-100", icon: CheckCircle2 },
-    { label: "In Progress", value: "82", classes: "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-100", icon: Clock3 },
-    { label: "Not Started", value: "40", classes: "bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100", icon: Circle },
+    { label: "Total Cards", value: "248", classes: "bg-[#dfe9ef] text-[#1d5268] dark:bg-[#16394d]/70 dark:text-[#d5edf8]", icon: Layers },
+    { label: "Mastered", value: "126", classes: "bg-[#d4e7f2] text-[#184d62] dark:bg-[#1a4460]/70 dark:text-[#d5edf8]", icon: CheckCircle2 },
+    { label: "In Progress", value: "82", classes: "bg-[#c9e1ed] text-[#16485c] dark:bg-[#1e4f6c]/70 dark:text-[#d5edf8]", icon: Clock3 },
+    { label: "Not Started", value: "40", classes: "bg-[#bddaea] text-[#133f52] dark:bg-[#245b7a]/70 dark:text-[#d5edf8]", icon: Circle },
   ] as const;
 
   useEffect(() => {
@@ -213,6 +219,41 @@ export default function LearningHub() {
     },
   ] as const;
 
+  const roleplayScenarios = [
+    { id: "daily", name: "Daily Life" },
+    { id: "restaurant", name: "Restaurant" },
+    { id: "shopping", name: "Shopping" },
+    { id: "meeting", name: "Meeting Friends" },
+  ] as const;
+
+  const handleRoleplaySubmit = () => {
+    if (!roleplayInput.trim()) {
+      return;
+    }
+
+    const userMessage = roleplayInput.trim();
+    setRoleplayMessages((prev) => [...prev, { role: "user", text: userMessage }]);
+    setRoleplayInput("");
+
+    setTimeout(() => {
+      setRoleplayMessages((prev) => [
+        ...prev,
+        { role: "ai", text: "那很好！你能再告诉我更多的细节吗?" },
+      ]);
+    }, 500);
+  };
+
+  const readingTrueFalse = [
+    {
+      id: 1,
+      statement: "The speaker never talks with people at the market.",
+    },
+    {
+      id: 2,
+      statement: "The speaker sometimes invites friends over for dinner.",
+    },
+  ] as const;
+
   return (
     <>
       <style>{`
@@ -256,28 +297,28 @@ export default function LearningHub() {
       `}</style>
 
       {mode === "dashboard" ? (
-        <div className="flex min-h-screen flex-col bg-[#f4f5f7] text-zinc-900 transition-colors dark:bg-zinc-950 dark:text-zinc-100">
-          <nav className="fixed inset-x-0 top-0 z-40 w-full border-b border-black/5 bg-white/55 backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/60">
+        <div className="flex min-h-screen flex-col bg-[#eef4f8] text-[#102f40] transition-colors dark:bg-[#07141d] dark:text-[#e3f2f8]">
+          <nav className="fixed inset-x-0 top-0 z-40 w-full border-b border-[#bdd6e2]/70 bg-[#f7fbfe]/75 backdrop-blur-md dark:border-[#2b4f63]/80 dark:bg-[#0a1d29]/72">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
               <Link to="/" className="flex items-center gap-1.5" aria-label="Go to landing page">
                 <img src="/logo only.svg" alt="Polysia logo" className="h-8 w-8" />
-                <span className="hidden text-lg font-medium sm:inline">Polysia</span>
+                <span className="hidden text-lg font-medium text-[#12364a] sm:inline dark:text-[#dcf0f9]">Polysia</span>
               </Link>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="flex items-center gap-2 rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-zinc-700 backdrop-blur dark:border-white/15 dark:bg-zinc-900/70 dark:text-zinc-200"
+                  className="flex items-center gap-2 rounded-full border border-[#b8d3df] bg-[#f8fcfe]/90 px-3 py-1.5 text-[#1f4f63] backdrop-blur dark:border-[#3a5e73] dark:bg-[#102a38]/78 dark:text-[#d7ecf6]"
                   aria-label="Profile information"
                 >
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#dceaf1] text-[#2d6780] dark:bg-[#173f54] dark:text-[#d7edf7]">
                     <User className="h-4 w-4" />
                   </span>
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Shelden R.</span>
+                  <span className="text-sm font-medium text-[#1f4f63] dark:text-[#d7ecf6]">Shelden R.</span>
                 </button>
                 <button
                   type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/70 text-zinc-700 backdrop-blur dark:border-white/15 dark:bg-zinc-900/70 dark:text-zinc-200"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[#b8d3df] bg-[#f8fcfe]/90 text-[#1f4f63] backdrop-blur dark:border-[#3a5e73] dark:bg-[#102a38]/78 dark:text-[#d7ecf6]"
                   onClick={() => setIsDarkMode((prev) => !prev)}
                   aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
                 >
@@ -285,7 +326,7 @@ export default function LearningHub() {
                 </button>
                 <button
                   type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/70 text-zinc-700 backdrop-blur dark:border-white/15 dark:bg-zinc-900/70 dark:text-zinc-200"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[#b8d3df] bg-[#f8fcfe]/90 text-[#1f4f63] backdrop-blur dark:border-[#3a5e73] dark:bg-[#102a38]/78 dark:text-[#d7ecf6]"
                   aria-label="Settings"
                 >
                   <Settings className="h-4 w-4" />
@@ -297,22 +338,22 @@ export default function LearningHub() {
           <main className="flex-1 px-4 pb-10 pt-28 sm:px-6 sm:pb-12 lg:px-8">
             <div className="mx-auto max-w-6xl">
               <header className="mb-6 sm:mb-7">
-                <p className="text-sm font-medium uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">Learning Hub</p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">
+                <p className="text-sm font-medium uppercase tracking-[0.1em] text-[#4f7689] dark:text-[#96bdd0]">Learning Hub</p>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#103346] dark:text-[#e0f2f9] sm:text-3xl">
                   Keep your learning momentum.
                 </h1>
               </header>
 
-              <div className="mb-5 flex min-h-[132px] items-center rounded-2xl border border-zinc-200 bg-[#dfe9ef] p-5 dark:border-zinc-800 dark:bg-zinc-900 sm:min-h-[146px] sm:p-6">
+              <div className="mb-5 flex min-h-[132px] items-center rounded-2xl border border-[#c8dce6] bg-[#dfe9ef] p-5 dark:border-[#2d4f62] dark:bg-[#0d2330] sm:min-h-[146px] sm:p-6">
                 <div className="flex min-w-0 items-center gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/75 dark:bg-zinc-800 sm:h-16 sm:w-16">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#f7fbfe]/85 dark:bg-[#173f54] sm:h-16 sm:w-16">
                     <Flame className="h-7 w-7 text-[#3491b2] sm:h-8 sm:w-8" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">
+                    <p className="text-2xl font-semibold tracking-tight text-[#103346] dark:text-[#e0f2f9] sm:text-3xl">
                       {streakDays}-day streak, keep it up
                     </p>
-                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{streakMotivation}</p>
+                    <p className="mt-2 text-sm text-[#44697b] dark:text-[#9dc3d6]">{streakMotivation}</p>
                   </div>
                 </div>
               </div>
@@ -321,22 +362,22 @@ export default function LearningHub() {
                 {statItems.map((item, index) => (
                   <article
                     key={item.label}
-                    className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5"
+                    className="flex h-full flex-col rounded-2xl border border-[#c8dce6] bg-[#f9fcfe] p-4 shadow-sm dark:border-[#2d4f62] dark:bg-[#0d2330] sm:p-5"
                   >
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">{item.label}</p>
+                    <p className="text-sm text-[#547b8e] dark:text-[#98bfd2]">{item.label}</p>
                     <div className="mt-3 flex items-center gap-2">
                       {index === 0 && <Layers className="h-4 w-4 text-[#3491b2]" />}
                       {index === 1 && <CheckCircle2 className="h-4 w-4 text-[#3491b2]" />}
                       {index === 2 && <MessagesSquare className="h-4 w-4 text-[#3491b2]" />}
                       {index === 3 && <Eye className="h-4 w-4 text-[#3491b2]" />}
-                      <p className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">{item.value}</p>
+                      <p className="text-2xl font-semibold tracking-tight text-[#103346] dark:text-[#e0f2f9] sm:text-3xl">{item.value}</p>
                     </div>
                   </article>
                 ))}
               </div>
 
               <div>
-                <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
+                <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-[#4f7689] dark:text-[#96bdd0]">
                   Learning Modes
                 </h2>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -347,16 +388,16 @@ export default function LearningHub() {
                         key={item.name}
                         type="button"
                         onClick={item.onClick}
-                        className="group overflow-hidden rounded-2xl border border-zinc-200 text-left shadow-sm transition-transform hover:-translate-y-0.5 dark:border-zinc-800"
+                        className="group overflow-hidden rounded-2xl border border-[#c8dce6] text-left shadow-sm transition-transform hover:-translate-y-0.5 dark:border-[#2d4f62]"
                       >
-                        <div className="flex h-44 items-center justify-center bg-[#dfe9ef] p-6 dark:bg-zinc-900">
-                          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/75 dark:bg-zinc-800">
+                        <div className="flex h-44 items-center justify-center bg-[#dfe9ef] p-6 dark:bg-[#0d2330]">
+                          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#f7fbfe]/85 dark:bg-[#173f54]">
                             <Icon className="h-9 w-9 text-[#3491b2]" />
                           </div>
                         </div>
-                        <div className="min-h-[150px] bg-white px-5 py-5 dark:bg-zinc-900">
-                          <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{item.name}</h3>
-                          <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{item.description}</p>
+                        <div className="min-h-[150px] bg-[#f9fcfe] px-5 py-5 dark:bg-[#0d2330]">
+                          <h3 className="text-xl font-semibold text-[#103346] dark:text-[#e0f2f9]">{item.name}</h3>
+                          <p className="mt-2 text-sm leading-relaxed text-[#44697b] dark:text-[#9dc3d6]">{item.description}</p>
                         </div>
                       </button>
                     );
@@ -366,59 +407,65 @@ export default function LearningHub() {
             </div>
           </main>
 
-          <footer className="border-t border-zinc-200 px-4 py-6 dark:border-zinc-800 sm:px-6 lg:px-8">
+          <footer className="border-t border-[#c8dce6] px-4 py-6 dark:border-[#2d4f62] sm:px-6 lg:px-8">
             <div className="mx-auto max-w-6xl">
-              <div className="flex flex-col gap-4 text-sm text-zinc-500 dark:text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 text-sm text-[#547b8e] dark:text-[#98bfd2] sm:flex-row sm:items-center sm:justify-between">
                 <p>2026 Polysia. Keep learning, one day at a time.</p>
                 <div className="flex items-center gap-4">
-                  <Link to="/privacy" className="transition-colors hover:text-[#3491b2]">Privacy</Link>
-                  <Link to="/terms" className="transition-colors hover:text-[#3491b2]">Terms</Link>
-                  <Link to="/contact" className="transition-colors hover:text-[#3491b2]">Contact</Link>
+                  <Link to="/privacy" className="transition-colors hover:text-[#2b7f9d]">Privacy</Link>
+                  <Link to="/terms" className="transition-colors hover:text-[#2b7f9d]">Terms</Link>
+                  <Link to="/contact" className="transition-colors hover:text-[#2b7f9d]">Contact</Link>
                 </div>
               </div>
             </div>
           </footer>
         </div>
       ) : (
-        <div className="relative text-zinc-900 dark:text-zinc-100">
+        <div className="relative text-[#102f40] dark:text-[#e3f2f8]">
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex items-center gap-2">
             <img src="/logo only.svg" alt="Polysia logo" className="w-7 h-7" />
-            <span className="text-xl font-semibold tracking-tight text-black dark:text-zinc-100">Polysia</span>
+            <span className="text-xl font-semibold tracking-tight text-[#103346] dark:text-[#e3f2f8]">Polysia</span>
           </div>
 
           <button
             type="button"
             onClick={exitFlow}
-            className="fixed top-5 left-5 z-40 w-10 h-10 rounded-full bg-white/80 backdrop-blur border border-black/10 flex items-center justify-center text-black hover:bg-white transition-colors dark:border-white/15 dark:bg-zinc-900/80 dark:text-zinc-100 dark:hover:bg-zinc-800"
+            className="fixed top-5 left-5 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-[#b9d4e0] bg-[#f8fcfe]/90 text-[#12384b] backdrop-blur transition-colors hover:bg-[#f1f8fc] dark:border-[#3a5e73] dark:bg-[#102a38]/88 dark:text-[#d7ecf6] dark:hover:bg-[#153547]"
             aria-label="Exit learning flow"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5 shrink-0" />
           </button>
 
-          <div className="fixed right-4 sm:right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-0">
-            <div className="w-1 h-16 bg-white/30 rounded-full dark:bg-zinc-700/70" />
-            {slideIcons.map((Icon, index) => {
+          <div className="fixed right-4 top-1/2 z-40 -translate-y-1/2 p-3">
+            <p className="mb-2 text-xs font-medium text-[#4f7689] dark:text-[#96bdd0]">Mode</p>
+            <div className="space-y-2">
+            {slideModes.map((item, index) => {
               const active = activeSlide === index;
+              const Icon = item.icon;
               return (
                 <button
                   key={`elevator-${index}`}
                   type="button"
                   onClick={() => goToSlide(index)}
-                  className={`relative w-10 h-10 rounded-full border border-black/10 backdrop-blur flex items-center justify-center transition-all ${
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                     active
-                      ? "opacity-100 bg-white text-[#3491b2] shadow-[0_0_18px_rgba(52,145,178,0.35)] after:absolute after:right-[-8px] after:w-1 after:h-10 after:bg-[#3491b2] after:rounded-full"
-                        : "opacity-30 bg-white/70 text-black dark:bg-zinc-900/70 dark:text-zinc-200"
+                      ? "bg-[#e7f2f8] text-[#1f5670] dark:bg-[#174056] dark:text-[#e0f2f9]"
+                      : "text-[#4f7689] hover:bg-[#eff6fa] dark:text-[#96bdd0] dark:hover:bg-[#143447]"
                   }`}
-                  aria-label={`Go to slide ${index + 1}`}
+                  aria-label={`Go to ${item.label}`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <span className="inline-flex items-center gap-2">
+                    <Icon className="h-4.5 w-4.5" />
+                    {item.label}
+                  </span>
+                  <span className={`h-2 w-2 rounded-full ${active ? "bg-[#3491b2]" : "bg-[#b7d2de] dark:bg-[#4a6d81]"}`} />
                 </button>
               );
             })}
-            <div className="w-1 h-16 bg-white/30 rounded-full dark:bg-zinc-700/70" />
+            </div>
           </div>
 
-          <div className="flow-shell bg-gradient-to-b from-[#f5f5f5] to-[#ececec] dark:from-zinc-950 dark:to-zinc-900" ref={flowContainerRef}>
+          <div className="flow-shell bg-gradient-to-b from-[#eef5f9] to-[#ddeaf2] dark:from-[#06121b] dark:to-[#0a1c29]" ref={flowContainerRef}>
             <section
               ref={(el) => {
                 slideRefs.current[0] = el;
@@ -429,16 +476,8 @@ export default function LearningHub() {
               <div className="w-full h-full flex items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
                 <div className="max-w-6xl w-full grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
                   <div className="min-w-0">
-                  <p
-                    className={`entry-item mb-8 text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-zinc-400 ${
-                      contentVisible[0] ? "is-visible" : ""
-                    }`}
-                    style={{ transitionDelay: "0ms" }}
-                  >
-                    Flashcards
-                  </p>
                   <div
-                    className={`entry-item flex min-h-[370px] w-full cursor-pointer flex-col items-center justify-center rounded-2xl border border-black/10 bg-white p-8 text-center shadow-sm transition-all duration-300 dark:border-white/15 dark:bg-zinc-900 sm:min-h-[420px] sm:p-12 ${
+                    className={`entry-item flex min-h-[440px] w-full cursor-pointer flex-col items-center justify-center rounded-2xl border border-[#bfd7e3] bg-[#f9fcfe] p-8 text-center shadow-sm transition-all duration-300 dark:border-[#3b6074] dark:bg-[#0e2532] sm:min-h-[520px] sm:p-12 ${
                       contentVisible[0] ? "is-visible" : ""
                     }`}
                     style={{ transitionDelay: "90ms" }}
@@ -446,20 +485,20 @@ export default function LearningHub() {
                   >
                     {!isCardFlipped ? (
                       <div className="text-center">
-                        <p className="mb-6 text-6xl font-bold text-black dark:text-zinc-100 sm:text-7xl">你好</p>
-                        <p className="mb-2 text-base text-gray-700 dark:text-zinc-300">他每天都向朋友说「你好」。</p>
+                        <p className="mb-6 text-6xl font-bold text-[#0f3447] dark:text-[#e3f2f8] sm:text-7xl">你好</p>
+                        <p className="mb-2 text-base text-[#44697b] dark:text-[#a2c8d9]">他每天都向朋友说「你好」。</p>
                       </div>
                     ) : (
                       <div className="w-full space-y-8 text-center">
                         <div className="space-y-3">
-                          <p className="text-5xl font-bold text-black dark:text-zinc-100 sm:text-6xl">你好</p>
-                          <p className="text-3xl font-semibold text-zinc-900 dark:text-zinc-100 sm:text-4xl">nǐ hǎo</p>
-                          <p className="text-base text-gray-800 dark:text-zinc-300">Hello; How are you?</p>
+                          <p className="text-5xl font-bold text-[#0f3447] dark:text-[#e3f2f8] sm:text-6xl">你好</p>
+                          <p className="text-3xl font-semibold text-[#103346] dark:text-[#e0f2f9] sm:text-4xl">nǐ hǎo</p>
+                          <p className="text-base text-[#315e74] dark:text-[#a2c8d9]">Hello; How are you?</p>
                         </div>
                         <div className="space-y-3">
-                          <p className="text-base text-gray-900 dark:text-zinc-200">他每天都向朋友说「你好」。</p>
-                          <p className="text-sm text-gray-700 dark:text-zinc-300">Tā měi tiān dōu xiàng péngyou shuō "nǐ hǎo".</p>
-                          <p className="text-base text-gray-800 dark:text-zinc-300">He greets his friend with "hello" every day.</p>
+                          <p className="text-base text-[#214f65] dark:text-[#c5e0ec]">他每天都向朋友说「你好」。</p>
+                          <p className="text-sm text-[#4b7183] dark:text-[#a2c8d9]">Tā měi tiān dōu xiàng péngyou shuō "nǐ hǎo".</p>
+                          <p className="text-base text-[#315e74] dark:text-[#a2c8d9]">He greets his friend with "hello" every day.</p>
                         </div>
                       </div>
                     )}
@@ -481,11 +520,11 @@ export default function LearningHub() {
                           className={`rounded-xl border px-4 py-3 text-sm font-semibold transition-all sm:text-base ${option.classes} ${
                             isSelected
                               ? "border-[#3491b2] ring-2 ring-[#3491b2]/45"
-                              : "border-black/10 dark:border-white/10"
+                              : "border-[#b9d4e0] dark:border-[#42677c]"
                           }`}
                           aria-label={`${option.label} review quality`}
                         >
-                          <span className="mr-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded bg-white/70 px-1 text-xs font-bold text-zinc-700 dark:bg-black/20 dark:text-zinc-200">
+                          <span className="mr-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded bg-white/75 px-1 text-xs font-bold text-[#2d637b] dark:bg-[#0a2736]/65 dark:text-[#d5edf8]">
                             {option.key}
                           </span>
                           {option.label}
@@ -497,12 +536,12 @@ export default function LearningHub() {
                   </div>
 
                   <aside
-                    className={`entry-item rounded-2xl border border-black/10 bg-white/95 p-4 shadow-sm dark:border-white/10 dark:bg-zinc-900/95 ${
+                    className={`entry-item rounded-2xl border border-[#bfd7e3] bg-[#f9fcfe]/95 p-4 shadow-sm dark:border-[#3b6074] dark:bg-[#0e2532]/95 ${
                       contentVisible[0] ? "is-visible" : ""
                     }`}
                     style={{ transitionDelay: "210ms" }}
                   >
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Study Stats</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#4f7689] dark:text-[#96bdd0]">Study Stats</p>
                     <div className="space-y-2.5">
                       {flashcardStats.map((stat) => {
                         const Icon = stat.icon;
@@ -527,33 +566,67 @@ export default function LearningHub() {
               data-slide-index={1}
               className="flow-slide"
             >
-              <div className="w-full h-full flex flex-col items-center px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
-                <div className="max-w-4xl w-full h-full flex flex-col justify-center">
-                  <p
-                    className={`entry-item mb-6 text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-zinc-400 ${
-                      contentVisible[1] ? "is-visible" : ""
-                    }`}
-                    style={{ transitionDelay: "0ms" }}
-                  >
-                    Reading
-                  </p>
+              <div className="h-full w-full overflow-y-auto px-4 py-8 sm:px-6 lg:px-8">
+                <div className="mx-auto flex h-full w-full max-w-6xl flex-col justify-center">
                   <div
-                    className={`entry-item overflow-hidden rounded-2xl border border-black/10 bg-white p-6 text-left shadow-sm dark:border-white/10 dark:bg-zinc-900 sm:p-8 ${
+                    className={`entry-item grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-6 ${
                       contentVisible[1] ? "is-visible" : ""
                     }`}
                     style={{ transitionDelay: "90ms" }}
                   >
-                    <div className="h-full overflow-y-auto pr-1">
-                      <p className="mb-6 text-lg leading-relaxed text-gray-800 dark:text-zinc-300">
-                        每天早上，我都会去附近的市场买新鲜的水果。在回家的路上，我通常会练习一个简短的对话，复习新的词汇。有时候，我还会和市场上的商人用中文聊天，这样可以帮助我提高我的听力和口语能力。
-                      </p>
-                      <p className="mb-6 text-lg leading-relaxed text-gray-800 dark:text-zinc-300">
-                        午餐后，我喜欢在公园里散步。在那里，我看到很多人在做各种运动，比如太极拳、跑步和打羽毛球。有一次我和一个老奶奶聊天，她用非常清楚的中文告诉我关于她年轻时的故事。这些对话让我学到了很多新的短语和表达方式。
-                      </p>
-                      <p className="text-lg leading-relaxed text-gray-800 dark:text-zinc-300">
-                        傍晚时，我通常会回家准备晚餐。我喜欢做一些简单的中国菜，比如炒菜和汤。有时候我会邀请朋友来我家吃饭，我们一起吃饭、聊天和分享我们学习中文的经验。这是一个很好的方式来练习中文，同时也能享受美食和友谊。
-                      </p>
-                    </div>
+                    <article className="min-h-[340px] rounded-2xl border border-[#bfd7e3] bg-[#f9fcfe] p-6 text-left shadow-sm dark:border-[#3b6074] dark:bg-[#0e2532] sm:p-8 lg:min-h-[420px]">
+                      <h3 className="mb-2 text-3xl font-semibold tracking-tight text-[#103346] dark:text-[#e0f2f9] sm:text-4xl">
+                        早市日常
+                      </h3>
+                      <div className="h-full overflow-y-auto pr-1">
+                        <p className="mb-6 text-lg leading-relaxed text-[#315e74] dark:text-[#a2c8d9]">
+                          每天早上，我都会去附近的市场买新鲜的水果。在回家的路上，我通常会练习一个简短的对话，复习新的词汇。有时候，我还会和市场上的商人用中文聊天，这样可以帮助我提高我的听力和口语能力。
+                        </p>
+                        <p className="mb-6 text-lg leading-relaxed text-[#315e74] dark:text-[#a2c8d9]">
+                          午餐后，我喜欢在公园里散步。在那里，我看到很多人在做各种运动，比如太极拳、跑步和打羽毛球。有一次我和一个老奶奶聊天，她用非常清楚的中文告诉我关于她年轻时的故事。这些对话让我学到了很多新的短语和表达方式。
+                        </p>
+                        <p className="text-lg leading-relaxed text-[#315e74] dark:text-[#a2c8d9]">
+                          傍晚时，我通常会回家准备晚餐。我喜欢做一些简单的中国菜，比如炒菜和汤。有时候我会邀请朋友来我家吃饭，我们一起吃饭、聊天和分享我们学习中文的经验。这是一个很好的方式来练习中文，同时也能享受美食和友谊。
+                        </p>
+                      </div>
+                    </article>
+
+                    <aside className="min-h-[340px] rounded-2xl border border-[#bfd7e3] bg-[#f9fcfe] p-5 shadow-sm dark:border-[#3b6074] dark:bg-[#0e2532] sm:p-6 lg:min-h-[420px]">
+                      <div className="h-full overflow-y-auto pr-1">
+                        <h4 className="mb-4 text-xl font-semibold text-[#103346] dark:text-[#e0f2f9]">True / False</h4>
+                        <div className="space-y-3">
+                          {readingTrueFalse.map((item) => (
+                            <div key={item.id} className="rounded-xl border border-[#cfe1ea] bg-[#f4f9fc] p-3.5 dark:border-[#31566b] dark:bg-[#143447]">
+                              <p className="mb-3 text-sm font-semibold text-[#1f4f63] dark:text-[#d7ecf6]">
+                                {item.id}. {item.statement}
+                              </p>
+                              <div className="flex gap-2">
+                                {[
+                                  { label: "True", value: "true" as const },
+                                  { label: "False", value: "false" as const },
+                                ].map((option) => {
+                                  const isSelected = selectedReadingTf[item.id] === option.value;
+                                  return (
+                                    <button
+                                      key={option.value}
+                                      type="button"
+                                      onClick={() => setSelectedReadingTf((prev) => ({ ...prev, [item.id]: option.value }))}
+                                      className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                                        isSelected
+                                          ? "border-[#3491b2] bg-[#dcecf4] text-[#10394d] dark:bg-[#1d4e66] dark:text-[#e3f2f8]"
+                                          : "border-[#c1d8e4] bg-[#fbfdff] text-[#315e74] hover:bg-[#eef6fb] dark:border-[#3b6074] dark:bg-[#0f2a38] dark:text-[#a2c8d9] dark:hover:bg-[#143447]"
+                                      }`}
+                                    >
+                                      {option.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </aside>
                   </div>
                 </div>
               </div>
@@ -566,91 +639,78 @@ export default function LearningHub() {
               data-slide-index={2}
               className="flow-slide"
             >
-              <div className="w-full h-full flex gap-6 px-4 sm:px-6 lg:px-8 py-8 items-center justify-center">
-                <div className="max-w-6xl w-full h-full rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-900 sm:p-6">
-                  <div className="flex h-full gap-6">
-                  <div className="w-40 flex-shrink-0 border-r border-black/10 pr-6 dark:border-white/10">
-                    <p className="text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-zinc-400">Scenarios</p>
-                    {[
-                      { id: "daily", name: "Daily Life" },
-                      { id: "restaurant", name: "Restaurant" },
-                      { id: "shopping", name: "Shopping" },
-                      { id: "meeting", name: "Meeting Friends" },
-                    ].map((scenario) => (
-                      <button
-                        key={scenario.id}
-                        onClick={() => setSelectedScenario(scenario.id)}
-                        className={`px-4 py-2 rounded-lg text-left text-sm font-medium transition-all ${
-                          selectedScenario === scenario.id
-                            ? "bg-[#3491b2] text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-                        }`}
-                      >
-                        {scenario.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex-1 flex flex-col">
-                    <p
-                      className={`entry-item mb-6 text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-zinc-400 ${
-                        contentVisible[2] ? "is-visible" : ""
-                      }`}
-                      style={{ transitionDelay: "0ms" }}
-                    >
-                      Conversation
-                    </p>
-
-                    <div
-                      className={`entry-item flex-1 overflow-y-auto space-y-4 mb-4 px-2 py-1 ${
-                        contentVisible[2] ? "is-visible" : ""
-                      }`}
-                      style={{ transitionDelay: "90ms" }}
-                    >
-                      {roleplayMessages.map((msg, idx) => (
-                        <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                          <div
-                            className={`max-w-xs rounded-2xl px-4 py-3 text-base ${
-                              msg.role === "user"
-                                ? "bg-[#3491b2] text-white"
-                                : "bg-gray-100 text-gray-800 dark:bg-zinc-800 dark:text-zinc-200"
-                            }`}
-                          >
-                            {msg.text}
+              <div className="h-full w-full overflow-y-auto px-4 py-8 sm:px-6 lg:px-8">
+                <div className="mx-auto flex h-full w-full max-w-6xl flex-col justify-center">
+                  <div
+                    className={`entry-item grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-6 ${
+                      contentVisible[2] ? "is-visible" : ""
+                    }`}
+                    style={{ transitionDelay: "90ms" }}
+                  >
+                    <article className="min-h-[340px] rounded-2xl border border-[#bfd7e3] bg-[#f9fcfe] p-5 shadow-sm dark:border-[#3b6074] dark:bg-[#0e2532] sm:p-6 lg:min-h-[420px]">
+                      <div className="mb-4 h-[210px] overflow-y-auto space-y-4 px-2 py-1 sm:h-[250px]">
+                        {roleplayMessages.map((msg, idx) => (
+                          <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                            {msg.role === "user" ? (
+                              <div className="max-w-xs rounded-2xl bg-[#3491b2] px-4 py-3 text-base text-white">{msg.text}</div>
+                            ) : (
+                              <p className="max-w-[92%] text-base leading-relaxed text-[#2f5f75] dark:text-[#b4d4e4]">{msg.text}</p>
+                            )}
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
 
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
+                      <textarea
                         value={roleplayInput}
                         onChange={(e) => setRoleplayInput(e.target.value)}
-                        placeholder="Type your response..."
-                        className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-[#3491b2] focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (roleplayInput.trim()) {
-                            setRoleplayMessages([...roleplayMessages, { role: "user", text: roleplayInput }]);
-                            setRoleplayInput("");
-                            setTimeout(() => {
-                              setRoleplayMessages((prev) => [
-                                ...prev,
-                                { role: "ai", text: "那很好！你能再告诉我更多的细节吗?" },
-                              ]);
-                            }, 500);
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            handleRoleplaySubmit();
                           }
                         }}
-                        className="px-6 py-3 rounded-lg bg-[#3491b2] text-white font-semibold hover:bg-[#2b7f9d] transition-colors"
-                        aria-label="Send message"
-                      >
-                        Send
-                      </button>
-                    </div>
-                  </div>
+                        placeholder="Type your response... (Press Enter to send, Shift+Enter for a new line)"
+                        className="h-28 w-full resize-none rounded-xl border border-[#b9d4e0] bg-[#f9fcfe] px-4 py-3 text-[#12384b] placeholder-[#7297a8] focus:border-[#3491b2] focus:outline-none dark:border-[#42677c] dark:bg-[#0e2532] dark:text-[#e3f2f8] dark:placeholder-[#7ea2b3]"
+                      />
+                    </article>
+
+                    <aside className="min-h-[340px] rounded-2xl border border-[#bfd7e3] bg-[#f9fcfe] p-5 shadow-sm dark:border-[#3b6074] dark:bg-[#0e2532] sm:p-6 lg:min-h-[420px]">
+                      <p className="mb-4 text-xs font-medium uppercase tracking-widest text-[#4f7689] dark:text-[#96bdd0]">Scenarios</p>
+                      <div className="space-y-2">
+                        {roleplayScenarios.map((scenario) => (
+                          <button
+                            key={scenario.id}
+                            onClick={() => setSelectedScenario(scenario.id)}
+                            className={`w-full rounded-lg px-4 py-2 text-left text-sm font-medium transition-all ${
+                              selectedScenario === scenario.id
+                                ? "bg-[#3491b2] text-white"
+                                : "bg-[#e3eef4] text-[#1d4e63] hover:bg-[#d8e8f1] dark:bg-[#173d52] dark:text-[#d7ecf6] dark:hover:bg-[#1e4d66]"
+                            }`}
+                          >
+                            {scenario.name}
+                          </button>
+                        ))}
+
+                        <div className="mt-4 border-t border-[#c6dbe6] pt-4 dark:border-[#385f74]">
+                          <label htmlFor="custom-scenario" className="mb-2 block text-xs font-medium uppercase tracking-widest text-[#4f7689] dark:text-[#96bdd0]">
+                            Custom Scenario
+                          </label>
+                          <textarea
+                            id="custom-scenario"
+                            value={customScenario}
+                            onChange={(e) => {
+                              const nextValue = e.target.value;
+                              setCustomScenario(nextValue);
+                              if (nextValue.trim()) {
+                                setSelectedScenario("custom");
+                              }
+                            }}
+                            placeholder="Describe your personal scenario..."
+                            className="h-24 w-full resize-none rounded-lg border border-[#b9d4e0] bg-[#f9fcfe] px-3 py-2 text-sm text-[#12384b] placeholder-[#7297a8] focus:border-[#3491b2] focus:outline-none dark:border-[#42677c] dark:bg-[#0e2532] dark:text-[#e3f2f8] dark:placeholder-[#7ea2b3]"
+                          />
+                        </div>
+                      </div>
+                    </aside>
                   </div>
                 </div>
               </div>
