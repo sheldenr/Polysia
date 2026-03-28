@@ -2,13 +2,13 @@ import { Link } from "react-router-dom";
 
 export default function HeroSection() {
   return (
-    <section className="relative isolate w-full overflow-hidden px-6 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
+    <section className="dark-gradient-dither relative isolate w-full overflow-hidden px-6 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 top-0 h-[52rem] w-[100rem] -translate-x-1/2 -translate-y-[58%] rounded-full"
         style={{
           background:
-            "radial-gradient(circle, rgba(52,145,178,0.14) 0%, rgba(52,145,178,0.075) 36%, rgba(52,145,178,0.03) 62%, rgba(52,145,178,0) 82%)",
+            "radial-gradient(circle, rgba(52,145,178,0.145) 0%, rgba(52,145,178,0.11) 22%, rgba(52,145,178,0.075) 40%, rgba(52,145,178,0.045) 58%, rgba(52,145,178,0.02) 72%, rgba(52,145,178,0) 86%)",
           filter: "blur(90px)",
         }}
       />
