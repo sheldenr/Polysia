@@ -9,7 +9,8 @@ export default function Contact() {
             Contact
           </h1>
           <p className="mt-3 text-center text-base text-gray-500 dark:text-zinc-400">
-            Questions, feedback, or partnership ideas. we'd love to hear from you.
+            Questions, feedback, or partnership ideas. we'd love to hear from
+            you.
           </p>
 
           <div className="mt-12 space-y-10 text-base leading-7 text-gray-700 dark:text-zinc-300">
@@ -18,9 +19,12 @@ export default function Contact() {
                 General enquiries
               </h2>
               <p>
-                For anything product-related: bugs, feature requests, feedback, or just
-                to say hi, email us at{" "}
-                <a className="text-[#3491b2] hover:underline" href="mailto:hello@polysia.app">
+                For anything product-related: bugs, feature requests, feedback,
+                or just to say hi, email us at{" "}
+                <a
+                  className="text-[#3491b2] hover:underline"
+                  href="mailto:hello@polysia.app"
+                >
                   hello@polysia.app
                 </a>
                 . We aim to reply within a couple of days.
@@ -32,9 +36,12 @@ export default function Contact() {
                 Partnerships &amp; press
               </h2>
               <p>
-                Interested in collaborating, writing about Polysia, or exploring a
-                partnership? Reach out at{" "}
-                <a className="text-[#3491b2] hover:underline" href="mailto:hello@polysia.app">
+                Interested in collaborating, writing about Polysia, or exploring
+                a partnership? Reach out at{" "}
+                <a
+                  className="text-[#3491b2] hover:underline"
+                  href="mailto:hello@polysia.app"
+                >
                   hello@polysia.app
                 </a>{" "}
                 with a brief introduction and we'll get back to you.
@@ -46,8 +53,8 @@ export default function Contact() {
                 Open source
               </h2>
               <p>
-                Polysia is developed in the open. You can follow the project, file issues,
-                or contribute on{" "}
+                Polysia is developed in the open. You can follow the project,
+                file issues, or contribute on{" "}
                 <a
                   className="text-[#3491b2] hover:underline"
                   href="https://github.com/sheldenr/polysia"
@@ -65,12 +72,23 @@ export default function Contact() {
                 Privacy &amp; legal
               </h2>
               <p>
-                For data requests, account deletion, or legal matters, please email{" "}
-                <a className="text-[#3491b2] hover:underline" href="mailto:hello@polysia.app">
+                For data requests, account deletion, or legal matters, please
+                email{" "}
+                <a
+                  className="text-[#3491b2] hover:underline"
+                  href="mailto:hello@polysia.app"
+                >
                   hello@polysia.app
                 </a>{" "}
-                with the subject line <span className="font-medium text-black dark:text-zinc-100">"Privacy Request"</span> or{" "}
-                <span className="font-medium text-black dark:text-zinc-100">"Legal"</span> and we'll prioritize your message.
+                with the subject line{" "}
+                <span className="font-medium text-black dark:text-zinc-100">
+                  "Privacy Request"
+                </span>{" "}
+                or{" "}
+                <span className="font-medium text-black dark:text-zinc-100">
+                  "Legal"
+                </span>{" "}
+                and we'll prioritize your message.
               </p>
             </div>
           </div>

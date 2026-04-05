@@ -1,99 +1,118 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function SignUp() {
   return (
-    <section className="min-h-screen bg-[#f5f5f5] dark:bg-zinc-900 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 transition-colors duration-300">
-      <div className="max-w-5xl mx-auto">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-sm font-medium text-black dark:text-zinc-100 hover:text-[#3491b2] transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </Link>
+    <section className="min-h-screen bg-background px-4 sm:px-6 lg:px-8 py-8 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto mb-8">
+        <Button variant="ghost" asChild className="-ml-4 gap-2">
+          <Link to="/">
+            <ArrowLeft className="w-4 h-4" />
+            Back to home
+          </Link>
+        </Button>
       </div>
 
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        <div className="w-full max-w-[360px] -translate-y-4 sm:-translate-y-6">
-          <div className="flex justify-center">
-            <img src="/logo only.svg" alt="Polysia logo" className="w-12 h-12" />
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="w-full max-w-[400px] space-y-8">
+          <div className="flex flex-col items-center text-center space-y-2">
+            <Link to="/" className="mb-4">
+              <img
+                src="/logo only.svg"
+                alt="Polysia logo"
+                className="w-16 h-16"
+              />
+            </Link>
+            <h1 className="text-4xl font-heading font-bold tracking-tight text-foreground">
+              Create account
+            </h1>
+            <p className="text-muted-foreground">
+              Start your language learning journey today
+            </p>
           </div>
 
-          <h1 className="mt-5 text-center text-3xl sm:text-4xl font-bold text-black dark:text-zinc-100">
-            Create Account
-          </h1>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-zinc-300">
-            Join Polysia and start learning smarter.
-          </p>
-
-          <form className="mt-8 space-y-3" onSubmit={(event) => event.preventDefault()}>
-            <input
-              id="signup-email"
-              type="email"
-              autoComplete="email"
-              placeholder="Email"
-              className="w-full rounded-xl bg-[#efefef] dark:bg-zinc-800 px-4 py-3 text-sm text-black dark:text-zinc-100 placeholder:text-gray-500 dark:placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-[#3491b2]"
-              required
-            />
-
-            <input
-              id="signup-password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Password"
-              className="w-full rounded-xl bg-[#efefef] dark:bg-zinc-800 px-4 py-3 text-sm text-black dark:text-zinc-100 placeholder:text-gray-500 dark:placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-[#3491b2]"
-              required
-            />
-
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-[#3491b2] py-3 text-sm font-semibold text-white hover:bg-[#2b7f9d] transition-colors"
+          <div className="grid gap-6">
+            <form
+              className="space-y-4"
+              onSubmit={(event) => event.preventDefault()}
             >
-              Sign Up
-            </button>
-          </form>
+              <div className="space-y-2">
+                <Input
+                  id="signup-email"
+                  type="email"
+                  placeholder="name@example.com"
+                  className="h-12 px-4 rounded-xl"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  id="signup-password"
+                  type="password"
+                  placeholder="Create a password"
+                  className="h-12 px-4 rounded-xl"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full h-12 rounded-xl text-base font-semibold shadow-lg hover:shadow-primary/20 transition-all"
+              >
+                Sign up
+              </Button>
+            </form>
 
-          <button
-            type="button"
-            className="mt-3 w-full rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-950 py-3 text-sm font-medium text-black dark:text-zinc-100 hover:border-[#3491b2]/50 transition-colors inline-flex items-center justify-center gap-2"
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4">
-              <path
-                fill="#000000"
-                d="M12 10.2v3.9h5.5c-.2 1.2-1.4 3.5-5.5 3.5-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 2.9 14.6 2 12 2 6.5 2 2 6.5 2 12s4.5 10 10 10c5.8 0 9.6-4.1 9.6-9.8 0-.7-.1-1.3-.2-2H12z"
-              />
-              <path
-                fill="#000000"
-                d="M2 7.3l3.2 2.3C6 7.2 8.8 5.6 12 5.6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 2.9 14.6 2 12 2 8 2 4.6 4.2 2.8 7.5L2 7.3z"
-              />
-              <path
-                fill="#000000"
-                d="M12 22c2.5 0 4.6-.8 6.2-2.3l-2.9-2.4c-.8.6-1.9 1-3.3 1-3.1 0-5.8-2.1-6.7-5l-3.2 2.5C3.9 19.5 7.6 22 12 22z"
-              />
-              <path
-                fill="#000000"
-                d="M2.8 7.5C2.3 8.8 2 10.3 2 12s.3 3.2.8 4.5l3.2-2.5c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2l-3.2-2.5z"
-              />
-            </svg>
-            Continue with Google
-          </button>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
 
-          <p className="mt-4 text-center text-sm text-gray-600 dark:text-zinc-300">
+            <Button
+              variant="outline"
+              className="w-full h-12 rounded-xl gap-2 font-medium"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
+                <path
+                  fill="currentColor"
+                  d="M12 10.2v3.9h5.5c-.2 1.2-1.4 3.5-5.5 3.5-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 2.9 14.6 2 12 2 6.5 2 2 6.5 2 12s4.5 10 10 10c5.8 0 9.6-4.1 9.6-9.8 0-.7-.1-1.3-.2-2H12z"
+                />
+              </svg>
+              Google
+            </Button>
+          </div>
+
+          <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link to="/login" className="text-[#3491b2] hover:underline">
+            <Link
+              to="/login"
+              className="font-semibold text-primary hover:underline underline-offset-4"
+            >
               Login
             </Link>
           </p>
 
-          <p className="mt-6 text-center text-xs text-gray-500 dark:text-zinc-400">
-            By signing up, you agree to our{" "}
-            <Link to="/privacy" className="text-[#3491b2] hover:underline">
-              Privacy Policy
+          <p className="px-8 text-center text-xs leading-relaxed text-muted-foreground">
+            By clicking continue, you agree to our{" "}
+            <Link
+              to="/terms"
+              className="underline underline-offset-4 hover:text-primary"
+            >
+              Terms of Service
             </Link>{" "}
             and{" "}
-            <Link to="/terms" className="text-[#3491b2] hover:underline">
-              Terms of Service
+            <Link
+              to="/privacy"
+              className="underline underline-offset-4 hover:text-primary"
+            >
+              Privacy Policy
             </Link>
             .
           </p>

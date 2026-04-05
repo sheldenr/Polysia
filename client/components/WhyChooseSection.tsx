@@ -6,64 +6,80 @@ export default function WhyChooseSection() {
       title: "Authentic Conversations",
       description: "Learn with authentic dialogues you can use in real life",
       icon: MessageCircle,
-      iconClassName: "text-[#3491b2]",
+      color: "from-primary/10 to-primary/5",
+      iconColor: "text-primary",
     },
     {
       title: "Intelligent Feedback",
       description: "AI-powered insights tailored to your learning pace",
       icon: Lightbulb,
-      iconClassName: "text-[#3491b2]",
+      color: "from-primary/10 to-primary/5",
+      iconColor: "text-primary",
     },
     {
       title: "Track Progress",
-      description: "See measurable improvements with our comprehensive analytics",
+      description:
+        "See measurable improvements with our comprehensive analytics",
       icon: TrendingUp,
-      iconClassName: "text-[#3491b2]",
+      color: "from-primary/10 to-primary/5",
+      iconColor: "text-primary",
     },
     {
       title: "Cultural Context",
       description: "Understand language beyond flat objective translations",
       icon: Globe,
-      iconClassName: "text-[#3491b2]",
+      color: "from-primary/10 to-primary/5",
+      iconColor: "text-primary",
     },
   ];
 
   return (
-    <section className="w-full px-6 py-16 transition-colors duration-300 sm:px-6 sm:py-24 lg:px-8">
+    <section className="w-full px-6 py-24 transition-colors duration-300 sm:py-32 overflow-hidden">
       <div className="max-w-6xl mx-auto">
         {/* Section Title */}
-        <div className="text-center mb-12 sm:mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-black dark:text-zinc-100">
-            Why Choose <span className="font-serif italic text-[#3491b2]">Polysia?</span>
+        <div className="mb-16 sm:mb-20">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-1 w-8 bg-primary rounded-full" />
+            <span className="text-xs font-bold tracking-widest uppercase text-muted-foreground">
+              Philosophy
+            </span>
+          </div>
+          <h2 className="text-4xl sm:text-6xl font-heading font-bold mb-6 tracking-tight text-foreground lg:max-w-3x1">
+            Language learning reimagined for{" "}
+            <span className="font-serif italic text-primary">efficiency.</span>
           </h2>
-          <p className="text-gray-600 dark:text-zinc-300 text-lg max-w-2xl mx-auto">
-            We've reimagined language learning from the ground up
+          <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
+            Our approach combines modern cognitive science with cutting-edge AI to 
+            create an immersive, intuitive experience that fits into your life.
           </p>
         </div>
 
         {/* Grid of Reasons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {reasons.map((reason, index) => {
             const Icon = reason.icon;
             return (
-            <div
-              key={index}
-              className="rounded-2xl bg-[#f5f5f5] p-6 text-center transition-colors duration-300 dark:bg-zinc-900 sm:p-8 md:text-left"
-            >
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm transition-colors duration-300 dark:bg-zinc-800 md:mx-0">
-                <Icon className={`w-5 h-5 ${reason.iconClassName}`} strokeWidth={2.1} />
+              <div
+                key={index}
+                className="group relative flex flex-col p-6 rounded-2xl border border-border bg-card hover:border-primary/20 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500"
+              >
+                <div 
+                  className={`absolute inset-0 bg-gradient-to-br ${reason.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl pointer-events-none`} 
+                />
+                
+                <div className="relative z-10">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-background mb-6 group-hover:scale-110 transition-all duration-500">
+                    <Icon className={`w-6 h-6 ${reason.iconColor}`} strokeWidth={2} />
+                  </div>
+                  
+                  <h3 className="text-lg font-bold mb-3 text-foreground tracking-tight">
+                    {reason.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {reason.description}
+                  </p>
+                </div>
               </div>
-
-              {/* Title */}
-              <h3 className="text-xl font-bold mb-2 text-black dark:text-zinc-100">
-                {reason.title}
-              </h3>
-
-              {/* Description */}
-              <p className="text-gray-600 dark:text-zinc-300 leading-relaxed">
-                {reason.description}
-              </p>
-            </div>
             );
           })}
         </div>

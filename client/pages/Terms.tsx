@@ -21,8 +21,9 @@ export default function Terms() {
                 Acceptance
               </h2>
               <p>
-                By accessing or using Polysia, you agree to be bound by these Terms of
-                Service. If you do not agree, please do not use the service.
+                By accessing or using Polysia, you agree to be bound by these
+                Terms of Service. If you do not agree, please do not use the
+                service.
               </p>
             </div>
 
@@ -31,9 +32,10 @@ export default function Terms() {
                 Use of the service
               </h2>
               <p>
-                Polysia is provided for personal, non-commercial language learning. You
-                agree to use the platform in a lawful manner and not to attempt to
-                reverse-engineer, scrape, or otherwise misuse any part of the service.
+                Polysia is provided for personal, non-commercial language
+                learning. You agree to use the platform in a lawful manner and
+                not to attempt to reverse-engineer, scrape, or otherwise misuse
+                any part of the service.
               </p>
             </div>
 
@@ -42,9 +44,13 @@ export default function Terms() {
                 Account responsibilities
               </h2>
               <p>
-                You are responsible for keeping your login credentials confidential and for
-                all activity that occurs under your account. Notify us immediately at{" "}
-                <a className="text-[#3491b2] hover:underline" href="mailto:hello@polysia.app">
+                You are responsible for keeping your login credentials
+                confidential and for all activity that occurs under your
+                account. Notify us immediately at{" "}
+                <a
+                  className="text-[#3491b2] hover:underline"
+                  href="mailto:hello@polysia.app"
+                >
                   hello@polysia.app
                 </a>{" "}
                 if you suspect unauthorized access.
@@ -56,9 +62,10 @@ export default function Terms() {
                 Intellectual property
               </h2>
               <p>
-                All content, UI, and branding within Polysia are the property of Polysia
-                and its contributors. Your personal learning data remains yours, but you
-                grant us a limited license to process it to provide the service.
+                All content, UI, and branding within Polysia are the property of
+                Polysia and its contributors. Your personal learning data
+                remains yours, but you grant us a limited license to process it
+                to provide the service.
               </p>
             </div>
 
@@ -67,10 +74,10 @@ export default function Terms() {
                 Limitation of liability
               </h2>
               <p>
-                Polysia is provided as-is, without warranties of any kind. We are not
-                liable for any indirect, incidental, or consequential damages arising from
-                your use of the service. As an alpha-stage project, downtime or data loss,
-                however unlikely, may occur.
+                Polysia is provided as-is, without warranties of any kind. We
+                are not liable for any indirect, incidental, or consequential
+                damages arising from your use of the service. As an alpha-stage
+                project, downtime or data loss, however unlikely, may occur.
               </p>
             </div>
 
@@ -79,9 +86,10 @@ export default function Terms() {
                 Changes to these terms
               </h2>
               <p>
-                We may update these terms as the product evolves. We'll make a reasonable
-                effort to notify users of significant changes. Continued use of Polysia
-                after changes are posted constitutes acceptance.
+                We may update these terms as the product evolves. We'll make a
+                reasonable effort to notify users of significant changes.
+                Continued use of Polysia after changes are posted constitutes
+                acceptance.
               </p>
             </div>
 
@@ -91,7 +99,10 @@ export default function Terms() {
               </h2>
               <p>
                 Questions about these terms? Email us at{" "}
-                <a className="text-[#3491b2] hover:underline" href="mailto:hello@polysia.app">
+                <a
+                  className="text-[#3491b2] hover:underline"
+                  href="mailto:hello@polysia.app"
+                >
                   hello@polysia.app
                 </a>
                 .

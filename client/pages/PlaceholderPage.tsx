@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import Layout from "@/components/Layout";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Mail } from "lucide-react";
 
 interface PlaceholderPageProps {
   title: string;
@@ -12,31 +14,40 @@ export default function PlaceholderPage({
 }: PlaceholderPageProps) {
   return (
     <Layout>
-      <div className="min-h-[60vh] flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl">
-          <div className="inline-block mb-6 p-4 bg-teal-100 rounded-lg">
-            <span className="text-4xl">🚀</span>
+      <div className="min-h-[70vh] flex items-center justify-center px-6 py-24 transition-colors duration-300">
+        <div className="text-center max-w-2xl mx-auto">
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-8 rounded-3xl bg-primary/10 text-primary">
+            <span className="text-5xl">🚀</span>
           </div>
-          <h1 className="font-serif text-4xl sm:text-5xl font-bold mb-4">
+          <h1 className="text-4xl sm:text-6xl font-heading font-bold mb-6 tracking-tight text-foreground">
             {title}
           </h1>
-          <p className="text-lg text-gray-600 mb-8">
+          <p className="text-lg sm:text-xl text-muted-foreground mb-12 leading-relaxed">
             {description ||
               "This page is coming soon! We're working on bringing you amazing content here."}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              to="/"
-              className="inline-block bg-black text-white font-semibold py-3 px-8 rounded-full hover:bg-gray-800 transition-colors"
+            <Button
+              size="lg"
+              asChild
+              className="rounded-full px-8 h-12 text-base shadow-lg hover:shadow-primary/20"
             >
-              Back to Home
-            </Link>
-            <a
-              href="mailto:hello@polysia.app"
-              className="inline-block border-2 border-black text-black font-semibold py-3 px-8 rounded-full hover:bg-black hover:text-white transition-colors"
+              <Link to="/">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Home
+              </Link>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              asChild
+              className="rounded-full px-8 h-12 text-base"
             >
-              Get Updates
-            </a>
+              <a href="mailto:hello@polysia.app">
+                <Mail className="mr-2 h-4 w-4" />
+                Get Updates
+              </a>
+            </Button>
           </div>
         </div>
       </div>

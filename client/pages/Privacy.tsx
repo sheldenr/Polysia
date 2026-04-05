@@ -21,10 +21,10 @@ export default function Privacy() {
                 What we collect
               </h2>
               <p>
-                When you create an account, we collect your email address and any profile
-                information you choose to provide. As you use Polysia, we store your
-                learning progress, session history, and preferences so we can personalize
-                your experience.
+                When you create an account, we collect your email address and
+                any profile information you choose to provide. As you use
+                Polysia, we store your learning progress, session history, and
+                preferences so we can personalize your experience.
               </p>
             </div>
 
@@ -33,10 +33,11 @@ export default function Privacy() {
                 How we use it
               </h2>
               <p>
-                Your data is used solely to operate and improve the service, things like
-                powering spaced-repetition schedules, remembering your settings, and
-                diagnosing bugs. We may also use anonymized, aggregated metrics to
-                understand how people learn so we can make Polysia better.
+                Your data is used solely to operate and improve the service,
+                things like powering spaced-repetition schedules, remembering
+                your settings, and diagnosing bugs. We may also use anonymized,
+                aggregated metrics to understand how people learn so we can make
+                Polysia better.
               </p>
             </div>
 
@@ -45,8 +46,9 @@ export default function Privacy() {
                 What we never do
               </h2>
               <p>
-                We do not sell, rent, or trade your personal data to third parties. We
-                do not use your data to serve you ads. Your learning history stays yours.
+                We do not sell, rent, or trade your personal data to third
+                parties. We do not use your data to serve you ads. Your learning
+                history stays yours.
               </p>
             </div>
 
@@ -55,9 +57,10 @@ export default function Privacy() {
                 Data retention
               </h2>
               <p>
-                We retain your data for as long as your account is active. If you delete
-                your account, your personal data is removed from our systems within 30
-                days, except where retention is required by law.
+                We retain your data for as long as your account is active. If
+                you delete your account, your personal data is removed from our
+                systems within 30 days, except where retention is required by
+                law.
               </p>
             </div>
 
@@ -66,9 +69,12 @@ export default function Privacy() {
                 Your rights
               </h2>
               <p>
-                You can request a copy of your data, ask us to correct inaccuracies, or
-                request deletion at any time by emailing{" "}
-                <a className="text-[#3491b2] hover:underline" href="mailto:hello@polysia.app">
+                You can request a copy of your data, ask us to correct
+                inaccuracies, or request deletion at any time by emailing{" "}
+                <a
+                  className="text-[#3491b2] hover:underline"
+                  href="mailto:hello@polysia.app"
+                >
                   hello@polysia.app
                 </a>
                 . We'll respond within 30 days.
@@ -80,8 +86,12 @@ export default function Privacy() {
                 Questions
               </h2>
               <p>
-                If you have any privacy-related questions or concerns, reach out at{" "}
-                <a className="text-[#3491b2] hover:underline" href="mailto:hello@polysia.app">
+                If you have any privacy-related questions or concerns, reach out
+                at{" "}
+                <a
+                  className="text-[#3491b2] hover:underline"
+                  href="mailto:hello@polysia.app"
+                >
                   hello@polysia.app
                 </a>
                 .

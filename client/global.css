@@ -107,26 +107,29 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.552 0.016 285.938);
-
   }
   .theme {
-    --font-serif: 'Noto Serif Variable', serif;
-    --font-heading: 'Instrument Sans Variable', sans-serif;
-
+    --font-serif: "Noto Serif Variable", serif;
+    --font-heading: "Instrument Sans Variable", sans-serif;
+    --font-sans: "Inter", sans-serif;
   }
   * {
-    @apply border-border outline-ring/50;
-
+    @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-
+    @apply bg-background text-foreground font-sans;
   }
   html {
-    @apply font-serif;
-
+    @apply font-sans;
   }
-
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
 }
 
 @layer base {

@@ -1,18 +1,18 @@
 export default function CharacterScroller() {
-  const characters = ["学", "语", "说", "读", "写", "听", "练", "字"];
+  const characters = ["学", "式", "说", "会", "写", "听", "练", "脚"];
 
   const renderTrack = (trackKey: string) => (
     <div
       key={trackKey}
-      className="marquee-track flex w-max shrink-0 items-center gap-4 pr-4"
+      className="marquee-track flex w-max shrink-0 items-center gap-6 pr-6"
       aria-hidden={trackKey !== "primary"}
     >
       {characters.map((character, index) => (
         <div
           key={`${trackKey}-${index}`}
-          className="group flex-shrink-0 w-40 h-28 sm:w-52 sm:h-32 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 flex items-center justify-center transition-colors duration-300"
+          className="group flex-shrink-0 w-40 h-32 sm:w-56 sm:h-40 rounded-2xl border border-border bg-card flex items-center justify-center transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5"
         >
-          <span className="text-3xl sm:text-4xl font-light text-black dark:text-zinc-100 leading-none select-none transition-colors duration-300 group-hover:text-[#3491b2]">
+          <span className="text-4xl sm:text-6xl font-heading font-light text-foreground/40 transition-colors duration-300 group-hover:text-primary">
             {character}
           </span>
         </div>
@@ -21,11 +21,12 @@ export default function CharacterScroller() {
   );
 
   return (
-    <section className="w-full overflow-hidden bg-[#f5f5f5] px-6 py-16 transition-colors duration-300 dark:bg-zinc-900 sm:px-6 lg:px-8">
-      <div className="marquee-viewport">
+    <section className="w-full overflow-hidden bg-secondary/20 py-12 transition-colors duration-300">
+      <div className="marquee-viewport py-2">
         <div className="marquee-strip flex w-max items-center">
-        {renderTrack("primary")}
-        {renderTrack("clone")}
+          {renderTrack("primary")}
+          {renderTrack("clone")}
+          {renderTrack("clone-2")}
         </div>
       </div>
     </section>

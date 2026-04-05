@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 export default function HeroSection() {
   return (
@@ -8,7 +9,7 @@ export default function HeroSection() {
         className="pointer-events-none absolute left-1/2 top-0 h-[52rem] w-[100rem] -translate-x-1/2 -translate-y-[58%] rounded-full"
         style={{
           background:
-            "radial-gradient(circle, rgba(52,145,178,0.145) 0%, rgba(52,145,178,0.11) 22%, rgba(52,145,178,0.075) 40%, rgba(52,145,178,0.045) 58%, rgba(52,145,178,0.02) 72%, rgba(52,145,178,0) 86%)",
+            "radial-gradient(circle, hsl(var(--primary) / 0.15) 0%, hsl(var(--primary) / 0.1) 22%, hsl(var(--primary) / 0.05) 40%, transparent 70%)",
           filter: "blur(90px)",
         }}
       />
@@ -27,50 +28,38 @@ export default function HeroSection() {
             "linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.5) 55%, rgba(0,0,0,0))",
         }}
       />
-      <style>{`
-        @keyframes pill-border-glow {
-          0% {
-            box-shadow: 0 0 0 0 rgba(52,145,178,0.0);
-            border-color: rgba(209,213,219,1);
-          }
-          50% {
-            box-shadow: 0 0 0 3px rgba(52,145,178,0.08);
-            border-color: rgba(52,145,178,0.45);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(52,145,178,0.0);
-            border-color: rgba(209,213,219,1);
-          }
-        }
-        .pill-border-animate {
-          animation: pill-border-glow 3.5s ease-in-out infinite;
-        }
-      `}</style>
-      <div className="relative z-10 mx-auto max-w-4xl text-center">
+
+      <div className="relative z-10 mx-auto max-w-6xl text-center">
         {/* Animated Top Label */}
-        <div className="mb-4 flex justify-center">
-          <div className="inline-flex items-center rounded-full px-4 py-1 text-xs font-medium uppercase tracking-wide border border-gray-300 bg-white text-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 pill-border-animate">
+        <div className="mb-6 flex justify-center">
+          <div className="inline-flex items-center rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider border border-primary/20 bg-primary/5 text-primary animate-pulse">
             Start learning today
           </div>
         </div>
 
         {/* Main Heading */}
-        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-black dark:text-zinc-100">
-          Learn Chinese <span className="font-serif italic text-[#3491b2]">faster.</span>
+        <h1 className="text-5xl sm:text-6xl lg:text-8xl font-heading font-bold mb-6 leading-[1.1] tracking-tight text-foreground">
+          Learn Chinese{" "}
+          <span className="font-serif italic text-primary">faster.</span>
         </h1>
 
         {/* Subheading */}
-        <p className="text-lg sm:text-xl text-gray-700 dark:text-zinc-300 mb-8 max-w-2xl mx-auto leading-relaxed">
-          An adaptive language-learning platform powered by spaced repetition and DeepSeek V3.2. Read and review only the words you actually care about learning.
+        <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
+          An adaptive language-learning platform powered by spaced repetition
+          and AI. Read and review only the words you actually care about
+          learning.
         </p>
 
         {/* CTA Button */}
-        <Link
-          to="/signup"
-          className="inline-block bg-black text-white dark:bg-[#3491b2] dark:hover:bg-[#2b7f9d] font-semibold py-3 px-8 rounded-full hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl"
-        >
-          Try for free
-        </Link>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Button
+            size="lg"
+            asChild
+            className="rounded-full px-8 h-12 text-base shadow-xl hover:shadow-primary/20 transition-all"
+          >
+            <Link to="/signup">Try for free</Link>
+          </Button>
+        </div>
       </div>
     </section>
   );
