@@ -1,9 +1,61 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/lib/auth";
+import { useState, FormEvent } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SignUp() {
+  const navigate = useNavigate();
+  const { signup, signInWithGoogle, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already authenticated
+  if (isAuthenticated) {
+    navigate("/learning-hub");
+  }
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const result = await signup(email, password);
+
+      if (result.success) {
+        toast({
+          title: "Check your email!",
+          description: "We sent you a confirmation link to verify your account.",
+        });
+        // Don't navigate - user needs to verify email first
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Sign up failed",
+          description: result.error || "Could not create account",
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Sign up failed",
+        description: "Could not sign up with Google",
+      });
+    }
+  };
+
   return (
     <section className="min-h-screen bg-background px-4 sm:px-6 lg:px-8 py-8 transition-colors duration-300">
       <div className="max-w-7xl mx-auto mb-8">
@@ -34,17 +86,17 @@ export default function SignUp() {
           </div>
 
           <div className="grid gap-6">
-            <form
-              className="space-y-4"
-              onSubmit={(event) => event.preventDefault()}
-            >
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <Input
                   id="signup-email"
                   type="email"
                   placeholder="name@example.com"
                   className="h-12 px-4 rounded-xl"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -53,14 +105,18 @@ export default function SignUp() {
                   type="password"
                   placeholder="Create a password"
                   className="h-12 px-4 rounded-xl"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <Button
                 type="submit"
                 className="w-full h-12 rounded-xl text-base font-semibold shadow-lg hover:shadow-primary/20 transition-all"
+                disabled={isLoading}
               >
-                Sign up
+                {isLoading ? "Creating account..." : "Sign up"}
               </Button>
             </form>
 
@@ -78,6 +134,8 @@ export default function SignUp() {
             <Button
               variant="outline"
               className="w-full h-12 rounded-xl gap-2 font-medium"
+              disabled={isLoading}
+              onClick={handleGoogleSignup}
             >
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
                 <path

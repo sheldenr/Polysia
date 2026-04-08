@@ -1,1 +1,15 @@
 node_modules
+dist
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.vscode
+.idea
+
+# Documentation with secrets (keep local only)
+OAUTH_QUICK_START.md
+GOOGLE_OAUTH_SETUP.md
+google-oauth-setup.html
+VERCEL_DEPLOYMENT.md

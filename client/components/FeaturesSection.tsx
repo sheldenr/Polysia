@@ -69,12 +69,12 @@ export default function FeaturesSection() {
         </div>
 
         <div className="flex w-full justify-center lg:w-2/5">
-          <div className="relative w-full max-w-sm">
+          <div className="relative w-full max-w-md sm:max-w-lg lg:max-w-sm">
             {/* Ambient Glow */}
             <div className="absolute -inset-4 bg-gradient-to-br from-primary/20 to-transparent rounded-[2.5rem] blur-2xl opacity-50" />
             
             {/* The Main Card */}
-            <div className="relative w-full rounded-[2rem] bg-card border border-border px-8 pb-8 pt-20 shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-colors duration-300 overflow-hidden">
+            <div className="relative w-full rounded-[2rem] bg-card border border-border px-8 pb-8 pt-16 sm:pt-20 shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-colors duration-300 overflow-hidden">
               <div className="text-center">
                 <div className="inline-block relative mb-8">
                   <span className="text-8xl font-bold text-foreground tracking-tighter">你好</span>

@@ -203,7 +203,7 @@
   }
 
   .marquee-strip {
-    animation: marquee-scroll 28s linear infinite;
+    animation: marquee-scroll 56s linear infinite;
     will-change: transform;
     transform: translate3d(0, 0, 0);
   }
