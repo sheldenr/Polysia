@@ -32,7 +32,10 @@ In your Supabase dashboard:
 3. To enable **Google OAuth**:
    - Toggle on Google provider
    - Add your Google OAuth credentials
-   - Add authorized redirect URL: `https://your-project-id.supabase.co/auth/v1/callback`
+   - Add authorized redirect URL in Google: `https://your-project-id.supabase.co/auth/v1/callback`
+   - Add app redirect URL in Supabase:
+     - Local: `http://localhost:8080/auth/callback`
+     - Production: `https://your-domain.com/auth/callback`
 
 ### 3. Configure Email Templates (Optional)
 
@@ -132,7 +135,7 @@ const { signInWithGoogle } = useAuth();
 
 await signInWithGoogle();
 // Redirects to Google for authentication
-// After success, redirects back to /learning-hub
+// After success, returns to /auth/callback and then navigates to /learning-hub
 ```
 
 ### Logout
@@ -227,9 +230,9 @@ CREATE POLICY "Users can view own profile"
 
 ### Create a Test User
 
-1. Sign up at: `http://localhost:8082/signup`
+1. Sign up at: `http://localhost:8080/signup`
 2. Check your email for confirmation link (or disable email confirmation in dev)
-3. Log in at: `http://localhost:8082/login`
+3. Log in at: `http://localhost:8080/login`
 
 ### Test Google OAuth
 
@@ -267,4 +270,3 @@ The previous custom JWT authentication has been replaced with Supabase. The old 
 - [ ] Create user profiles table in Supabase
 - [ ] Add Row Level Security policies
 - [ ] Implement user roles and permissions
-

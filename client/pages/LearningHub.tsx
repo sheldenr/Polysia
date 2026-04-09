@@ -160,7 +160,9 @@ export default function LearningHub() {
                       {/* Top section with centered icon */}
                       <div className="p-8 pb-12 flex items-center justify-center min-h-[200px]">
                         {/* Centered icon */}
-                        <action.icon className="w-14 h-14 text-card-foreground" strokeWidth={1.5} />
+                        <div className="flex h-24 w-24 items-center justify-center rounded-3xl border-2 border-primary/70 bg-primary/20 shadow-lg shadow-primary/20">
+                          <action.icon className="h-12 w-12 text-primary" strokeWidth={2.2} />
+                        </div>
                       </div>
                       
                       {/* Divider */}

@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function SignUp() {
@@ -12,26 +12,46 @@ export default function SignUp() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    navigate("/learning-hub");
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/learning-hub");
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+
+    if (password !== confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Passwords do not match",
+        description: "Please make sure both password fields are the same.",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const result = await signup(email, password);
 
       if (result.success) {
+        if (result.requiresEmailVerification) {
+          toast({
+            title: "Check your email!",
+            description: "We sent you a confirmation link to verify your account.",
+          });
+          return;
+        }
+
         toast({
-          title: "Check your email!",
-          description: "We sent you a confirmation link to verify your account.",
+          title: "Account created!",
+          description: "You are now signed in.",
         });
-        // Don't navigate - user needs to verify email first
+        navigate("/learning-hub");
       } else {
         toast({
           variant: "destructive",
@@ -111,10 +131,22 @@ export default function SignUp() {
                   disabled={isLoading}
                 />
               </div>
+              <div className="space-y-2">
+                <Input
+                  id="signup-confirm-password"
+                  type="password"
+                  placeholder="Confirm your password"
+                  className="h-12 px-4 rounded-xl"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
               <Button
                 type="submit"
                 className="w-full h-12 rounded-xl text-base font-semibold shadow-lg hover:shadow-primary/20 transition-all"
-                disabled={isLoading}
+                disabled={isLoading || !confirmPassword}
               >
                 {isLoading ? "Creating account..." : "Sign up"}
               </Button>

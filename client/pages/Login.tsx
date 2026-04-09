@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
@@ -14,10 +14,11 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    navigate("/learning-hub");
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/learning-hub");
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();

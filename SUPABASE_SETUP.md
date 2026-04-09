@@ -36,15 +36,15 @@ Your application is now connected to Supabase authentication.
    pnpm dev
    ```
 
-2. **Visit**: `http://localhost:8081/signup`
+2. **Visit**: `http://localhost:8080/signup`
 
 3. **Create an account** with your email
 
 4. **Check your email** for the confirmation link (if enabled)
 
-5. **Login** at: `http://localhost:8081/login`
+5. **Login** at: `http://localhost:8080/login`
 
-6. **Visit protected page**: `http://localhost:8081/learning-hub`
+6. **Visit protected page**: `http://localhost:8080/learning-hub`
 
 ## Important Notes
 
@@ -71,6 +71,9 @@ To enable Google sign-in:
    ```
 4. Copy Client ID and Secret
 5. Paste in Supabase Dashboard → Authentication → Providers → Google
+6. In Supabase, add app redirect URLs:
+   - Local: `http://localhost:8080/auth/callback`
+   - Production: `https://your-domain.com/auth/callback`
 
 ## Code Examples
 
