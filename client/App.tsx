@@ -19,6 +19,7 @@ import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
 import LearningHub from "@/pages/LearningHub";
 import AuthCallback from "./pages/AuthCallback";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <LearningHub />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
                   </ProtectedRoute>
                 }
               />

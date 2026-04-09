@@ -31,3 +31,8 @@ export interface DeepSeekV3Response {
     total_tokens?: number;
   };
 }
+
+export interface DeepSeekReadingPromptResponse {
+  prompt: string;
+  model: string;
+}
