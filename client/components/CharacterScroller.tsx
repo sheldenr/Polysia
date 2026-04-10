@@ -1,3 +1,5 @@
+import ChineseTooltipText from "@/components/ChineseTooltipText";
+
 export default function CharacterScroller() {
   const characters = ["学", "式", "说", "会", "写", "听", "练", "脚"];
 
@@ -12,9 +14,10 @@ export default function CharacterScroller() {
           key={`${trackKey}-${index}`}
           className="group flex-shrink-0 w-40 h-32 sm:w-56 sm:h-40 rounded-2xl border border-border bg-card flex items-center justify-center transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5"
         >
-          <span className="text-4xl sm:text-6xl font-heading font-light text-foreground/40 transition-colors duration-300 group-hover:text-primary">
-            {character}
-          </span>
+          <ChineseTooltipText
+            text={character}
+            className="text-4xl sm:text-6xl font-heading font-light text-foreground/40 transition-colors duration-300 group-hover:text-primary"
+          />
         </div>
       ))}
     </div>

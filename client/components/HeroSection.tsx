@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 
 export default function HeroSection() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <section className="dark-gradient-dither relative isolate w-full overflow-hidden px-6 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
       <div
@@ -57,7 +60,9 @@ export default function HeroSection() {
             asChild
             className="rounded-full px-8 h-12 text-base shadow-xl hover:shadow-primary/20 transition-all"
           >
-            <Link to="/signup">Try for free</Link>
+            <Link to={isAuthenticated ? "/learning-hub" : "/signup"}>
+              {isAuthenticated ? "Continue learning" : "Try for free"}
+            </Link>
           </Button>
         </div>
       </div>

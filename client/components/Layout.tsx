@@ -246,17 +246,21 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* Right Side - Auth actions */}
             <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setIsDarkMode((prev) => !prev)}
+                className="rounded-full"
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDarkMode ? (
+                  <Sun className="w-5 h-5 text-yellow-500" />
+                ) : (
+                  <Moon className="w-5 h-5 text-primary" />
+                )}
+              </Button>
               {isAuthenticated ? (
-                <>
-                  <Button
-                    variant="ghost"
-                    asChild
-                    className="hidden sm:inline-flex rounded-full"
-                  >
-                    <Link to="/learning-hub">Learning Hub</Link>
-                  </Button>
-                  <UserNav />
-                </>
+                <UserNav />
               ) : (
                 <>
                   <Button
@@ -334,20 +338,6 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </div>
       </footer>
-
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => setIsDarkMode((prev) => !prev)}
-        className="fixed bottom-5 left-5 z-50 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-        aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-      >
-        {isDarkMode ? (
-          <Sun className="w-5 h-5 text-yellow-500" />
-        ) : (
-          <Moon className="w-5 h-5 text-primary" />
-        )}
-      </Button>
     </div>
   );
 }

@@ -16,11 +16,13 @@
     "build:client": "vite build",
     "build:server": "vite build --config vite.config.server.ts",
     "start": "node dist/server/node-build.mjs",
+    "dict:generate": "node scripts/generate-chinese-dictionary.mjs",
     "test": "vitest --run",
     "format.fix": "prettier --write .",
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@alexamies/chinesedict-js": "^0.1.23",
     "@fontsource-variable/instrument-sans": "^5.2.8",
     "@fontsource-variable/noto-serif": "^5.2.9",
     "@hugeicons/core-free-icons": "^4.0.0",

@@ -44,6 +44,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import SettingsPanel from "@/components/SettingsPanel";
+import ChineseTooltipText from "@/components/ChineseTooltipText";
 import type {
   DeepSeekMessage,
   DeepSeekReadingPromptResponse,
@@ -88,6 +89,7 @@ export default function LearningHub() {
     },
   ]);
   const [roleplayInput, setRoleplayInput] = useState("");
+  const [isFlashcardFlipped, setIsFlashcardFlipped] = useState(false);
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("theme");
@@ -173,6 +175,7 @@ export default function LearningHub() {
 
   const enterFlow = (index: number = 0) => {
     setIsFlowActive(true);
+    setIsFlashcardFlipped(false);
     setTimeout(() => {
       slideRefs.current[index]?.scrollIntoView({ behavior: "smooth" });
     }, 100);
@@ -500,13 +503,51 @@ export default function LearningHub() {
                 
                 <div className="relative aspect-[4/3] sm:aspect-[16/10] group perspective-1000">
                   <div className="absolute inset-0 bg-primary/20 blur-3xl opacity-20 -z-10" />
-                  <div className="w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl flex flex-col items-center justify-center p-6 sm:p-12 text-center transition-all duration-500 hover:border-primary/20">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground mb-6 sm:mb-12">Character</p>
-                    <span className="text-6xl sm:text-9xl font-bold tracking-tighter mb-4">你好</span>
-                    <div className="mt-6 sm:mt-12 p-4 rounded-2xl bg-secondary/50 border border-border cursor-pointer hover:bg-secondary transition-colors">
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Click to flip</p>
+                  <button
+                    type="button"
+                    onClick={() => setIsFlashcardFlipped((prev) => !prev)}
+                    onKeyDown={(event) => {
+                      if (event.key === " " || event.key === "Spacebar") {
+                        event.preventDefault();
+                        setIsFlashcardFlipped((prev) => !prev);
+                      }
+                    }}
+                    className="relative w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-6 sm:p-12 text-center transition-all duration-500 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 overflow-hidden"
+                    aria-label="Flip flashcard"
+                    aria-pressed={isFlashcardFlipped}
+                  >
+                    <div
+                      className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${
+                        isFlashcardFlipped ? "opacity-0" : "opacity-100"
+                      }`}
+                    >
+                      <div className="relative w-full h-full">
+                        <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[calc(100%+4.5rem)] sm:-translate-y-[calc(100%+5.5rem)] text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+                          Character
+                        </p>
+                        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-6xl sm:text-9xl font-bold tracking-tighter">
+                          你好
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                    <div
+                      className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${
+                        isFlashcardFlipped ? "opacity-100" : "opacity-0"
+                      }`}
+                    >
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground mb-6 sm:mb-12">
+                          Meaning
+                        </p>
+                        <span className="text-3xl sm:text-6xl font-bold tracking-tight mb-3">
+                          Hello
+                        </span>
+                        <span className="text-base sm:text-2xl text-muted-foreground font-medium">
+                          nǐ hǎo
+                        </span>
+                      </div>
+                    </div>
+                  </button>
                 </div>
 
                 <div className="hidden sm:grid sm:grid-cols-4 gap-4">
@@ -553,8 +594,12 @@ export default function LearningHub() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-10 items-start">
                   <div className="lg:col-span-2 space-y-6">
                     <article className="p-5 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card shadow-xl leading-relaxed text-base sm:text-2xl space-y-5 sm:space-y-8">
-                      <h3 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 font-heading">每日阅读</h3>
-                      <p>{readingPrompt}</p>
+                      <h3 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 font-heading">
+                        <ChineseTooltipText text="每日阅读" />
+                      </h3>
+                      <p>
+                        <ChineseTooltipText text={readingPrompt} />
+                      </p>
                       {isReadingPromptLoading && (
                         <p className="text-sm text-muted-foreground">Generating today's prompt...</p>
                       )}
@@ -580,7 +625,7 @@ export default function LearningHub() {
                       <div className="flex flex-wrap gap-2">
                         {["市场", "对话", "复习", "能力", "提高"].map(word => (
                           <span key={word} className="px-4 py-2 rounded-xl bg-secondary border text-sm font-medium cursor-pointer hover:border-primary/30 transition-colors">
-                            {word}
+                            <ChineseTooltipText text={word} />
                           </span>
                         ))}
                       </div>
@@ -610,7 +655,9 @@ export default function LearningHub() {
                           ? "bg-primary text-primary-foreground rounded-tr-none shadow-xl shadow-primary/20" 
                           : "bg-secondary text-foreground rounded-tl-none"
                         }`}>
-                          <p className="leading-relaxed">{msg.text}</p>
+                          <p className="leading-relaxed">
+                            <ChineseTooltipText text={msg.text} />
+                          </p>
                         </div>
                       </div>
                     ))}

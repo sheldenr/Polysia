@@ -1,4 +1,5 @@
 import { Check, Sparkles, BookOpen, MessageSquare, Zap } from "lucide-react";
+import ChineseTooltipText from "@/components/ChineseTooltipText";
 
 export default function FeaturesSection() {
   const features = [
@@ -49,7 +50,7 @@ export default function FeaturesSection() {
               return (
                 <div
                   key={index}
-                  className="group flex flex-col items-center lg:items-start p-5 rounded-2xl border border-border bg-card/50 hover:bg-card hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300"
+                  className="group flex flex-col items-center lg:items-start p-5 rounded-2xl border border-border bg-card hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
                     <Icon className="w-5 h-5" strokeWidth={2.5} />
@@ -77,7 +78,10 @@ export default function FeaturesSection() {
             <div className="relative w-full rounded-[2rem] bg-card border border-border px-8 pb-8 pt-16 sm:pt-20 shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-colors duration-300 overflow-hidden">
               <div className="text-center">
                 <div className="inline-block relative mb-8">
-                  <span className="text-8xl font-bold text-foreground tracking-tighter">你好</span>
+                  <ChineseTooltipText
+                    text="你好"
+                    className="text-8xl font-bold text-foreground tracking-tighter"
+                  />
                 </div>
                 
                 <div className="mb-8">

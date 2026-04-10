@@ -1,0 +1,4 @@
+Source: Chinese Notes Chinese-English dictionary
+URL: https://github.com/alexamies/chinesenotes.com/blob/4f2b9eb520d3e3c737bed9842384071828d5bc0c/data/cnotes_zh_en_dict.tsv
+License: Creative Commons Attribution-Share Alike 3.0 (CC BY-SA 3.0)
+License URL: https://creativecommons.org/licenses/by-sa/3.0/
