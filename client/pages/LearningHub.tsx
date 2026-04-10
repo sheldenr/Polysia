@@ -469,6 +469,12 @@ export default function LearningHub() {
                   );
                 })}
               </section>
+
+              <footer className="border-t pt-5 text-center sm:pt-6">
+                <p className="text-xs text-muted-foreground">
+                  © {new Date().getFullYear()} Polysia · Keep your daily momentum.
+                </p>
+              </footer>
             </div>
           </main>
         </div>
