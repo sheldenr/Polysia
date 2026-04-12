@@ -3,6 +3,8 @@ import HeroSection from "@/components/HeroSection";
 import CharacterScroller from "@/components/CharacterScroller";
 import WhyChooseSection from "@/components/WhyChooseSection";
 import FeaturesSection from "@/components/FeaturesSection";
+import PricingSection from "@/components/PricingSection";
+import FAQSection from "@/components/FAQSection";
 
 export default function Index() {
   return (
@@ -11,6 +13,8 @@ export default function Index() {
       <CharacterScroller />
       <WhyChooseSection />
       <FeaturesSection />
+      <PricingSection />
+      <FAQSection />
     </Layout>
   );
 }

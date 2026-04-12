@@ -36,7 +36,7 @@ export default function HeroSection() {
         {/* Animated Top Label */}
         <div className="mb-6 flex justify-center">
           <div className="inline-flex items-center rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider border border-primary/20 bg-primary/5 text-primary animate-pulse">
-            AI Mandarin Learning Platform
+            start learning now
           </div>
         </div>
 

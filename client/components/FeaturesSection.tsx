@@ -28,7 +28,7 @@ export default function FeaturesSection() {
   ];
 
   return (
-    <section className="w-full bg-secondary/10 px-6 py-24 transition-colors duration-300 sm:py-32 relative overflow-hidden">
+    <section className="w-full bg-[#fafafa] dark:bg-zinc-900/40 px-6 py-24 transition-colors duration-300 sm:py-32 relative overflow-hidden">
       {/* Decorative background element */}
       <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 

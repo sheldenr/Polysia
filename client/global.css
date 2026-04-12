@@ -214,10 +214,19 @@
 
   .serif-font {
     @apply font-serif;
+    letter-spacing: 0.015em;
+    font-variant-ligatures: none;
   }
 
   .italic-serif {
     @apply font-serif italic;
+    letter-spacing: 0.015em;
+    font-variant-ligatures: none;
+  }
+
+  .font-serif {
+    letter-spacing: 0.015em;
+    font-variant-ligatures: none;
   }
 
   .dark-gradient-dither {
