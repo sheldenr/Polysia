@@ -4,23 +4,25 @@ import ChineseTooltipText from "@/components/ChineseTooltipText";
 export default function FeaturesSection() {
   const features = [
     {
-      title: "Roleplay Simulator",
-      subtitle: "Practice real dialogue scenarios with adaptive AI prompts.",
+      title: "AI Roleplay Conversations",
+      subtitle:
+        "Practice realistic Mandarin scenarios with adaptive prompts and feedback.",
       icon: MessageSquare,
     },
     {
-      title: "On-Demand Vocab",
-      subtitle: "Capture and learn words instantly from any lesson.",
+      title: "Personal Vocabulary Builder",
+      subtitle: "Save any Chinese word or phrase and turn it into review cards.",
       icon: Zap,
     },
     {
-      title: "Smart Reading",
-      subtitle: "Get contextual help without breaking your flow.",
+      title: "Smart Chinese Reading",
+      subtitle:
+        "Read Chinese text with instant contextual support and definitions.",
       icon: BookOpen,
     },
     {
-      title: "Daily Review",
-      subtitle: "Spaced repetition sessions that keep progress compounding.",
+      title: "Daily Spaced Repetition",
+      subtitle: "Use science-backed reviews to remember vocabulary long term.",
       icon: Sparkles,
     },
   ];
@@ -34,13 +36,14 @@ export default function FeaturesSection() {
         <div className="w-full text-center lg:text-left lg:w-3/5">
           <div className="mb-12">
             <h2 className="mb-6 text-4xl font-heading font-bold text-foreground sm:text-5xl lg:text-6xl tracking-tight leading-[1.1]">
-              Everything you need to{" "}
-              <span className="font-serif italic text-primary">master</span> the
-              language.
+              Your all-in-one{" "}
+              <span className="font-serif italic text-primary">
+                Chinese learning hub.
+              </span>
             </h2>
             <p className="mx-auto max-w-xl text-lg text-muted-foreground lg:mx-0 leading-relaxed">
-              Our interface hides a powerful engine designed to optimize your
-              learning curve and make retention effortless.
+              From beginner Mandarin vocabulary to advanced reading practice,
+              Polysia gives you one place to study, review, and track progress.
             </p>
           </div>
 
@@ -96,8 +99,8 @@ export default function FeaturesSection() {
 
                 <div className="p-4 rounded-xl bg-secondary/50 border border-border/50 text-left mb-8">
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    A common versatile greeting used in both formal and informal
-                    settings across the Chinese-speaking world.
+                    "你好" (nǐ hǎo) means "hello," a core Mandarin greeting used
+                    in everyday conversation.
                   </p>
                 </div>
               </div>

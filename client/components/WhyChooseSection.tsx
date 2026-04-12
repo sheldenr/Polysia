@@ -3,33 +3,36 @@ import { Globe, Lightbulb, MessageCircle, TrendingUp } from "lucide-react";
 export default function WhyChooseSection() {
   const reasons = [
     {
-      title: "Authentic Conversations",
-      description: "Learn with authentic dialogues you can use in real life",
+      title: "Real-World Mandarin",
+      description:
+        "Practice useful Chinese for travel, work, and everyday conversations.",
       icon: MessageCircle,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
       badge: "1",
     },
     {
-      title: "Intelligent Feedback",
-      description: "AI-powered insights tailored to your learning pace",
+      title: "AI Explanations",
+      description:
+        "Get instant feedback on vocabulary, meaning, and natural usage.",
       icon: Lightbulb,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
       badge: "2",
     },
     {
-      title: "Track Progress",
+      title: "Spaced-Repetition Reviews",
       description:
-        "See measurable improvements with our comprehensive analytics",
+        "Review words at the right time to improve long-term retention.",
       icon: TrendingUp,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
       badge: "3",
     },
     {
-      title: "Cultural Context",
-      description: "Understand language beyond flat objective translations",
+      title: "Cultural + Context Notes",
+      description:
+        "Learn when and why native speakers choose specific words and phrases.",
       icon: Globe,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
@@ -45,16 +48,18 @@ export default function WhyChooseSection() {
           <div className="flex items-center gap-2 mb-4">
             <div className="h-1 w-8 bg-primary rounded-full" />
             <span className="text-xs font-bold tracking-widest uppercase text-muted-foreground">
-              Philosophy
+              Why Polysia
             </span>
           </div>
           <h2 className="text-4xl sm:text-6xl font-heading font-bold mb-6 tracking-tight text-foreground lg:max-w-3x1">
-            Language learning reimagined for{" "}
-            <span className="font-serif italic text-primary">efficiency.</span>
+            What makes Polysia a better way to{" "}
+            <span className="font-serif italic text-primary">
+              learn Chinese?
+            </span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
-            Our approach combines modern cognitive science with cutting-edge AI to 
-            create an immersive, intuitive experience that fits into your life.
+            Polysia combines AI guidance with proven memory science so you can
+            build practical Mandarin skills faster and retain more over time.
           </p>
         </div>
 

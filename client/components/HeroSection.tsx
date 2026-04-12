@@ -36,21 +36,21 @@ export default function HeroSection() {
         {/* Animated Top Label */}
         <div className="mb-6 flex justify-center">
           <div className="inline-flex items-center rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider border border-primary/20 bg-primary/5 text-primary animate-pulse">
-            Start learning today
+            AI Mandarin Learning Platform
           </div>
         </div>
 
         {/* Main Heading */}
         <h1 className="text-5xl sm:text-6xl lg:text-8xl font-heading font-bold mb-6 leading-[1.1] tracking-tight text-foreground">
-          Learn Chinese{" "}
-          <span className="font-serif italic text-primary">faster.</span>
+          Learn Chinese with{" "}
+          <span className="font-serif italic text-primary">confidence.</span>
         </h1>
 
         {/* Subheading */}
         <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-          An adaptive language-learning platform powered by spaced repetition
-          and AI. Read and review only the words you actually care about
-          learning.
+          Polysia is an AI-powered Chinese learning app for vocabulary, reading,
+          and conversation practice. Build your personal word bank and remember
+          more with spaced repetition.
         </p>
 
         {/* CTA Button */}
