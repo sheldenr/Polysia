@@ -8,8 +8,25 @@ dist
 .vscode
 .idea
 
+# Local AI/LLM tooling state
+.cursor/
+.copilot/
+.codeium/
+.windsurf/
+.claude/
+.aider*
+.llm/
+
 # Documentation with secrets (keep local only)
 OAUTH_QUICK_START.md
 GOOGLE_OAUTH_SETUP.md
 google-oauth-setup.html
 VERCEL_DEPLOYMENT.md
+
+# Local development docs
+.impeccable.md
+AGENTS.md
+AUTH.md
+DESIGN.md
+SECURITY_CHECKLIST.md
+SUPABASE_SETUP.md
