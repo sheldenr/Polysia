@@ -8,6 +8,7 @@ export default function WhyChooseSection() {
       icon: MessageCircle,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
+      badge: "1",
     },
     {
       title: "Intelligent Feedback",
@@ -15,6 +16,7 @@ export default function WhyChooseSection() {
       icon: Lightbulb,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
+      badge: "2",
     },
     {
       title: "Track Progress",
@@ -23,6 +25,7 @@ export default function WhyChooseSection() {
       icon: TrendingUp,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
+      badge: "3",
     },
     {
       title: "Cultural Context",
@@ -30,6 +33,7 @@ export default function WhyChooseSection() {
       icon: Globe,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
+      badge: "4",
     },
   ];
 
@@ -67,7 +71,7 @@ export default function WhyChooseSection() {
                 />
 
                 <div className="absolute right-5 top-5 text-xs font-semibold tracking-[0.22em] text-muted-foreground/70">
-                  0{index + 1}
+                  {reason.badge}
                 </div>
 
                 <div className="relative z-10 flex h-full flex-col items-center text-center">

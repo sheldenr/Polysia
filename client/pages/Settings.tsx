@@ -29,7 +29,9 @@ export default function Settings() {
             Manage your profile, notifications, and account preferences.
           </p>
         </div>
-        <SettingsPanel onLogout={handleLogout} />
+        <div className="rounded-3xl border border-border/70 bg-card/80 p-6 shadow-sm backdrop-blur-sm sm:p-10 lg:p-12">
+          <SettingsPanel onLogout={handleLogout} />
+        </div>
       </section>
     </Layout>
   );

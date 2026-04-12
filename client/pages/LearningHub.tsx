@@ -23,27 +23,11 @@ import {
   Activity,
   Home,
   LayoutDashboard,
-  LogOut,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import SettingsPanel from "@/components/SettingsPanel";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import type {
   DeepSeekMessage,
@@ -58,12 +42,12 @@ const defaultReadingPrompt =
   "今天下班后，我去小区旁边的新咖啡馆点了一杯热拿铁，顺便和店员聊了几句最近的天气，感觉中文表达越来越自然。";
 
 export default function LearningHub() {
-  const { logout, user } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isFlowActive, setIsFlowActive] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [activeFlowIndex, setActiveFlowIndex] = useState(0);
   const [isRoleplayLoading, setIsRoleplayLoading] = useState(false);
   const [readingPrompt, setReadingPrompt] = useState(defaultReadingPrompt);
   const [isReadingPromptLoading, setIsReadingPromptLoading] = useState(false);
@@ -173,8 +157,63 @@ export default function LearningHub() {
     void fetchReadingPrompt();
   }, [toast, user?.id]);
 
+  useEffect(() => {
+    if (!isFlowActive) {
+      return;
+    }
+
+    const flowContainer = flowContainerRef.current;
+    if (!flowContainer) {
+      return;
+    }
+
+    let rafId: number | null = null;
+
+    const updateActiveSlide = () => {
+      const containerTop = flowContainer.getBoundingClientRect().top;
+      let nearestIndex = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+
+      slideRefs.current.forEach((slide, index) => {
+        if (!slide) {
+          return;
+        }
+
+        const distance = Math.abs(slide.getBoundingClientRect().top - containerTop);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = index;
+        }
+      });
+
+      setActiveFlowIndex(nearestIndex);
+    };
+
+    const handleFlowScroll = () => {
+      if (rafId !== null) {
+        return;
+      }
+
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        updateActiveSlide();
+      });
+    };
+
+    updateActiveSlide();
+    flowContainer.addEventListener("scroll", handleFlowScroll, { passive: true });
+
+    return () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+      flowContainer.removeEventListener("scroll", handleFlowScroll);
+    };
+  }, [isFlowActive]);
+
   const enterFlow = (index: number = 0) => {
     setIsFlowActive(true);
+    setActiveFlowIndex(index);
     setIsFlashcardFlipped(false);
     setTimeout(() => {
       slideRefs.current[index]?.scrollIntoView({ behavior: "smooth" });
@@ -182,11 +221,6 @@ export default function LearningHub() {
   };
 
   const exitFlow = () => setIsFlowActive(false);
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/");
-  };
 
   const handleRoleplaySubmit = async () => {
     if (!roleplayInput.trim() || isRoleplayLoading) {
@@ -253,6 +287,7 @@ export default function LearningHub() {
           height: 100vh;
           overflow-y: auto;
           scroll-snap-type: y mandatory;
+          -webkit-overflow-scrolling: touch;
           scrollbar-width: none;
           -ms-overflow-style: none;
         }
@@ -288,27 +323,13 @@ export default function LearningHub() {
                 >
                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      aria-label="Open settings menu"
-                      className="p-2 hover:bg-secondary rounded-full transition-colors"
-                    >
-                      <Settings className="w-5 h-5" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => setIsSettingsOpen(true)}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Log out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <button
+                  aria-label="Open settings"
+                  className="p-2 hover:bg-secondary rounded-full transition-colors"
+                  onClick={() => navigate("/settings")}
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
               </div>
             </div>
           </header>
@@ -499,10 +520,10 @@ export default function LearningHub() {
             {/* Slide 1: Flashcards */}
             <section 
               ref={el => slideRefs.current[0] = el}
-              className="flow-slide flex flex-col items-center justify-center px-4 pt-20 pb-28 sm:p-6 bg-gradient-to-b from-background to-secondary/10"
+              className="flow-slide flex flex-col items-center justify-center px-5 pt-24 pb-32 sm:px-8 sm:py-10 bg-gradient-to-b from-background to-secondary/10"
             >
-              <div className="w-full max-w-3xl space-y-6 sm:space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="text-center space-y-2">
+              <div className="w-full max-w-3xl space-y-8 sm:space-y-14 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="text-center space-y-3">
                   <h2 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight">Flashcards</h2>
                   <p className="text-muted-foreground">Session progress: 8 of 24 cards</p>
                 </div>
@@ -569,7 +590,11 @@ export default function LearningHub() {
                 </div>
               </div>
 
-              <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-2 backdrop-blur sm:hidden">
+              <div
+                className={`fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-2 backdrop-blur transition-opacity sm:hidden ${
+                  activeFlowIndex === 0 ? "opacity-100" : "pointer-events-none opacity-0"
+                }`}
+              >
                 <div className="mx-auto grid max-w-md grid-cols-4 gap-2">
                   {["Again", "Hard", "Good", "Easy"].map((label, idx) => (
                     <button
@@ -589,17 +614,17 @@ export default function LearningHub() {
             {/* Slide 2: AI Reading */}
             <section 
               ref={el => slideRefs.current[1] = el}
-              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-4 py-20 sm:p-6 bg-gradient-to-b from-secondary/10 to-primary/5"
+              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-24 sm:px-8 sm:py-10 bg-gradient-to-b from-secondary/10 to-primary/5"
             >
-              <div className="w-full max-w-6xl space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="text-center space-y-2">
+              <div className="w-full max-w-6xl space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="text-center space-y-3">
                   <h2 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight">AI Reading</h2>
                   <p className="text-muted-foreground">Practice comprehension with context</p>
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-10 items-start">
-                  <div className="lg:col-span-2 space-y-6">
-                    <article className="p-5 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card shadow-xl leading-relaxed text-base sm:text-2xl space-y-5 sm:space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-12 items-start">
+                  <div className="order-1 space-y-8 lg:order-1 lg:col-span-2">
+                    <article className="max-h-[72vh] overflow-y-auto p-6 sm:max-h-none sm:overflow-visible sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card shadow-xl leading-relaxed text-base sm:text-2xl space-y-6 sm:space-y-9">
                       <h3 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 font-heading">
                         <ChineseTooltipText text="每日阅读" />
                       </h3>
@@ -609,10 +634,43 @@ export default function LearningHub() {
                       {isReadingPromptLoading && (
                         <p className="text-sm text-muted-foreground">Generating today's prompt...</p>
                       )}
+
+                      <div className="space-y-6 border-t pt-6 sm:hidden">
+                        <div className="space-y-4">
+                          <h3 className="font-bold text-lg">Context Quiz</h3>
+                          <div className="p-4 rounded-2xl bg-secondary/50 border space-y-4">
+                            <p className="text-sm font-medium leading-relaxed">
+                              The speaker never talks with people at the market.
+                            </p>
+                            <div className="flex gap-2">
+                              <Button variant="outline" className="flex-1 rounded-xl">
+                                True
+                              </Button>
+                              <Button variant="outline" className="flex-1 rounded-xl">
+                                False
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h3 className="font-bold text-lg">Key Vocabulary</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {["市场", "对话", "复习", "能力", "提高"].map((word) => (
+                              <span
+                                key={`mobile-${word}`}
+                                className="px-4 py-2 rounded-xl bg-secondary border text-sm font-medium cursor-pointer hover:border-primary/30 transition-colors"
+                              >
+                                <ChineseTooltipText text={word} />
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </article>
                   </div>
 
-                  <aside className="space-y-4 sm:space-y-6">
+                  <aside className="order-2 hidden space-y-6 sm:block sm:space-y-8 lg:order-2">
                     <div className="p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card space-y-4 sm:space-y-6">
                       <h3 className="font-bold text-lg sm:text-xl">Context Quiz</h3>
                       <div className="space-y-4">
@@ -644,9 +702,9 @@ export default function LearningHub() {
             {/* Slide 3: AI Roleplay */}
             <section 
               ref={el => slideRefs.current[2] = el}
-              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-4 py-20 sm:p-6 bg-gradient-to-b from-primary/5 to-background"
+              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-24 sm:px-8 sm:py-10 bg-gradient-to-b from-primary/5 to-background"
             >
-              <div className="w-full max-w-4xl space-y-5 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <div className="w-full max-w-4xl space-y-7 sm:space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center">
                   <h2 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight mb-2">AI Roleplay</h2>
                   <p className="text-muted-foreground">Scenario: Ordering food at a Shanghai cafe.</p>
@@ -704,22 +762,6 @@ export default function LearningHub() {
         </div>
       )}
 
-      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Settings</DialogTitle>
-            <DialogDescription>
-              Manage your profile, notifications, and account preferences.
-            </DialogDescription>
-          </DialogHeader>
-          <SettingsPanel
-            onLogout={async () => {
-              setIsSettingsOpen(false);
-              await handleLogout();
-            }}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

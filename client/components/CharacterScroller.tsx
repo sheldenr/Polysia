@@ -17,6 +17,7 @@ export default function CharacterScroller() {
           <ChineseTooltipText
             text={character}
             className="text-4xl sm:text-6xl font-heading font-light text-foreground/40 transition-colors duration-300 group-hover:text-primary"
+            enableTooltip={false}
           />
         </div>
       ))}

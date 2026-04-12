@@ -3,7 +3,6 @@ import { Moon, Sun, Github, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { UserNav } from "@/components/UserNav";
 
 interface LayoutProps {
   children: ReactNode;
@@ -260,7 +259,9 @@ export default function Layout({ children }: LayoutProps) {
                 )}
               </Button>
               {isAuthenticated ? (
-                <UserNav />
+                <Button asChild className="rounded-full">
+                  <Link to="/learning-hub">Learning Hub</Link>
+                </Button>
               ) : (
                 <>
                   <Button

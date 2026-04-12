@@ -81,6 +81,7 @@ export default function FeaturesSection() {
                   <ChineseTooltipText
                     text="你好"
                     className="text-8xl font-bold text-foreground tracking-tighter"
+                    enableTooltip={false}
                   />
                 </div>
                 
