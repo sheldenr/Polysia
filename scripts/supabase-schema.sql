@@ -16,9 +16,24 @@ $$;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   streak_days integer not null default 0,
+  onboarding_complete boolean not null default false,
+  onboarding_hsk_level text,
+  onboarding_goal text,
+  onboarding_reason text,
+  onboarding_age integer,
+  onboarding_daily_minutes integer,
+  onboarded_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists onboarding_complete boolean not null default false;
+alter table public.profiles add column if not exists onboarding_hsk_level text;
+alter table public.profiles add column if not exists onboarding_goal text;
+alter table public.profiles add column if not exists onboarding_reason text;
+alter table public.profiles add column if not exists onboarding_age integer;
+alter table public.profiles add column if not exists onboarding_daily_minutes integer;
+alter table public.profiles add column if not exists onboarded_at timestamptz;
 
 drop trigger if exists trg_profiles_updated_at on public.profiles;
 create trigger trg_profiles_updated_at

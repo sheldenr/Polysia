@@ -94,6 +94,8 @@ export default function ChineseTooltipText({
 }: ChineseTooltipTextProps) {
   const [dictionaries, setDictionaries] = useState<DictionaryCollection | null>(null);
   const [loadError, setLoadError] = useState<Error | null>(null);
+  const [openTooltipKey, setOpenTooltipKey] = useState<string | null>(null);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   useEffect(() => {
     if (!enableTooltip) {
@@ -123,6 +125,20 @@ export default function ChineseTooltipText({
       cancelled = true;
     };
   }, [enableTooltip]);
+
+  useEffect(() => {
+    setOpenTooltipKey(null);
+  }, [text]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(hover: none), (pointer: coarse)");
+    const updateTouchMode = () => setIsTouchDevice(mediaQuery.matches);
+
+    updateTouchMode();
+    mediaQuery.addEventListener("change", updateTouchMode);
+
+    return () => mediaQuery.removeEventListener("change", updateTouchMode);
+  }, []);
 
   const tokensWithDefinitions = useMemo(() => {
     if (!dictionaries) {
@@ -217,16 +233,35 @@ export default function ChineseTooltipText({
           : definition?.english || "No dictionary entry found.";
         const pinyin = loadError ? "" : definition?.pinyin;
         const isHighlighted = highlightText && token.includes(highlightText);
+        const tokenKey = `${token}-${index}`;
 
         return (
-          <Tooltip key={`${token}-${index}`}>
+          <Tooltip
+            key={tokenKey}
+            open={isTouchDevice ? openTooltipKey === tokenKey : undefined}
+            onOpenChange={(nextOpen) => {
+              if (!isTouchDevice) {
+                return;
+              }
+              setOpenTooltipKey(nextOpen ? tokenKey : null);
+            }}
+          >
             <TooltipTrigger asChild>
               <span
                 className={cn(
-                  "inline-block cursor-help px-[1px] -mx-[1px]",
+                  "inline-block px-[1px] -mx-[1px]",
+                  isTouchDevice ? "cursor-pointer" : "cursor-help",
                   isHighlighted && "font-bold",
                   characterClassName,
                 )}
+                onClick={(event) => {
+                  if (!isTouchDevice) {
+                    return;
+                  }
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setOpenTooltipKey((current) => (current === tokenKey ? null : tokenKey));
+                }}
               >
                 {token}
               </span>

@@ -297,6 +297,12 @@ export default function Layout({ children }: LayoutProps) {
               >
                 Contact
               </Link>
+              <Link
+                to="/developer"
+                className="hover:text-primary transition-colors"
+              >
+                Developer
+              </Link>
             </div>
 
             {/* Social Icons on Right */}

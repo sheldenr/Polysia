@@ -17,9 +17,11 @@ import Careers from "./pages/Careers";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
+import Developer from "./pages/Developer";
 import LearningHub from "@/pages/LearningHub";
 import AuthCallback from "./pages/AuthCallback";
 import Settings from "./pages/Settings";
+import Onboarding from "./pages/Onboarding";
 
 const queryClient = new QueryClient();
 
@@ -43,12 +45,21 @@ export default function App() {
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/developer" element={<Developer />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route
                 path="/learning-hub"
                 element={
                   <ProtectedRoute>
                     <LearningHub />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/onboarding"
+                element={
+                  <ProtectedRoute>
+                    <Onboarding />
                   </ProtectedRoute>
                 }
               />

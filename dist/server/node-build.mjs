@@ -8,6 +8,7 @@ import { z } from "zod";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
+import Stripe from "stripe";
 const handleDemo = (req, res) => {
   const response = {
     message: "Hello from Express server"
@@ -282,7 +283,7 @@ const handleDeepSeekReading = async (_req, res) => {
         messages: [
           {
             role: "system",
-            content: 'You are a Chinese reading tutor. Return strict JSON only (no markdown): {"titleZh":"...","titleEn":"...","text":"..."}. titleZh should be a concise Chinese topic title (4-12 chars). titleEn should be the natural English translation of that Chinese title. text must be a single Mandarin passage between 180 and 220 Chinese characters. text must contain only Chinese (no English, no pinyin, no bullets).'
+            content: 'You are a Chinese reading tutor. Return strict JSON only (no markdown): {"titleZh":"...","titleEn":"...","text":"...","quiz":[{"question":"...","answer":true},{"question":"...","answer":false}]}. titleZh should be a concise Chinese topic title (4-12 chars). titleEn should be the natural English translation of that Chinese title. text must be a single Mandarin passage between 180 and 220 Chinese characters. text must contain only Chinese (no English, no pinyin, no bullets). quiz must contain exactly 2 true/false questions that are directly based on details from text. Each question must be in English and each answer must be a boolean.'
           },
           {
             role: "user",
@@ -314,7 +315,8 @@ const handleDeepSeekReading = async (_req, res) => {
     const titleZh = parsed.titleZh?.trim();
     const titleEn = parsed.titleEn?.trim();
     const text = parsed.text?.trim();
-    if (!titleZh || !titleEn || !text) {
+    const quiz = parsed.quiz;
+    if (!titleZh || !titleEn || !text || !Array.isArray(quiz) || quiz.length !== 2 || quiz.some((item) => !item.question?.trim() || typeof item.answer !== "boolean")) {
       return res.status(502).json({
         error: "DeepSeek reading payload is missing required fields."
       });
@@ -323,6 +325,10 @@ const handleDeepSeekReading = async (_req, res) => {
       titleZh,
       titleEn,
       text: normalizeReadingText(text),
+      quiz: quiz.map((item) => ({
+        question: item.question.trim(),
+        answer: item.answer
+      })),
       model: upstreamBody.model ?? model
     };
     return res.status(200).json(response);
@@ -330,6 +336,81 @@ const handleDeepSeekReading = async (_req, res) => {
     console.error("DeepSeek reading prompt error:", error);
     return res.status(500).json({
       error: "Unable to generate reading prompt right now."
+    });
+  }
+};
+const checkoutRequestSchema = z.object({
+  plan: z.enum(["pro_monthly", "lifetime"]),
+  customerEmail: z.string().email().optional()
+});
+const planPriceMap = {
+  pro_monthly: process.env.STRIPE_PRICE_PRO_MONTHLY,
+  lifetime: process.env.STRIPE_PRICE_LIFETIME
+};
+function getBaseUrl(req) {
+  const origin = req.headers.origin;
+  if (origin && /^https?:\/\//i.test(origin)) {
+    return origin;
+  }
+  const host = req.get("host");
+  const protocol = req.protocol || "https";
+  return host ? `${protocol}://${host}` : "http://localhost:8080";
+}
+const handleCreateCheckoutSession = async (req, res) => {
+  const parsed = checkoutRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: parsed.error.errors[0]?.message ?? "Invalid checkout payload."
+    });
+  }
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    return res.status(500).json({
+      error: "Stripe is not configured. Add STRIPE_SECRET_KEY."
+    });
+  }
+  const stripe = new Stripe(secretKey);
+  const payload = parsed.data;
+  const priceId = planPriceMap[payload.plan];
+  if (!priceId) {
+    return res.status(500).json({
+      error: payload.plan === "pro_monthly" ? "Missing STRIPE_PRICE_PRO_MONTHLY." : "Missing STRIPE_PRICE_LIFETIME."
+    });
+  }
+  const baseUrl = getBaseUrl(req);
+  const successUrl = process.env.STRIPE_SUCCESS_URL ?? `${baseUrl}/pricing?checkout=success&plan=${payload.plan}`;
+  const cancelUrl = process.env.STRIPE_CANCEL_URL ?? `${baseUrl}/pricing?checkout=cancelled&plan=${payload.plan}`;
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: payload.plan === "pro_monthly" ? "subscription" : "payment",
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1
+        }
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      customer_email: payload.customerEmail,
+      allow_promotion_codes: true,
+      billing_address_collection: "auto",
+      metadata: {
+        product_plan: payload.plan
+      }
+    });
+    if (!session.url) {
+      return res.status(502).json({
+        error: "Stripe did not return a checkout URL."
+      });
+    }
+    const response = {
+      checkoutUrl: session.url
+    };
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error("Stripe checkout error:", error);
+    return res.status(500).json({
+      error: "Unable to start checkout right now."
     });
   }
 };
@@ -363,6 +444,7 @@ function createServer() {
   app2.get("/api/demo", handleDemo);
   app2.post("/api/ai/roleplay", handleDeepSeekRoleplay);
   app2.get("/api/ai/reading-prompt", handleDeepSeekReading);
+  app2.post("/api/billing/checkout", handleCreateCheckoutSession);
   app2.post("/api/auth/signup", handleSignup);
   app2.post("/api/auth/login", handleLogin);
   app2.get("/api/auth/verify", handleVerifyToken);

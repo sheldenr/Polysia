@@ -44,6 +44,16 @@ const defaultReadingContent = {
   titleZh: "咖啡店偶遇",
   titleEn: "A Chance Meeting at a Cafe",
   text: "今天下班后，我去小区旁边的新咖啡馆点了一杯热拿铁，顺便和店员聊了几句最近的天气，感觉中文表达越来越自然。",
+  quiz: [
+    {
+      question: "The speaker visited a new cafe near home after work.",
+      answer: true,
+    },
+    {
+      question: "The speaker ordered iced tea.",
+      answer: false,
+    },
+  ],
 };
 type LearningMode = "flashcards" | "reading" | "roleplay";
 
@@ -95,6 +105,9 @@ export default function LearningHub() {
     roleplay: 0,
   });
   const [recentActivity, setRecentActivity] = useState<LearningActivity[]>([]);
+  const [readingQuizAnswers, setReadingQuizAnswers] = useState<Array<boolean | null>>(
+    Array(defaultReadingContent.quiz.length).fill(null),
+  );
   const [readingQuizStatus, setReadingQuizStatus] = useState<"idle" | "correct" | "incorrect">("idle");
   const [hasLoggedWordsForCurrentReading, setHasLoggedWordsForCurrentReading] = useState(false);
 
@@ -313,10 +326,14 @@ export default function LearningHub() {
 
       if (data) {
         setStreakDays(data.streak_days || 0);
+        if (!data.onboarding_complete) {
+          navigate("/onboarding", { replace: true });
+          return;
+        }
       }
     }
     loadProfile();
-  }, [user]);
+  }, [navigate, user]);
 
   // Keep perfected count responsive while cards are being rated.
   useEffect(() => {
@@ -331,29 +348,49 @@ export default function LearningHub() {
   }, [refreshLearningMetrics]);
 
   useEffect(() => {
+    setReadingQuizAnswers(Array(readingContent.quiz.length).fill(null));
     setReadingQuizStatus("idle");
     setHasLoggedWordsForCurrentReading(false);
-  }, [readingContent.titleZh, readingContent.titleEn, readingContent.text]);
+  }, [readingContent.titleZh, readingContent.titleEn, readingContent.text, readingContent.quiz.length]);
 
-  const handleReadingQuizAnswer = useCallback(
-    (answer: boolean) => {
-      const isCorrect = answer === true;
-      setReadingQuizStatus(isCorrect ? "correct" : "incorrect");
+  const handleReadingQuizChoice = useCallback((questionIndex: number, answer: boolean) => {
+    setReadingQuizAnswers((prev) => {
+      const next = [...prev];
+      next[questionIndex] = answer;
+      return next;
+    });
+    setReadingQuizStatus("idle");
+  }, []);
 
-      if (!isCorrect || hasLoggedWordsForCurrentReading) {
-        return;
-      }
+  const handleReadingQuizCheck = useCallback(() => {
+    if (readingQuizAnswers.some((answer) => answer === null)) {
+      return;
+    }
 
-      const wordsReadForPassage = countReadingWords(readingContent.text);
-      setHasLoggedWordsForCurrentReading(true);
-      setStats((prev) => ({
-        ...prev,
-        wordsRead: prev.wordsRead + wordsReadForPassage,
-      }));
-      void logLearningActivity("reading", statEventActions.wordsRead, wordsReadForPassage);
-    },
-    [countReadingWords, hasLoggedWordsForCurrentReading, logLearningActivity, readingContent.text],
-  );
+    const allCorrect = readingContent.quiz.every(
+      (question, index) => readingQuizAnswers[index] === question.answer,
+    );
+    setReadingQuizStatus(allCorrect ? "correct" : "incorrect");
+
+    if (!allCorrect || hasLoggedWordsForCurrentReading) {
+      return;
+    }
+
+    const wordsReadForPassage = countReadingWords(readingContent.text);
+    setHasLoggedWordsForCurrentReading(true);
+    setStats((prev) => ({
+      ...prev,
+      wordsRead: prev.wordsRead + wordsReadForPassage,
+    }));
+    void logLearningActivity("reading", statEventActions.wordsRead, wordsReadForPassage);
+  }, [
+    countReadingWords,
+    hasLoggedWordsForCurrentReading,
+    logLearningActivity,
+    readingContent.quiz,
+    readingContent.text,
+    readingQuizAnswers,
+  ]);
 
   const statItems = [
     {
@@ -453,11 +490,18 @@ export default function LearningHub() {
     if (isFresh && lastPromptRaw) {
       try {
         const cached = JSON.parse(lastPromptRaw) as DeepSeekReadingPromptResponse;
-        if (cached.titleZh && cached.titleEn && cached.text) {
+        if (
+          cached.titleZh &&
+          cached.titleEn &&
+          cached.text &&
+          Array.isArray(cached.quiz) &&
+          cached.quiz.length === 2
+        ) {
           setReadingContent({
             titleZh: cached.titleZh,
             titleEn: cached.titleEn,
             text: cached.text,
+            quiz: cached.quiz,
           });
           return;
         }
@@ -479,7 +523,10 @@ export default function LearningHub() {
           !response.ok ||
           !("titleZh" in payload) ||
           !("titleEn" in payload) ||
-          !("text" in payload)
+          !("text" in payload) ||
+          !("quiz" in payload) ||
+          !Array.isArray(payload.quiz) ||
+          payload.quiz.length !== 2
         ) {
           throw new Error(
             "error" in payload
@@ -492,6 +539,7 @@ export default function LearningHub() {
           titleZh: payload.titleZh,
           titleEn: payload.titleEn,
           text: payload.text,
+          quiz: payload.quiz,
         });
         window.localStorage.setItem(promptStorageKey, JSON.stringify(payload));
         window.localStorage.setItem(
@@ -993,7 +1041,7 @@ export default function LearningHub() {
                     </div>
 
                     <div
-                      className={`grid grid-cols-4 gap-4 transition-all duration-300 ${
+                      className={`hidden grid-cols-4 gap-4 transition-all duration-300 sm:grid ${
                         isFlashcardFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
                       }`}
                     >
@@ -1101,25 +1149,35 @@ export default function LearningHub() {
                         <div className="space-y-4">
                           <h3 className="font-bold text-lg">Context Quiz</h3>
                           <div className="p-4 rounded-2xl bg-secondary/50 border space-y-4">
-                            <p className="text-sm font-medium leading-relaxed">
-                              This passage is written in Chinese.
-                            </p>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                className="flex-1 rounded-xl"
-                                onClick={() => handleReadingQuizAnswer(true)}
-                              >
-                                True
-                              </Button>
-                              <Button
-                                variant="outline"
-                                className="flex-1 rounded-xl"
-                                onClick={() => handleReadingQuizAnswer(false)}
-                              >
-                                False
-                              </Button>
-                            </div>
+                            {readingContent.quiz.map((quizItem, quizIndex) => (
+                              <div key={`mobile-reading-quiz-${quizIndex}`} className="space-y-2">
+                                <p className="text-sm font-medium leading-relaxed">{quizItem.question}</p>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant={readingQuizAnswers[quizIndex] === true ? "default" : "outline"}
+                                    className="flex-1 rounded-xl"
+                                    onClick={() => handleReadingQuizChoice(quizIndex, true)}
+                                  >
+                                    True
+                                  </Button>
+                                  <Button
+                                    variant={readingQuizAnswers[quizIndex] === false ? "default" : "outline"}
+                                    className="flex-1 rounded-xl"
+                                    onClick={() => handleReadingQuizChoice(quizIndex, false)}
+                                  >
+                                    False
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                            <Button
+                              variant="outline"
+                              className="w-full rounded-xl"
+                              disabled={readingQuizAnswers.some((answer) => answer === null)}
+                              onClick={handleReadingQuizCheck}
+                            >
+                              Check answers
+                            </Button>
                             {readingQuizStatus === "correct" && (
                               <p className="text-xs text-emerald-600 dark:text-emerald-400">
                                 Correct. Words read were added to your stats.
@@ -1131,19 +1189,6 @@ export default function LearningHub() {
                           </div>
                         </div>
 
-                        <div className="space-y-4">
-                          <h3 className="font-bold text-lg">Key Vocabulary</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {["市场", "对话", "复习", "能力", "提高"].map((word) => (
-                              <span
-                                key={`mobile-${word}`}
-                                className="px-4 py-2 rounded-xl bg-secondary border text-sm font-medium cursor-pointer hover:border-primary/30 transition-colors"
-                              >
-                                <ChineseTooltipText text={word} />
-                              </span>
-                            ))}
-                          </div>
-                        </div>
                       </div>
                     </article>
                   </div>
@@ -1153,23 +1198,35 @@ export default function LearningHub() {
                       <h3 className="font-bold text-lg sm:text-xl">Context Quiz</h3>
                       <div className="space-y-4">
                         <div className="p-5 rounded-2xl bg-secondary/50 border space-y-4">
-                          <p className="text-sm font-medium leading-relaxed">This passage is written in Chinese.</p>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              className="flex-1 rounded-xl"
-                              onClick={() => handleReadingQuizAnswer(true)}
-                            >
-                              True
-                            </Button>
-                            <Button
-                              variant="outline"
-                              className="flex-1 rounded-xl"
-                              onClick={() => handleReadingQuizAnswer(false)}
-                            >
-                              False
-                            </Button>
-                          </div>
+                          {readingContent.quiz.map((quizItem, quizIndex) => (
+                            <div key={`desktop-reading-quiz-${quizIndex}`} className="space-y-2">
+                              <p className="text-sm font-medium leading-relaxed">{quizItem.question}</p>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant={readingQuizAnswers[quizIndex] === true ? "default" : "outline"}
+                                  className="flex-1 rounded-xl"
+                                  onClick={() => handleReadingQuizChoice(quizIndex, true)}
+                                >
+                                  True
+                                </Button>
+                                <Button
+                                  variant={readingQuizAnswers[quizIndex] === false ? "default" : "outline"}
+                                  className="flex-1 rounded-xl"
+                                  onClick={() => handleReadingQuizChoice(quizIndex, false)}
+                                >
+                                  False
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          <Button
+                            variant="outline"
+                            className="w-full rounded-xl"
+                            disabled={readingQuizAnswers.some((answer) => answer === null)}
+                            onClick={handleReadingQuizCheck}
+                          >
+                            Check answers
+                          </Button>
                           {readingQuizStatus === "correct" && (
                             <p className="text-xs text-emerald-600 dark:text-emerald-400">
                               Correct. Words read were added to your stats.
@@ -1179,17 +1236,6 @@ export default function LearningHub() {
                             <p className="text-xs text-destructive">Not quite. Try again.</p>
                           )}
                         </div>
-                      </div>
-                    </div>
-                    
-                    <div className="p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card">
-                      <h3 className="font-bold mb-4 text-lg">Key Vocabulary</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {["市场", "对话", "复习", "能力", "提高"].map(word => (
-                          <span key={word} className="px-4 py-2 rounded-xl bg-secondary border text-sm font-medium cursor-pointer hover:border-primary/30 transition-colors">
-                            <ChineseTooltipText text={word} />
-                          </span>
-                        ))}
                       </div>
                     </div>
                   </aside>

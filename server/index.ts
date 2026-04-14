@@ -7,6 +7,7 @@ import { handleSignup, handleLogin, handleVerifyToken } from "./routes/auth.js";
 import { handleProfile } from "./routes/profile.js";
 import { handleDeepSeekRoleplay } from "./routes/deepseek-roleplay.js";
 import { handleDeepSeekReading } from "./routes/deepseek-reading.js";
+import { handleCreateCheckoutSession } from "./routes/billing.js";
 import { requireAuth } from "./middleware/auth.js";
 
 export function createServer() {
@@ -27,6 +28,7 @@ export function createServer() {
   app.get("/api/demo", handleDemo);
   app.post("/api/ai/roleplay", handleDeepSeekRoleplay);
   app.get("/api/ai/reading-prompt", handleDeepSeekReading);
+  app.post("/api/billing/checkout", handleCreateCheckoutSession);
 
   // Auth routes (public)
   app.post("/api/auth/signup", handleSignup);

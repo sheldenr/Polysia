@@ -33,8 +33,23 @@ export interface DeepSeekV3Response {
 }
 
 export interface DeepSeekReadingPromptResponse {
+  quiz: Array<{
+    question: string;
+    answer: boolean;
+  }>;
   titleZh: string;
   titleEn: string;
   text: string;
   model: string;
+}
+
+export type BillingPlanId = "pro_monthly" | "lifetime";
+
+export interface CreateCheckoutSessionRequest {
+  plan: BillingPlanId;
+  customerEmail?: string;
+}
+
+export interface CreateCheckoutSessionResponse {
+  checkoutUrl: string;
 }

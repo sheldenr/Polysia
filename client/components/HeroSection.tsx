@@ -35,8 +35,8 @@ export default function HeroSection() {
       <div className="relative z-10 mx-auto max-w-6xl text-center">
         {/* Main Heading */}
         <h1 className="text-5xl sm:text-6xl lg:text-8xl font-heading font-bold mb-6 leading-[1.1] tracking-tight text-foreground">
-          Learn Chinese with{" "}
-          <span className="font-serif italic text-primary tracking-[0.015em]">confidence.</span>
+          Learn Chinese with
+          <span className="block font-serif italic text-primary tracking-[0.015em]">confidence.</span>
         </h1>
 
         {/* Subheading */}

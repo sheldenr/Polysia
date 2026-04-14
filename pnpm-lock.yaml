@@ -47,6 +47,9 @@ importers:
       radix-ui:
         specifier: ^1.4.3
         version: 1.4.3(@types/react-dom@18.3.7(@types/react@18.3.23))(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      stripe:
+        specifier: ^22.0.1
+        version: 22.0.1(@types/node@24.2.1)
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
@@ -4071,6 +4074,15 @@ packages:
 
   strip-literal@3.0.0:
     resolution: {integrity: sha512-TcccoMhJOM3OebGhSBEmp3UZ2SfDMZUEBdRA/9ynfLi8yYajyWX3JiXArcJt4Umh4vISpspkQIY8ZZoCqjbviA==}
+
+  stripe@22.0.1:
+    resolution: {integrity: sha512-Yw764pZ6s8Xu4CtUZdD5uWOkw6gc9xzO9OKylCuj1gMhMDLbyGbDtaPNNSFE4mB6njYSHESYIVbF1iIzUfAl2g==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   sucrase@3.35.0:
     resolution: {integrity: sha512-8EbVDiu9iN/nESwxeSxDKe0dunta1GOlHufmSSXxMD2z2/tMZpDMpvXQGsc+ajGo8y2uYUmixaSRUc/QPoQ0GA==}
@@ -8494,6 +8506,10 @@ snapshots:
   strip-literal@3.0.0:
     dependencies:
       js-tokens: 9.0.1
+
+  stripe@22.0.1(@types/node@24.2.1):
+    optionalDependencies:
+      '@types/node': 24.2.1
 
   sucrase@3.35.0:
     dependencies:

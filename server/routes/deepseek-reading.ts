@@ -64,7 +64,7 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
           {
             role: "system",
             content:
-              'You are a Chinese reading tutor. Return strict JSON only (no markdown): {"titleZh":"...","titleEn":"...","text":"..."}. titleZh should be a concise Chinese topic title (4-12 chars). titleEn should be the natural English translation of that Chinese title. text must be a single Mandarin passage between 180 and 220 Chinese characters. text must contain only Chinese (no English, no pinyin, no bullets).',
+              'You are a Chinese reading tutor. Return strict JSON only (no markdown): {"titleZh":"...","titleEn":"...","text":"...","quiz":[{"question":"...","answer":true},{"question":"...","answer":false}]}. titleZh should be a concise Chinese topic title (4-12 chars). titleEn should be the natural English translation of that Chinese title. text must be a single Mandarin passage between 180 and 220 Chinese characters. text must contain only Chinese (no English, no pinyin, no bullets). quiz must contain exactly 2 true/false questions that are directly based on details from text. Each question must be in English and each answer must be a boolean.',
           },
           {
             role: "user",
@@ -96,12 +96,20 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
       });
     }
 
-    let parsed: { titleZh?: string; titleEn?: string; text?: string } | null = null;
+    let parsed:
+      | {
+          titleZh?: string;
+          titleEn?: string;
+          text?: string;
+          quiz?: Array<{ question?: string; answer?: boolean }>;
+        }
+      | null = null;
     try {
       parsed = JSON.parse(stripCodeFences(content)) as {
         titleZh?: string;
         titleEn?: string;
         text?: string;
+        quiz?: Array<{ question?: string; answer?: boolean }>;
       };
     } catch {
       return res.status(502).json({
@@ -112,8 +120,16 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
     const titleZh = parsed.titleZh?.trim();
     const titleEn = parsed.titleEn?.trim();
     const text = parsed.text?.trim();
+    const quiz = parsed.quiz;
 
-    if (!titleZh || !titleEn || !text) {
+    if (
+      !titleZh ||
+      !titleEn ||
+      !text ||
+      !Array.isArray(quiz) ||
+      quiz.length !== 2 ||
+      quiz.some((item) => !item.question?.trim() || typeof item.answer !== "boolean")
+    ) {
       return res.status(502).json({
         error: "DeepSeek reading payload is missing required fields.",
       });
@@ -123,6 +139,10 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
       titleZh,
       titleEn,
       text: normalizeReadingText(text),
+      quiz: quiz.map((item) => ({
+        question: item.question!.trim(),
+        answer: item.answer as boolean,
+      })),
       model: upstreamBody.model ?? model,
     };
 
