@@ -38,6 +38,7 @@ type ChineseTooltipTextProps = {
   className?: string;
   characterClassName?: string;
   enableTooltip?: boolean;
+  highlightText?: string;
 };
 
 function loadDictionaryCollection(): Promise<DictionaryCollection> {
@@ -89,6 +90,7 @@ export default function ChineseTooltipText({
   className,
   characterClassName,
   enableTooltip = true,
+  highlightText,
 }: ChineseTooltipTextProps) {
   const [dictionaries, setDictionaries] = useState<DictionaryCollection | null>(null);
   const [loadError, setLoadError] = useState<Error | null>(null);
@@ -214,6 +216,7 @@ export default function ChineseTooltipText({
           ? "Dictionary unavailable."
           : definition?.english || "No dictionary entry found.";
         const pinyin = loadError ? "" : definition?.pinyin;
+        const isHighlighted = highlightText && token.includes(highlightText);
 
         return (
           <Tooltip key={`${token}-${index}`}>
@@ -221,6 +224,7 @@ export default function ChineseTooltipText({
               <span
                 className={cn(
                   "inline-block cursor-help px-[1px] -mx-[1px]",
+                  isHighlighted && "font-bold",
                   characterClassName,
                 )}
               >

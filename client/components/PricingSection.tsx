@@ -45,7 +45,7 @@ export default function PricingSection() {
         <div className="text-center mb-16">
           <h2 className="text-3xl font-heading font-bold text-foreground sm:text-4xl lg:text-5xl mb-4">
             Simple, Transparent{" "}
-            <span className="font-serif italic text-primary">Pricing</span>
+            <span className="font-serif italic text-primary tracking-[0.015em]">Pricing</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Choose the plan that fits your learning pace. No hidden fees.
@@ -58,7 +58,7 @@ export default function PricingSection() {
               key={index}
               className={`flex flex-col p-8 bg-card border ${
                 plan.popular ? "border-primary ring-1 ring-primary/30 shadow-2xl shadow-primary/10" : "border-border"
-              } rounded-2xl relative overflow-hidden`}
+              } rounded-3xl relative overflow-hidden`}
             >
               {plan.popular && (
                 <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl-lg">

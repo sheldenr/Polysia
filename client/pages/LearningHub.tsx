@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   BookOpen,
   Layers,
@@ -27,7 +27,9 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { useSRS, type SRSRating } from "@/hooks/use-srs";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import type {
   DeepSeekMessage,
@@ -37,9 +39,33 @@ import type {
 
 type View = "dashboard" | "flashcards" | "reading" | "roleplay";
 const readingPromptTTL = 24 * 60 * 60 * 1000;
-const readingPromptCacheVersion = "v2";
-const defaultReadingPrompt =
-  "今天下班后，我去小区旁边的新咖啡馆点了一杯热拿铁，顺便和店员聊了几句最近的天气，感觉中文表达越来越自然。";
+const readingPromptCacheVersion = "v3";
+const defaultReadingContent = {
+  titleZh: "咖啡店偶遇",
+  titleEn: "A Chance Meeting at a Cafe",
+  text: "今天下班后，我去小区旁边的新咖啡馆点了一杯热拿铁，顺便和店员聊了几句最近的天气，感觉中文表达越来越自然。",
+};
+type LearningMode = "flashcards" | "reading" | "roleplay";
+
+interface LearningActivity {
+  id: string;
+  mode: LearningMode;
+  action: string;
+  minutes_spent: number;
+  created_at: string;
+}
+
+const modeTargets: Record<LearningMode, number> = {
+  flashcards: 20,
+  reading: 15,
+  roleplay: 18,
+};
+
+const statEventActions = {
+  flashcardSuccess: "stat:flashcard-success",
+  dialogueResponse: "stat:dialogue-response",
+  wordsRead: "stat:words-read",
+} as const;
 
 export default function LearningHub() {
   const { user } = useAuth();
@@ -49,19 +75,33 @@ export default function LearningHub() {
   const [isFlowActive, setIsFlowActive] = useState(false);
   const [activeFlowIndex, setActiveFlowIndex] = useState(0);
   const [isRoleplayLoading, setIsRoleplayLoading] = useState(false);
-  const [readingPrompt, setReadingPrompt] = useState(defaultReadingPrompt);
+  const [readingContent, setReadingContent] = useState(defaultReadingContent);
   const [isReadingPromptLoading, setIsReadingPromptLoading] = useState(false);
+  const [streakDays, setStreakDays] = useState(0);
+  const [stats, setStats] = useState({
+    flashcards: 0,
+    perfected: 0,
+    dialogues: 0,
+    wordsRead: 0
+  });
+  const [weeklyModeMinutes, setWeeklyModeMinutes] = useState<Record<LearningMode, number>>({
+    flashcards: 0,
+    reading: 0,
+    roleplay: 0,
+  });
+  const [todayProgress, setTodayProgress] = useState<Record<LearningMode, number>>({
+    flashcards: 0,
+    reading: 0,
+    roleplay: 0,
+  });
+  const [recentActivity, setRecentActivity] = useState<LearningActivity[]>([]);
+  const [readingQuizStatus, setReadingQuizStatus] = useState<"idle" | "correct" | "incorrect">("idle");
+  const [hasLoggedWordsForCurrentReading, setHasLoggedWordsForCurrentReading] = useState(false);
+
   const flowContainerRef = useRef<HTMLDivElement | null>(null);
   const slideRefs = useRef<Array<HTMLElement | null>>([]);
-
-  // Stats & Progress
-  const streakDays = 14;
-  const statItems = [
-    { label: "Flashcards", value: "1,248", icon: Layers, color: "text-blue-500" },
-    { label: "Perfected", value: "376", icon: CheckCircle2, color: "text-emerald-500" },
-    { label: "Dialogues", value: "42", icon: MessagesSquare, color: "text-amber-500" },
-    { label: "Words Read", value: "7,930", icon: Eye, color: "text-purple-500" },
-  ];
+  const flowModeEntryTimestampRef = useRef<number | null>(null);
+  const activeModeIndexRef = useRef<number>(0);
 
   // Learning State (Mocked)
   const [roleplayMessages, setRoleplayMessages] = useState<
@@ -74,6 +114,304 @@ export default function LearningHub() {
   ]);
   const [roleplayInput, setRoleplayInput] = useState("");
   const [isFlashcardFlipped, setIsFlashcardFlipped] = useState(false);
+  const [skipTransition, setSkipTransition] = useState(false);
+
+  const { loading: srsLoading, getDueCards, rateCard, deck } = useSRS();
+
+  const formatRelativeTime = useCallback((isoTimestamp: string) => {
+    const timestamp = new Date(isoTimestamp).getTime();
+    const diffMs = Date.now() - timestamp;
+    const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+
+    if (diffMinutes < 60) {
+      return `${diffMinutes}m ago`;
+    }
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    return diffDays === 1 ? "Yesterday" : `${diffDays}d ago`;
+  }, []);
+
+  const countReadingWords = useCallback((text: string) => {
+    const chineseCharacters = text.match(/[\u4e00-\u9fff]/g);
+    if (chineseCharacters?.length) {
+      return chineseCharacters.length;
+    }
+
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+  }, []);
+
+  const refreshLearningMetrics = useCallback(async () => {
+    if (!supabase || !user) {
+      return;
+    }
+
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+
+    const { data, error } = await supabase
+      .from("learning_activity")
+      .select("id, mode, action, minutes_spent, created_at")
+      .eq("user_id", user.id)
+      .gte("created_at", weekStart.toISOString())
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to load learning activity", error);
+      return;
+    }
+
+    const [flashcardSuccessResult, dialoguesResult, perfectedResult, wordsReadResult] =
+      await Promise.all([
+        supabase
+          .from("learning_activity")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("action", statEventActions.flashcardSuccess),
+        supabase
+          .from("learning_activity")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("action", statEventActions.dialogueResponse),
+        supabase
+          .from("flashcards")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .gte("repetition", 5),
+        supabase
+          .from("learning_activity")
+          .select("minutes_spent")
+          .eq("user_id", user.id)
+          .eq("action", statEventActions.wordsRead),
+      ]);
+
+    if (
+      flashcardSuccessResult.error ||
+      dialoguesResult.error ||
+      perfectedResult.error ||
+      wordsReadResult.error
+    ) {
+      console.error("Failed to load learning stats", {
+        flashcards: flashcardSuccessResult.error,
+        dialogues: dialoguesResult.error,
+        perfected: perfectedResult.error,
+        wordsRead: wordsReadResult.error,
+      });
+    }
+
+    const rows = (data ?? []) as LearningActivity[];
+    const nextWeeklyModeMinutes: Record<LearningMode, number> = {
+      flashcards: 0,
+      reading: 0,
+      roleplay: 0,
+    };
+    const nextTodayProgress: Record<LearningMode, number> = {
+      flashcards: 0,
+      reading: 0,
+      roleplay: 0,
+    };
+
+    for (const row of rows) {
+      if (!(row.mode in nextWeeklyModeMinutes)) {
+        continue;
+      }
+
+      if (row.action.startsWith("stat:")) {
+        continue;
+      }
+
+      const mode = row.mode as LearningMode;
+      nextWeeklyModeMinutes[mode] += row.minutes_spent ?? 0;
+
+      if (new Date(row.created_at) >= dayStart) {
+        if (mode === "flashcards") {
+          nextTodayProgress.flashcards += 1;
+        } else {
+          nextTodayProgress[mode] += row.minutes_spent ?? 0;
+        }
+      }
+    }
+
+    setWeeklyModeMinutes(nextWeeklyModeMinutes);
+    setTodayProgress(nextTodayProgress);
+    setRecentActivity(rows.filter((row) => !row.action.startsWith("stat:")).slice(0, 3));
+
+    const totalWordsRead = (wordsReadResult.data ?? []).reduce(
+      (sum, row) => sum + (row.minutes_spent ?? 0),
+      0,
+    );
+    setStats((prev) => ({
+      ...prev,
+      flashcards: flashcardSuccessResult.count ?? 0,
+      dialogues: dialoguesResult.count ?? 0,
+      perfected: perfectedResult.count ?? 0,
+      wordsRead: totalWordsRead,
+    }));
+  }, [user]);
+
+  const logLearningActivity = useCallback(
+    async (mode: LearningMode, action: string, minutesSpent: number) => {
+      if (!supabase || !user) {
+        return;
+      }
+
+      const { error } = await supabase.from("learning_activity").insert({
+        user_id: user.id,
+        mode,
+        action,
+        minutes_spent: minutesSpent,
+      });
+
+      if (error) {
+        console.error("Failed to log learning activity", error);
+        return;
+      }
+
+      await refreshLearningMetrics();
+    },
+    [refreshLearningMetrics, user],
+  );
+
+  const trackModeTime = useCallback(
+    async (modeIndex: number, minutesSpent: number) => {
+      if (minutesSpent <= 0) {
+        return;
+      }
+
+      if (modeIndex === 0) {
+        await logLearningActivity("flashcards", `Studied flashcards for ${minutesSpent} min`, minutesSpent);
+      } else if (modeIndex === 1) {
+        await logLearningActivity("reading", `Completed AI reading for ${minutesSpent} min`, minutesSpent);
+      } else if (modeIndex === 2) {
+        await logLearningActivity("roleplay", `Practiced AI roleplay for ${minutesSpent} min`, minutesSpent);
+      }
+    },
+    [logLearningActivity],
+  );
+
+  // Load profile data
+  useEffect(() => {
+    async function loadProfile() {
+      if (!supabase || !user) return;
+
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+
+      if (error) {
+        console.error("Failed to load profile", error);
+        return;
+      }
+
+      if (data) {
+        setStreakDays(data.streak_days || 0);
+      }
+    }
+    loadProfile();
+  }, [user]);
+
+  // Keep perfected count responsive while cards are being rated.
+  useEffect(() => {
+    setStats(prev => ({
+      ...prev,
+      perfected: deck.filter(c => c.repetition >= 5).length
+    }));
+  }, [deck]);
+
+  useEffect(() => {
+    void refreshLearningMetrics();
+  }, [refreshLearningMetrics]);
+
+  useEffect(() => {
+    setReadingQuizStatus("idle");
+    setHasLoggedWordsForCurrentReading(false);
+  }, [readingContent.titleZh, readingContent.titleEn, readingContent.text]);
+
+  const handleReadingQuizAnswer = useCallback(
+    (answer: boolean) => {
+      const isCorrect = answer === true;
+      setReadingQuizStatus(isCorrect ? "correct" : "incorrect");
+
+      if (!isCorrect || hasLoggedWordsForCurrentReading) {
+        return;
+      }
+
+      const wordsReadForPassage = countReadingWords(readingContent.text);
+      setHasLoggedWordsForCurrentReading(true);
+      setStats((prev) => ({
+        ...prev,
+        wordsRead: prev.wordsRead + wordsReadForPassage,
+      }));
+      void logLearningActivity("reading", statEventActions.wordsRead, wordsReadForPassage);
+    },
+    [countReadingWords, hasLoggedWordsForCurrentReading, logLearningActivity, readingContent.text],
+  );
+
+  const statItems = [
+    {
+      label: "Flashcards",
+      value: stats.flashcards.toLocaleString(),
+      icon: Layers,
+      color: "text-blue-500",
+    },
+    {
+      label: "Perfected",
+      value: stats.perfected.toLocaleString(),
+      icon: CheckCircle2,
+      color: "text-emerald-500",
+    },
+    {
+      label: "Dialogues",
+      value: stats.dialogues.toString(),
+      icon: MessagesSquare,
+      color: "text-amber-500",
+    },
+    { label: "Words Read", value: stats.wordsRead.toLocaleString(), icon: Eye, color: "text-purple-500" },
+  ];
+
+  const dueCards = getDueCards();
+  const currentCard = dueCards[0];
+
+  const handleRate = useCallback(
+    (rating: SRSRating) => {
+      if (!currentCard) return;
+      setSkipTransition(true);
+      rateCard(currentCard.h, rating);
+      if (rating === 3 || rating === 4) {
+        setStats((prev) => ({
+          ...prev,
+          flashcards: prev.flashcards + 1,
+        }));
+        void logLearningActivity("flashcards", statEventActions.flashcardSuccess, 0);
+      }
+      setIsFlashcardFlipped(false);
+      setTimeout(() => setSkipTransition(false), 50);
+    },
+    [currentCard, logLearningActivity, rateCard],
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isFlowActive || activeFlowIndex !== 0) return;
+
+      if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        setIsFlashcardFlipped((prev) => !prev);
+      } else if (isFlashcardFlipped && ["1", "2", "3", "4"].includes(e.key)) {
+        handleRate(Number(e.key) as SRSRating);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFlowActive, activeFlowIndex, isFlashcardFlipped, handleRate]);
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("theme");
@@ -100,7 +438,7 @@ export default function LearningHub() {
     const userKey = user?.id ?? "anonymous";
     const promptStorageKey = `reading-prompt:${readingPromptCacheVersion}:${userKey}`;
     const promptTimestampStorageKey = `reading-prompt-ts:${readingPromptCacheVersion}:${userKey}`;
-    const lastPrompt = window.localStorage.getItem(promptStorageKey);
+    const lastPromptRaw = window.localStorage.getItem(promptStorageKey);
     const lastPromptTimestampRaw = window.localStorage.getItem(
       promptTimestampStorageKey,
     );
@@ -108,13 +446,24 @@ export default function LearningHub() {
       ? Number(lastPromptTimestampRaw)
       : 0;
     const isFresh =
-      !!lastPrompt &&
+      !!lastPromptRaw &&
       Number.isFinite(lastPromptTimestamp) &&
       Date.now() - lastPromptTimestamp < readingPromptTTL;
 
-    if (isFresh && lastPrompt) {
-      setReadingPrompt(lastPrompt);
-      return;
+    if (isFresh && lastPromptRaw) {
+      try {
+        const cached = JSON.parse(lastPromptRaw) as DeepSeekReadingPromptResponse;
+        if (cached.titleZh && cached.titleEn && cached.text) {
+          setReadingContent({
+            titleZh: cached.titleZh,
+            titleEn: cached.titleEn,
+            text: cached.text,
+          });
+          return;
+        }
+      } catch {
+        // Ignore old cache format and fetch a fresh prompt.
+      }
     }
 
     const fetchReadingPrompt = async () => {
@@ -126,7 +475,12 @@ export default function LearningHub() {
           | DeepSeekReadingPromptResponse
           | { error?: string };
 
-        if (!response.ok || !("prompt" in payload)) {
+        if (
+          !response.ok ||
+          !("titleZh" in payload) ||
+          !("titleEn" in payload) ||
+          !("text" in payload)
+        ) {
           throw new Error(
             "error" in payload
               ? payload.error
@@ -134,8 +488,12 @@ export default function LearningHub() {
           );
         }
 
-        setReadingPrompt(payload.prompt);
-        window.localStorage.setItem(promptStorageKey, payload.prompt);
+        setReadingContent({
+          titleZh: payload.titleZh,
+          titleEn: payload.titleEn,
+          text: payload.text,
+        });
+        window.localStorage.setItem(promptStorageKey, JSON.stringify(payload));
         window.localStorage.setItem(
           promptTimestampStorageKey,
           String(Date.now()),
@@ -214,13 +572,46 @@ export default function LearningHub() {
   const enterFlow = (index: number = 0) => {
     setIsFlowActive(true);
     setActiveFlowIndex(index);
+    activeModeIndexRef.current = index;
+    flowModeEntryTimestampRef.current = Date.now();
     setIsFlashcardFlipped(false);
     setTimeout(() => {
       slideRefs.current[index]?.scrollIntoView({ behavior: "smooth" });
     }, 100);
   };
 
-  const exitFlow = () => setIsFlowActive(false);
+  const exitFlow = () => {
+    const startedAt = flowModeEntryTimestampRef.current;
+    if (startedAt !== null) {
+      const minutesSpent = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
+      void trackModeTime(activeModeIndexRef.current, minutesSpent);
+    }
+    flowModeEntryTimestampRef.current = null;
+    setIsFlowActive(false);
+  };
+
+  useEffect(() => {
+    if (!isFlowActive) {
+      return;
+    }
+
+    if (flowModeEntryTimestampRef.current === null) {
+      flowModeEntryTimestampRef.current = Date.now();
+      activeModeIndexRef.current = activeFlowIndex;
+      return;
+    }
+
+    if (activeModeIndexRef.current !== activeFlowIndex) {
+      const now = Date.now();
+      const minutesSpent = Math.max(
+        1,
+        Math.round((now - flowModeEntryTimestampRef.current) / 60000),
+      );
+      void trackModeTime(activeModeIndexRef.current, minutesSpent);
+      activeModeIndexRef.current = activeFlowIndex;
+      flowModeEntryTimestampRef.current = now;
+    }
+  }, [activeFlowIndex, isFlowActive, trackModeTime]);
 
   const handleRoleplaySubmit = async () => {
     if (!roleplayInput.trim() || isRoleplayLoading) {
@@ -266,6 +657,11 @@ export default function LearningHub() {
       }
 
       setRoleplayMessages((prev) => [...prev, { role: "ai", text: payload.content }]);
+      void logLearningActivity("roleplay", statEventActions.dialogueResponse, 0);
+      setStats((prev) => ({
+        ...prev,
+        dialogues: prev.dialogues + 1,
+      }));
     } catch (error) {
       toast({
         variant: "destructive",
@@ -279,6 +675,44 @@ export default function LearningHub() {
       setIsRoleplayLoading(false);
     }
   };
+
+  const modeCards = [
+    {
+      name: "Flashcards",
+      desc: "Strengthen recall with active spaced repetition.",
+      icon: Zap,
+      index: 0,
+      objective: `${todayProgress.flashcards}/${modeTargets.flashcards} cards today`,
+      progress: Math.min(100, Math.round((todayProgress.flashcards / modeTargets.flashcards) * 100)),
+      eta: `${Math.max(modeTargets.flashcards - todayProgress.flashcards, 0)} left`,
+    },
+    {
+      name: "AI Reading",
+      desc: "Build comprehension with contextual short passages.",
+      icon: BookMarked,
+      index: 1,
+      objective: `${todayProgress.reading}/${modeTargets.reading} min today`,
+      progress: Math.min(100, Math.round((todayProgress.reading / modeTargets.reading) * 100)),
+      eta: `${Math.max(modeTargets.reading - todayProgress.reading, 0)} min left`,
+    },
+    {
+      name: "AI Roleplay",
+      desc: "Practice natural speaking in guided scenarios.",
+      icon: MessageCircle,
+      index: 2,
+      objective: `${todayProgress.roleplay}/${modeTargets.roleplay} min today`,
+      progress: Math.min(100, Math.round((todayProgress.roleplay / modeTargets.roleplay) * 100)),
+      eta: `${Math.max(modeTargets.roleplay - todayProgress.roleplay, 0)} min left`,
+    },
+  ];
+
+  const weeklyModeRows = [
+    { label: "Flashcards", minutes: weeklyModeMinutes.flashcards, icon: Layers },
+    { label: "AI Reading", minutes: weeklyModeMinutes.reading, icon: BookOpen },
+    { label: "AI Roleplay", minutes: weeklyModeMinutes.roleplay, icon: MessageCircle },
+  ];
+
+  const maxWeeklyModeMinutes = Math.max(...weeklyModeRows.map((item) => item.minutes), 1);
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -347,35 +781,7 @@ export default function LearningHub() {
               </section>
 
               <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-                {[
-                  {
-                    name: "Flashcards",
-                    desc: "Strengthen recall with active spaced repetition.",
-                    icon: Zap,
-                    index: 0,
-                    objective: "20 cards due today",
-                    progress: 65,
-                    eta: "12 min",
-                  },
-                  {
-                    name: "AI Reading",
-                    desc: "Build comprehension with contextual short passages.",
-                    icon: BookMarked,
-                    index: 1,
-                    objective: "2 passages planned",
-                    progress: 50,
-                    eta: "15 min",
-                  },
-                  {
-                    name: "AI Roleplay",
-                    desc: "Practice natural speaking in guided scenarios.",
-                    icon: MessageCircle,
-                    index: 2,
-                    objective: "1 dialogue scenario",
-                    progress: 0,
-                    eta: "18 min",
-                  },
-                ].map((mode) => (
+                {modeCards.map((mode) => (
                   <article
                     key={mode.name}
                     className="group flex h-full flex-col rounded-3xl border bg-card p-5 transition-all duration-300 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10 sm:p-6"
@@ -416,34 +822,32 @@ export default function LearningHub() {
               </section>
 
               <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr,0.8fr]">
-                <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-heading font-bold">Mode balance this week</h2>
-                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                      On track
-                    </span>
-                  </div>
-                  <div className="space-y-4">
-                    {[
-                      { label: "Flashcards", minutes: 74, icon: Layers },
-                      { label: "AI Reading", minutes: 68, icon: BookOpen },
-                      { label: "AI Roleplay", minutes: 62, icon: MessageCircle },
-                    ].map((item) => (
-                      <div key={item.label} className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-2 font-medium">
-                            <item.icon className="h-4 w-4 text-primary" />
-                            {item.label}
-                          </span>
-                          <span className="text-muted-foreground">{item.minutes} min</span>
+                  <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-heading font-bold">Mode balance this week</h2>
+                      <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                        Synced
+                      </span>
+                    </div>
+                    <div className="space-y-4">
+                      {weeklyModeRows.map((item) => (
+                        <div key={item.label} className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="flex items-center gap-2 font-medium leading-none">
+                              <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
+                                <item.icon className="h-3.5 w-3.5 text-primary" />
+                              </span>
+                              {item.label}
+                            </span>
+                           <span className="text-muted-foreground">{item.minutes} min</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                            <div
+                              className="h-full rounded-full bg-primary/80"
+                              style={{ width: `${Math.round((item.minutes / maxWeeklyModeMinutes) * 100)}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                          <div
-                            className="h-full rounded-full bg-primary/80"
-                            style={{ width: `${Math.min(item.minutes, 80)}%` }}
-                          />
-                        </div>
-                      </div>
                     ))}
                   </div>
                 </div>
@@ -451,21 +855,37 @@ export default function LearningHub() {
                 <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6">
                   <h2 className="text-xl font-heading font-bold">Recent activity</h2>
                   <div className="space-y-3">
-                    {[
-                      { time: "2h ago", action: "Completed 15 flashcards", icon: CheckCircle2 },
-                      { time: "5h ago", action: "Finished one reading passage", icon: BookOpen },
-                      { time: "Yesterday", action: "Practiced cafe dialogue", icon: MessageCircle },
-                    ].map((activity) => (
-                      <div key={activity.action} className="flex items-start gap-3 rounded-2xl border bg-background p-3">
-                        <div className="mt-0.5 rounded-xl bg-primary/10 p-2">
-                          <activity.icon className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium">{activity.action}</p>
-                          <p className="text-xs text-muted-foreground">{activity.time}</p>
-                        </div>
-                      </div>
-                    ))}
+                    {recentActivity.length > 0 ? (
+                      recentActivity.map((activity) => {
+                        const ActivityIcon =
+                          activity.mode === "flashcards"
+                            ? CheckCircle2
+                            : activity.mode === "reading"
+                              ? BookOpen
+                              : MessageCircle;
+
+                        return (
+                          <div
+                            key={activity.id}
+                            className="flex items-center gap-3 rounded-2xl border bg-background p-3"
+                          >
+                            <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                              <ActivityIcon className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium">{activity.action}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatRelativeTime(activity.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="rounded-2xl border bg-background p-3 text-sm text-muted-foreground">
+                        No activity yet. Start a session to sync your progress.
+                      </p>
+                    )}
                   </div>
                 </div>
               </section>
@@ -476,13 +896,13 @@ export default function LearningHub() {
                   return (
                     <div
                       key={item.label}
-                      className="rounded-2xl border bg-card p-4 transition-colors duration-300 hover:border-primary/30"
+                      className="rounded-2xl border bg-card p-4 text-left transition-colors duration-300 hover:border-primary/30"
                     >
-                      <div className="mb-3 flex items-start justify-between">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                      <div className="mb-3 flex items-center justify-between">
+                        <div className="-ml-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                           <Icon className="h-5 w-5 text-primary" />
                         </div>
-                        <TrendingUp className="h-4 w-4 text-primary" />
+                        <TrendingUp className="h-4 w-4 shrink-0 text-primary" />
                       </div>
                       <p className="text-2xl font-heading font-bold">{item.value}</p>
                       <p className="text-xs text-muted-foreground">{item.label}</p>
@@ -518,97 +938,136 @@ export default function LearningHub() {
 
           <div className="flow-shell" ref={flowContainerRef}>
             {/* Slide 1: Flashcards */}
-            <section 
-              ref={el => slideRefs.current[0] = el}
+            <section
+              ref={(el) => (slideRefs.current[0] = el)}
               className="flow-slide flex flex-col items-center justify-center px-5 pt-24 pb-32 sm:px-8 sm:py-10 bg-gradient-to-b from-background to-secondary/10"
             >
-              <div className="w-full max-w-3xl space-y-8 sm:space-y-14 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="text-center space-y-3">
-                  <h2 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight">Flashcards</h2>
-                  <p className="text-muted-foreground">Session progress: 8 of 24 cards</p>
-                </div>
-                
-                <div className="relative aspect-[4/3] sm:aspect-[16/10] group perspective-1000">
-                  <div className="absolute inset-0 bg-primary/20 blur-3xl opacity-20 -z-10" />
-                  <button
-                    type="button"
-                    onClick={() => setIsFlashcardFlipped((prev) => !prev)}
-                    onKeyDown={(event) => {
-                      if (event.key === " " || event.key === "Spacebar") {
-                        event.preventDefault();
-                        setIsFlashcardFlipped((prev) => !prev);
-                      }
-                    }}
-                    className="relative w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-6 sm:p-12 text-center transition-all duration-500 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 overflow-hidden"
-                    aria-label="Flip flashcard"
-                    aria-pressed={isFlashcardFlipped}
-                  >
+              <div className="w-full max-w-3xl animate-in fade-in slide-in-from-bottom-8 duration-700">
+                {dueCards.length > 0 ? (
+                  <div className="space-y-8 sm:space-y-14">
+                    <div className="relative aspect-[4/3] sm:aspect-[16/10] group perspective-1000">
+                      <div className="absolute inset-0 bg-primary/20 blur-3xl opacity-20 -z-10" />
+                      <button
+                        type="button"
+                        onClick={() => setIsFlashcardFlipped((prev) => !prev)}
+                        className="relative w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-6 sm:p-12 text-center transition-all duration-500 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 overflow-hidden"
+                        aria-label="Flip flashcard"
+                        aria-pressed={isFlashcardFlipped}
+                      >
+                        <div
+                          className={`absolute inset-0 flex flex-col items-center justify-center ${
+                            skipTransition ? "" : "transition-opacity duration-300"
+                          } ${isFlashcardFlipped ? "opacity-0" : "opacity-100"}`}
+                        >
+                          <div className="relative w-full h-full flex flex-col items-center justify-center gap-8">
+                            <span className="text-7xl sm:text-9xl font-bold tracking-tighter">
+                              {currentCard.s}
+                            </span>
+                            <div className="px-4 text-center">
+                              <p className="text-lg sm:text-2xl font-medium leading-relaxed max-w-xl">
+                                <ChineseTooltipText 
+                                  text={currentCard.n.includes("HSK") ? `这是关于${currentCard.s}的一个例子。` : currentCard.n} 
+                                  highlightText={currentCard.s}
+                                />
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div
+                          className={`absolute inset-0 flex flex-col items-center justify-center ${
+                            skipTransition ? "" : "transition-opacity duration-300"
+                          } ${isFlashcardFlipped ? "opacity-100" : "opacity-0"}`}
+                        >
+                          <div className="flex flex-col items-center gap-6 sm:gap-10">
+                            <div className="space-y-1 text-center">
+                              <span className="text-2xl sm:text-4xl font-bold tracking-tight block text-muted-foreground">
+                                {currentCard.p}
+                              </span>
+                              <span className="text-xl sm:text-3xl font-medium max-w-md block text-muted-foreground">
+                                {currentCard.e}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+
                     <div
-                      className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${
-                        isFlashcardFlipped ? "opacity-0" : "opacity-100"
+                      className={`grid grid-cols-4 gap-4 transition-all duration-300 ${
+                        isFlashcardFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
                       }`}
                     >
-                      <div className="relative w-full h-full">
-                        <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[calc(100%+4.5rem)] sm:-translate-y-[calc(100%+5.5rem)] text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-                          Character
-                        </p>
-                        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-6xl sm:text-9xl font-bold tracking-tighter">
-                          你好
-                        </span>
-                      </div>
+                      {[
+                        { label: "Again", rating: 1 },
+                        { label: "Hard", rating: 2 },
+                        { label: "Good", rating: 3 },
+                        { label: "Easy", rating: 4 },
+                      ].map((item, idx) => (
+                        <button
+                          key={item.label}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRate(item.rating as SRSRating);
+                          }}
+                          className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-2xl border bg-card hover:border-primary/30 hover:bg-secondary transition-all"
+                        >
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                            {idx + 1}
+                          </span>
+                          <span className="font-bold">{item.label}</span>
+                        </button>
+                      ))}
                     </div>
-                    <div
-                      className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${
-                        isFlashcardFlipped ? "opacity-100" : "opacity-0"
-                      }`}
-                    >
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground mb-6 sm:mb-12">
-                          Meaning
-                        </p>
-                        <span className="text-3xl sm:text-6xl font-bold tracking-tight mb-3">
-                          Hello
-                        </span>
-                        <span className="text-base sm:text-2xl text-muted-foreground font-medium">
-                          nǐ hǎo
-                        </span>
-                      </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center space-y-6">
+                    <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-10 w-10 text-primary" />
                     </div>
-                  </button>
-                </div>
-
-                <div className="hidden sm:grid sm:grid-cols-4 gap-4">
-                  {["Again", "Hard", "Good", "Easy"].map((label, idx) => (
-                    <button
-                      key={label}
-                      className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-2xl border bg-card hover:border-primary/30 hover:bg-secondary transition-all"
-                    >
-                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{idx + 1}</span>
-                      <span className="font-bold">{label}</span>
-                    </button>
-                  ))}
-                </div>
+                    <div className="text-center">
+                      <h3 className="text-2xl font-bold mb-2">You're all caught up!</h3>
+                      <p className="text-muted-foreground">Come back later for your next reviews.</p>
+                    </div>
+                    <Button onClick={() => setActiveFlowIndex(1)} variant="outline" className="rounded-full">
+                      Continue to Reading <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
-              <div
-                className={`fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-2 backdrop-blur transition-opacity sm:hidden ${
-                  activeFlowIndex === 0 ? "opacity-100" : "pointer-events-none opacity-0"
-                }`}
-              >
-                <div className="mx-auto grid max-w-md grid-cols-4 gap-2">
-                  {["Again", "Hard", "Good", "Easy"].map((label, idx) => (
-                    <button
-                      key={`mobile-${label}`}
-                      className="flex flex-col items-center gap-1 rounded-xl border bg-card px-2 py-2 hover:border-primary/30 hover:bg-secondary transition-all"
-                    >
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
-                        {idx + 1}
-                      </span>
-                      <span className="text-xs font-bold">{label}</span>
-                    </button>
-                  ))}
+              {/* Mobile controls inside the slide when cards are present */}
+              {dueCards.length > 0 && (
+                <div
+                  className={`fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-2 backdrop-blur transition-all duration-300 sm:hidden ${
+                    activeFlowIndex === 0 && isFlashcardFlipped
+                      ? "translate-y-0 opacity-100"
+                      : "translate-y-full opacity-0 pointer-events-none"
+                  }`}
+                >
+                  <div className="mx-auto grid max-w-md grid-cols-4 gap-2">
+                    {[
+                      { label: "Again", rating: 1 },
+                      { label: "Hard", rating: 2 },
+                      { label: "Good", rating: 3 },
+                      { label: "Easy", rating: 4 },
+                    ].map((item, idx) => (
+                      <button
+                        key={`mobile-${item.label}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRate(item.rating as SRSRating);
+                        }}
+                        className="flex flex-col items-center gap-1 rounded-xl border bg-card px-2 py-2 hover:border-primary/30 hover:bg-secondary transition-all"
+                      >
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs font-bold">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </section>
 
             {/* Slide 2: AI Reading */}
@@ -626,10 +1085,13 @@ export default function LearningHub() {
                   <div className="order-1 space-y-8 lg:order-1 lg:col-span-2">
                     <article className="max-h-[72vh] overflow-y-auto p-6 sm:max-h-none sm:overflow-visible sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card shadow-xl leading-relaxed text-base sm:text-2xl space-y-6 sm:space-y-9">
                       <h3 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 font-heading">
-                        <ChineseTooltipText text="每日阅读" />
+                        <ChineseTooltipText text={readingContent.titleZh} />
                       </h3>
+                      <p className="-mt-3 text-sm font-medium tracking-wide text-muted-foreground sm:text-base">
+                        {readingContent.titleEn}
+                      </p>
                       <p>
-                        <ChineseTooltipText text={readingPrompt} />
+                        <ChineseTooltipText text={readingContent.text} />
                       </p>
                       {isReadingPromptLoading && (
                         <p className="text-sm text-muted-foreground">Generating today's prompt...</p>
@@ -640,16 +1102,32 @@ export default function LearningHub() {
                           <h3 className="font-bold text-lg">Context Quiz</h3>
                           <div className="p-4 rounded-2xl bg-secondary/50 border space-y-4">
                             <p className="text-sm font-medium leading-relaxed">
-                              The speaker never talks with people at the market.
+                              This passage is written in Chinese.
                             </p>
                             <div className="flex gap-2">
-                              <Button variant="outline" className="flex-1 rounded-xl">
+                              <Button
+                                variant="outline"
+                                className="flex-1 rounded-xl"
+                                onClick={() => handleReadingQuizAnswer(true)}
+                              >
                                 True
                               </Button>
-                              <Button variant="outline" className="flex-1 rounded-xl">
+                              <Button
+                                variant="outline"
+                                className="flex-1 rounded-xl"
+                                onClick={() => handleReadingQuizAnswer(false)}
+                              >
                                 False
                               </Button>
                             </div>
+                            {readingQuizStatus === "correct" && (
+                              <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                Correct. Words read were added to your stats.
+                              </p>
+                            )}
+                            {readingQuizStatus === "incorrect" && (
+                              <p className="text-xs text-destructive">Not quite. Try again.</p>
+                            )}
                           </div>
                         </div>
 
@@ -675,11 +1153,31 @@ export default function LearningHub() {
                       <h3 className="font-bold text-lg sm:text-xl">Context Quiz</h3>
                       <div className="space-y-4">
                         <div className="p-5 rounded-2xl bg-secondary/50 border space-y-4">
-                          <p className="text-sm font-medium leading-relaxed">The speaker never talks with people at the market.</p>
+                          <p className="text-sm font-medium leading-relaxed">This passage is written in Chinese.</p>
                           <div className="flex gap-2">
-                            <Button variant="outline" className="flex-1 rounded-xl">True</Button>
-                            <Button variant="outline" className="flex-1 rounded-xl">False</Button>
+                            <Button
+                              variant="outline"
+                              className="flex-1 rounded-xl"
+                              onClick={() => handleReadingQuizAnswer(true)}
+                            >
+                              True
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="flex-1 rounded-xl"
+                              onClick={() => handleReadingQuizAnswer(false)}
+                            >
+                              False
+                            </Button>
                           </div>
+                          {readingQuizStatus === "correct" && (
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                              Correct. Words read were added to your stats.
+                            </p>
+                          )}
+                          {readingQuizStatus === "incorrect" && (
+                            <p className="text-xs text-destructive">Not quite. Try again.</p>
+                          )}
                         </div>
                       </div>
                     </div>

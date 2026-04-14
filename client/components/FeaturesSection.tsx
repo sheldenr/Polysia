@@ -37,7 +37,7 @@ export default function FeaturesSection() {
           <div className="mb-12">
             <h2 className="mb-6 text-4xl font-heading font-bold text-foreground sm:text-5xl lg:text-6xl tracking-tight leading-[1.1]">
               Your all-in-one{" "}
-              <span className="font-serif italic text-primary">
+              <span className="font-serif italic text-primary tracking-[0.015em]">
                 Chinese learning hub.
               </span>
             </h2>
@@ -99,8 +99,9 @@ export default function FeaturesSection() {
 
                 <div className="p-4 rounded-xl bg-secondary/50 border border-border/50 text-left mb-8">
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    "你好" (nǐ hǎo) means "hello," a core Mandarin greeting used
-                    in everyday conversation.
+                    Use when greeting someone politely in most
+                    everyday situations, especially with people you do not know
+                    well.
                   </p>
                 </div>
               </div>

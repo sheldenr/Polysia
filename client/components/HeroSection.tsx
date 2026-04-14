@@ -33,17 +33,10 @@ export default function HeroSection() {
       />
 
       <div className="relative z-10 mx-auto max-w-6xl text-center">
-        {/* Animated Top Label */}
-        <div className="mb-6 flex justify-center">
-          <div className="inline-flex items-center rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider border border-primary/20 bg-primary/5 text-primary animate-pulse">
-            start learning now
-          </div>
-        </div>
-
         {/* Main Heading */}
         <h1 className="text-5xl sm:text-6xl lg:text-8xl font-heading font-bold mb-6 leading-[1.1] tracking-tight text-foreground">
           Learn Chinese with{" "}
-          <span className="font-serif italic text-primary">confidence.</span>
+          <span className="font-serif italic text-primary tracking-[0.015em]">confidence.</span>
         </h1>
 
         {/* Subheading */}

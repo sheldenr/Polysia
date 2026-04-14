@@ -9,7 +9,6 @@ export default function WhyChooseSection() {
       icon: MessageCircle,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
-      badge: "1",
     },
     {
       title: "AI Explanations",
@@ -18,7 +17,6 @@ export default function WhyChooseSection() {
       icon: Lightbulb,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
-      badge: "2",
     },
     {
       title: "Spaced-Repetition Reviews",
@@ -27,7 +25,6 @@ export default function WhyChooseSection() {
       icon: TrendingUp,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
-      badge: "3",
     },
     {
       title: "Cultural + Context Notes",
@@ -36,7 +33,6 @@ export default function WhyChooseSection() {
       icon: Globe,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
-      badge: "4",
     },
   ];
 
@@ -53,7 +49,7 @@ export default function WhyChooseSection() {
           </div>
           <h2 className="text-4xl sm:text-6xl font-heading font-bold mb-6 tracking-tight text-foreground lg:max-w-3x1">
             What makes Polysia a better way to{" "}
-            <span className="font-serif italic text-primary">
+            <span className="font-serif italic text-primary tracking-[0.015em]">
               learn Chinese?
             </span>
           </h2>
@@ -74,10 +70,6 @@ export default function WhyChooseSection() {
                 <div 
                   className={`absolute inset-0 bg-gradient-to-br ${reason.color} opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none`} 
                 />
-
-                <div className="absolute right-5 top-5 text-xs font-semibold tracking-[0.22em] text-muted-foreground/70">
-                  {reason.badge}
-                </div>
 
                 <div className="relative z-10 flex h-full flex-col items-center text-center">
                   <div className="mb-5 flex h-12 w-12 items-center justify-center bg-transparent transition-all duration-500 group-hover:scale-110">

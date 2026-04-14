@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, useLayoutEffect } from "react";
-import { Moon, Sun, Github, X } from "lucide-react";
+import { Github, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -11,18 +11,6 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { isAuthenticated } = useAuth();
   const [showBetaBanner, setShowBetaBanner] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    const savedTheme = window.localStorage.getItem("theme");
-    const shouldUseDark = savedTheme ? savedTheme === "dark" : false;
-    setIsDarkMode(shouldUseDark);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDarkMode);
-    window.localStorage.setItem("theme", isDarkMode ? "dark" : "light");
-  }, [isDarkMode]);
 
   useLayoutEffect(() => {
     const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
@@ -115,11 +103,11 @@ export default function Layout({ children }: LayoutProps) {
         current = current.parentElement;
       }
 
-      return isDarkMode ? "rgb(9, 9, 11)" : "rgb(255, 255, 255)";
+      return "rgb(255, 255, 255)";
     };
 
     if (targets.length === 0) {
-      const fallback = isDarkMode ? "rgb(9, 9, 11)" : "rgb(255, 255, 255)";
+      const fallback = "rgb(255, 255, 255)";
       document.documentElement.style.backgroundColor = fallback;
       document.body.style.backgroundColor = fallback;
       return;
@@ -145,9 +133,7 @@ export default function Layout({ children }: LayoutProps) {
 
       const color = nearest
         ? resolveBackgroundColor(nearest)
-        : isDarkMode
-          ? "rgb(9, 9, 11)"
-          : "rgb(255, 255, 255)";
+        : "rgb(255, 255, 255)";
 
       document.documentElement.style.backgroundColor = color;
       document.body.style.backgroundColor = color;
@@ -174,7 +160,7 @@ export default function Layout({ children }: LayoutProps) {
       window.removeEventListener("scroll", requestSync);
       window.removeEventListener("resize", requestSync);
     };
-  }, [isDarkMode]);
+  }, []);
 
   return (
     <div className="site-animations flex min-h-screen flex-col bg-background text-foreground transition-colors duration-300">
@@ -245,19 +231,6 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* Right Side - Auth actions */}
             <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsDarkMode((prev) => !prev)}
-                className="rounded-full"
-                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {isDarkMode ? (
-                  <Sun className="w-5 h-5 text-yellow-500" />
-                ) : (
-                  <Moon className="w-5 h-5 text-primary" />
-                )}
-              </Button>
               {isAuthenticated ? (
                 <Button asChild className="rounded-full">
                   <Link to="/learning-hub">Learning Hub</Link>

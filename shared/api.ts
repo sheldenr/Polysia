@@ -33,6 +33,8 @@ export interface DeepSeekV3Response {
 }
 
 export interface DeepSeekReadingPromptResponse {
-  prompt: string;
+  titleZh: string;
+  titleEn: string;
+  text: string;
   model: string;
 }

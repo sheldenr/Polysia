@@ -26,7 +26,7 @@ export default function Settings() {
           </Button>
           <h1 className="text-3xl font-heading font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">
-            Manage your profile, notifications, and account preferences.
+            Manage your profile, sign out, and switch your theme.
           </p>
         </div>
         <div className="rounded-3xl border border-border/70 bg-card/80 p-6 shadow-sm backdrop-blur-sm sm:p-10 lg:p-12">
