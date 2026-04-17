@@ -789,7 +789,7 @@ export default function LearningHub() {
               <div className="flex items-center gap-4">
                 <Link to="/" className="flex items-center gap-2">
                   <img src="/logo only.svg" alt="Polysia" className="h-8 w-8" />
-                  <span className="font-heading font-bold text-xl tracking-tight hidden sm:inline">
+                  <span className="font-heading text-xl tracking-tight hidden sm:inline">
                     Polysia
                   </span>
                 </Link>
@@ -797,7 +797,7 @@ export default function LearningHub() {
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
                   <Flame className="w-4 h-4 text-primary fill-primary" />
-                  <span className="text-xs font-bold text-primary">{streakDays} days</span>
+                  <span className="text-xs text-primary">{streakDays} days</span>
                 </div>
                 <button
                   onClick={() => setIsDarkMode(!isDarkMode)}
@@ -820,7 +820,7 @@ export default function LearningHub() {
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="mx-auto max-w-7xl space-y-6 sm:space-y-8">
               <section className="space-y-3 pt-2">
-                <h1 className="text-3xl font-heading font-bold tracking-tight sm:text-5xl">
+                <h1 className="text-3xl font-heading tracking-tight sm:text-5xl">
                   Start your learning session
                 </h1>
                 <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
@@ -839,7 +839,7 @@ export default function LearningHub() {
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
                           <mode.icon className="h-5 w-5 text-primary" />
                         </div>
-                        <h3 className="text-2xl font-heading font-bold">{mode.name}</h3>
+                        <h3 className="text-2xl font-heading">{mode.name}</h3>
                       </div>
                       <span className="rounded-full border bg-background px-3 py-1 text-xs font-semibold text-muted-foreground">
                         {mode.eta}
@@ -872,7 +872,7 @@ export default function LearningHub() {
               <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr,0.8fr]">
                   <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-heading font-bold">Mode balance this week</h2>
+                      <h2 className="text-xl font-heading">Mode balance this week</h2>
                       <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                         Synced
                       </span>
@@ -901,7 +901,7 @@ export default function LearningHub() {
                 </div>
 
                 <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6">
-                  <h2 className="text-xl font-heading font-bold">Recent activity</h2>
+                  <h2 className="text-xl font-heading">Recent activity</h2>
                   <div className="space-y-3">
                     {recentActivity.length > 0 ? (
                       recentActivity.map((activity) => {
@@ -952,7 +952,7 @@ export default function LearningHub() {
                         </div>
                         <TrendingUp className="h-4 w-4 shrink-0 text-primary" />
                       </div>
-                      <p className="text-2xl font-heading font-bold">{item.value}</p>
+                      <p className="text-2xl font-heading">{item.value}</p>
                       <p className="text-xs text-muted-foreground">{item.label}</p>
                     </div>
                   );
@@ -980,7 +980,7 @@ export default function LearningHub() {
             </button>
             <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border bg-background/80 backdrop-blur-md shadow-lg">
               <img src="/logo only.svg" alt="Polysia" className="h-5 w-5" />
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Learning Session</span>
+              <span className="text-xs uppercase tracking-widest text-muted-foreground">Learning Session</span>
             </div>
           </div>
 
@@ -1008,7 +1008,7 @@ export default function LearningHub() {
                           } ${isFlashcardFlipped ? "opacity-0" : "opacity-100"}`}
                         >
                           <div className="relative w-full h-full flex flex-col items-center justify-center gap-8">
-                            <span className="text-7xl sm:text-9xl font-bold tracking-tighter">
+                            <span className="text-7xl sm:text-9xl tracking-tighter">
                               {currentCard.s}
                             </span>
                             <div className="px-4 text-center">
@@ -1028,7 +1028,7 @@ export default function LearningHub() {
                         >
                           <div className="flex flex-col items-center gap-6 sm:gap-10">
                             <div className="space-y-1 text-center">
-                              <span className="text-2xl sm:text-4xl font-bold tracking-tight block text-muted-foreground">
+                              <span className="text-2xl sm:text-4xl tracking-tight block text-muted-foreground">
                                 {currentCard.p}
                               </span>
                               <span className="text-xl sm:text-3xl font-medium max-w-md block text-muted-foreground">
@@ -1059,10 +1059,10 @@ export default function LearningHub() {
                           }}
                           className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-2xl border bg-card hover:border-primary/30 hover:bg-secondary transition-all"
                         >
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                          <span className="text-xs text-muted-foreground uppercase tracking-widest">
                             {idx + 1}
                           </span>
-                          <span className="font-bold">{item.label}</span>
+                          <span>{item.label}</span>
                         </button>
                       ))}
                     </div>
@@ -1073,7 +1073,7 @@ export default function LearningHub() {
                       <CheckCircle2 className="h-10 w-10 text-primary" />
                     </div>
                     <div className="text-center">
-                      <h3 className="text-2xl font-bold mb-2">You're all caught up!</h3>
+                      <h3 className="text-2xl mb-2">You're all caught up!</h3>
                       <p className="text-muted-foreground">Come back later for your next reviews.</p>
                     </div>
                     <Button onClick={() => setActiveFlowIndex(1)} variant="outline" className="rounded-full">
@@ -1107,10 +1107,10 @@ export default function LearningHub() {
                         }}
                         className="flex flex-col items-center gap-1 rounded-xl border bg-card px-2 py-2 hover:border-primary/30 hover:bg-secondary transition-all"
                       >
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
                           {idx + 1}
                         </span>
-                        <span className="text-xs font-bold">{item.label}</span>
+                        <span className="text-xs">{item.label}</span>
                       </button>
                     ))}
                   </div>
@@ -1125,14 +1125,14 @@ export default function LearningHub() {
             >
               <div className="w-full max-w-6xl space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center space-y-3">
-                  <h2 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight">AI Reading</h2>
+                  <h2 className="text-3xl sm:text-4xl font-heading tracking-tight">AI Reading</h2>
                   <p className="text-muted-foreground">Practice comprehension with context</p>
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-12 items-start">
                   <div className="order-1 space-y-8 lg:order-1 lg:col-span-2">
                     <article className="max-h-[72vh] overflow-y-auto p-6 sm:max-h-none sm:overflow-visible sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card shadow-xl leading-relaxed text-base sm:text-2xl space-y-6 sm:space-y-9">
-                      <h3 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 font-heading">
+                      <h3 className="text-2xl sm:text-4xl mb-4 sm:mb-8 font-heading">
                         <ChineseTooltipText text={readingContent.titleZh} />
                       </h3>
                       <p className="-mt-3 text-sm font-medium tracking-wide text-muted-foreground sm:text-base">
@@ -1147,7 +1147,7 @@ export default function LearningHub() {
 
                       <div className="space-y-6 border-t pt-6 sm:hidden">
                         <div className="space-y-4">
-                          <h3 className="font-bold text-lg">Context Quiz</h3>
+                          <h3 className="text-lg">Context Quiz</h3>
                           <div className="p-4 rounded-2xl bg-secondary/50 border space-y-4">
                             {readingContent.quiz.map((quizItem, quizIndex) => (
                               <div key={`mobile-reading-quiz-${quizIndex}`} className="space-y-2">
@@ -1195,7 +1195,7 @@ export default function LearningHub() {
 
                   <aside className="order-2 hidden space-y-6 sm:block sm:space-y-8 lg:order-2">
                     <div className="p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card space-y-4 sm:space-y-6">
-                      <h3 className="font-bold text-lg sm:text-xl">Context Quiz</h3>
+                      <h3 className="text-lg sm:text-xl">Context Quiz</h3>
                       <div className="space-y-4">
                         <div className="p-5 rounded-2xl bg-secondary/50 border space-y-4">
                           {readingContent.quiz.map((quizItem, quizIndex) => (
@@ -1250,7 +1250,7 @@ export default function LearningHub() {
             >
               <div className="w-full max-w-4xl space-y-7 sm:space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center">
-                  <h2 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight mb-2">AI Roleplay</h2>
+                  <h2 className="text-3xl sm:text-4xl font-heading tracking-tight mb-2">AI Roleplay</h2>
                   <p className="text-muted-foreground">Scenario: Ordering food at a Shanghai cafe.</p>
                 </div>
 

@@ -5,7 +5,7 @@ export default function Privacy() {
     <Layout>
       <section className="px-4 sm:px-6 lg:px-8 py-16 sm:py-20 transition-colors duration-300">
         <article className="max-w-2xl mx-auto">
-          <h1 className="text-center text-3xl sm:text-4xl font-bold text-black dark:text-zinc-100">
+          <h1 className="text-center text-3xl sm:text-4xl text-black dark:text-zinc-100">
             Privacy Policy
           </h1>
           <p className="mt-3 text-center text-base text-gray-500 dark:text-zinc-400">

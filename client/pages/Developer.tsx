@@ -5,7 +5,7 @@ export default function Developer() {
     <Layout>
       <section className="min-h-[70vh] px-6 py-20 sm:py-24">
         <div className="mx-auto max-w-3xl">
-          <h1 className="text-4xl font-heading font-bold tracking-tight text-foreground sm:text-5xl">
+          <h1 className="text-4xl font-heading tracking-tight text-foreground sm:text-5xl">
             Developer
           </h1>
           <p className="mt-3 text-muted-foreground">

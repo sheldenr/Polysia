@@ -78,7 +78,7 @@ export default function Login() {
                 className="w-16 h-16"
               />
             </Link>
-            <h1 className="text-4xl font-heading font-bold tracking-tight text-foreground">
+            <h1 className="text-4xl font-heading tracking-tight text-foreground">
               Welcome back
             </h1>
             <p className="text-muted-foreground">

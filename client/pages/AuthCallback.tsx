@@ -73,7 +73,7 @@ export default function AuthCallback() {
     <section className="min-h-screen bg-background px-4 sm:px-6 lg:px-8 py-8 transition-colors duration-300">
       <div className="mx-auto flex min-h-[80vh] max-w-7xl items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl font-heading tracking-tight text-foreground">
             Finishing sign in...
           </h1>
           <p className="mt-2 text-muted-foreground">Please wait while we complete Google authentication.</p>

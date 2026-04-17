@@ -168,13 +168,13 @@ export default function Layout({ children }: LayoutProps) {
       <div className="sticky top-0 z-50">
         {/* Top Notification Bar */}
         {showBetaBanner && (
-          <div className="w-full bg-black border-b border-white/10 px-6 py-2 text-sm text-white sm:px-4">
+          <div className="w-full bg-black dark:bg-primary border-b border-white/10 px-6 py-2 text-sm sm:px-4">
             <div className="mx-auto flex max-w-7xl items-center gap-3">
               <div className="min-w-0 flex-1">
                 <div className="marquee-viewport sm:hidden">
                   <div className="marquee-strip flex w-max items-center gap-10 pr-10 whitespace-nowrap">
                     <p className="m-0 inline-flex items-center text-white/90">
-                      <span className="font-bold">Note: </span>
+                      <span>Note: </span>
                       <span className="ml-1">
                         Polysia is currently in alpha. This is a
                         solo-development project, thanks for helping us improve.
@@ -184,7 +184,7 @@ export default function Layout({ children }: LayoutProps) {
                       className="m-0 inline-flex items-center text-white/90"
                       aria-hidden="true"
                     >
-                      <span className="font-bold">Note: </span>
+                      <span>Note: </span>
                       <span className="ml-1">
                         Polysia is currently in alpha. This is a
                         solo-development project, thanks for helping us improve.
@@ -193,7 +193,7 @@ export default function Layout({ children }: LayoutProps) {
                   </div>
                 </div>
                 <p className="hidden w-full text-center sm:block text-white/90">
-                  <span className="font-bold">Note: </span>
+                  <span>Note: </span>
                   Polysia is currently in alpha. This is a solo-development
                   project, thanks for helping us improve.
                 </p>

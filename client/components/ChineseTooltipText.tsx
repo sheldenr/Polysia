@@ -251,7 +251,6 @@ export default function ChineseTooltipText({
                 className={cn(
                   "inline-block px-[1px] -mx-[1px]",
                   isTouchDevice ? "cursor-pointer" : "cursor-help",
-                  isHighlighted && "font-bold",
                   characterClassName,
                 )}
                 onClick={(event) => {

@@ -186,7 +186,7 @@ export default function Onboarding() {
           <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-          <h1 className="text-3xl font-heading font-bold">Building your learning plan...</h1>
+          <h1 className="text-3xl font-heading">Building your learning plan...</h1>
           <p className="mt-3 text-muted-foreground">
             Setting up your daily path based on your goals and level.
           </p>
@@ -200,7 +200,7 @@ export default function Onboarding() {
       <div className="mx-auto flex min-h-[80vh] w-full max-w-2xl flex-col items-center justify-center">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <img src="/logo only.svg" alt="Polysia" className="h-12 w-12" />
-          <h1 className="text-3xl font-heading font-bold text-foreground">Onboarding</h1>
+          <h1 className="text-3xl font-heading text-foreground">Onboarding</h1>
           <p className="text-sm text-muted-foreground">Question {activeStep + 1} of {steps.length}</p>
         </div>
 

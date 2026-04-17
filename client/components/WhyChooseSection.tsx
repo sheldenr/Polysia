@@ -3,33 +3,30 @@ import { Globe, Lightbulb, MessageCircle, TrendingUp } from "lucide-react";
 export default function WhyChooseSection() {
   const reasons = [
     {
-      title: "Real-World Mandarin",
-      description:
-        "Practice useful Chinese for travel, work, and everyday conversations.",
+      title: "Authentic Conversations",
+      description: "Learn with authentic dialogues you can use in real life",
       icon: MessageCircle,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
     },
     {
-      title: "AI Explanations",
-      description:
-        "Get instant feedback on vocabulary, meaning, and natural usage.",
+      title: "Intelligent Feedback",
+      description: "AI-powered insights tailored to your learning pace",
       icon: Lightbulb,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
     },
     {
-      title: "Spaced-Repetition Reviews",
+      title: "Track Progress",
       description:
-        "Review words at the right time to improve long-term retention.",
+        "See measurable improvements with our comprehensive analytics",
       icon: TrendingUp,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
     },
     {
-      title: "Cultural + Context Notes",
-      description:
-        "Learn when and why native speakers choose specific words and phrases.",
+      title: "Cultural Context",
+      description: "Understand language beyond flat objective translations",
       icon: Globe,
       color: "from-primary/10 to-primary/5",
       iconColor: "text-primary",
@@ -43,42 +40,42 @@ export default function WhyChooseSection() {
         <div className="mb-16 sm:mb-20">
           <div className="flex items-center gap-2 mb-4">
             <div className="h-1 w-8 bg-primary rounded-full" />
-            <span className="text-xs font-bold tracking-widest uppercase text-muted-foreground">
-              Why Polysia
+            <span className="text-xs tracking-widest uppercase text-muted-foreground">
+              Philosophy
             </span>
           </div>
-          <h2 className="text-4xl sm:text-6xl font-heading font-bold mb-6 tracking-tight text-foreground lg:max-w-3x1">
-            What makes Polysia a better way to{" "}
-            <span className="font-serif italic text-primary tracking-[0.015em]">
-              learn Chinese?
-            </span>
+          <h2 className="text-4xl sm:text-6xl font-heading mb-6 tracking-tight text-foreground lg:max-w-3x1">
+            Language learning reimagined for{" "}
+            <span className="font-serif italic text-primary">efficiency.</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
-            Polysia combines AI guidance with proven memory science so you can
-            build practical Mandarin skills faster and retain more over time.
+            Our approach combines modern cognitive science with cutting-edge AI to
+            create an immersive, intuitive experience that fits into your life.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+        {/* Grid of Reasons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {reasons.map((reason, index) => {
             const Icon = reason.icon;
             return (
               <div
                 key={index}
-                className="group relative overflow-hidden rounded-3xl border border-border/70 bg-card px-6 py-7 sm:px-8 sm:py-9 transition-all duration-500 hover:-translate-y-1 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/10"
+                className="group relative flex flex-col p-6 rounded-2xl border border-border bg-card hover:border-primary/20 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500"
               >
-                <div 
-                  className={`absolute inset-0 bg-gradient-to-br ${reason.color} opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none`} 
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${reason.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl pointer-events-none`}
                 />
 
-                <div className="relative z-10 flex h-full flex-col items-center text-center">
-                  <div className="mb-5 flex h-12 w-12 items-center justify-center bg-transparent transition-all duration-500 group-hover:scale-110">
-                    <Icon className={`h-6 w-6 ${reason.iconColor}`} strokeWidth={2} />
+                <div className="relative z-10">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-background mb-6 group-hover:scale-110 transition-all duration-500">
+                    <Icon className={`w-6 h-6 ${reason.iconColor}`} strokeWidth={2} />
                   </div>
-                  <h3 className="mb-3 text-xl font-bold tracking-tight text-foreground">
+
+                  <h3 className="text-lg mb-3 text-foreground tracking-tight">
                     {reason.title}
                   </h3>
-                  <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+                  <p className="text-muted-foreground text-sm leading-relaxed">
                     {reason.description}
                   </p>
                 </div>

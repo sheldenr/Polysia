@@ -19,7 +19,7 @@ export default function PlaceholderPage({
           <div className="inline-flex items-center justify-center w-20 h-20 mb-8 rounded-3xl bg-primary/10 text-primary">
             <span className="text-5xl">🚀</span>
           </div>
-          <h1 className="text-4xl sm:text-6xl font-heading font-bold mb-6 tracking-tight text-foreground">
+          <h1 className="text-4xl sm:text-6xl font-heading mb-6 tracking-tight text-foreground">
             {title}
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground mb-12 leading-relaxed">

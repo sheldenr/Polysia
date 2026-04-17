@@ -18,10 +18,10 @@ const NotFound = () => {
     <Layout>
       <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 py-24 transition-colors duration-300">
         <div className="text-center max-w-md mx-auto">
-          <h1 className="text-8xl sm:text-9xl font-heading font-bold mb-6 tracking-tighter text-primary/20 select-none">
+          <h1 className="text-8xl sm:text-9xl font-heading mb-6 tracking-tighter text-primary/20 select-none">
             404
           </h1>
-          <h2 className="text-3xl font-heading font-bold mb-4 tracking-tight text-foreground">
+          <h2 className="text-3xl font-heading mb-4 tracking-tight text-foreground">
             Page not found
           </h2>
           <p className="text-muted-foreground mb-12 text-lg">

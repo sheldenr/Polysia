@@ -42,7 +42,7 @@ export default function FAQSection() {
       <div className="mx-auto max-w-6xl flex flex-col lg:flex-row gap-12 lg:gap-24 relative z-10">
         {/* Left Side: Heading and Subtext */}
         <div className="w-full lg:w-1/3">
-          <h2 className="text-3xl font-heading font-bold text-foreground sm:text-4xl mb-4 leading-tight">
+          <h2 className="text-3xl font-heading text-foreground sm:text-4xl mb-4 leading-tight">
             Frequently Asked{" "}
             <span className="font-serif italic block text-primary tracking-[0.015em]">questions</span>
           </h2>
@@ -60,7 +60,7 @@ export default function FAQSection() {
                 value={`item-${index}`}
                 className="border-b border-zinc-200 dark:border-white/10 bg-transparent rounded-none transition-colors duration-200 hover:bg-zinc-50/50 dark:hover:bg-white/[0.02]"
               >
-                <AccordionTrigger className="px-0 py-6 text-xl font-bold text-foreground hover:no-underline hover:text-primary transition-all duration-200 group-data-[state=open]:text-primary">
+                <AccordionTrigger className="px-0 py-6 text-xl text-foreground hover:no-underline hover:text-primary transition-all duration-200 group-data-[state=open]:text-primary">
                   {faq.question}
                 </AccordionTrigger>
                 <AccordionContent className="px-0 pb-8 text-foreground/70 leading-relaxed text-[16px]">

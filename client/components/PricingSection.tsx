@@ -104,7 +104,7 @@ export default function PricingSection() {
 
       <div className="mx-auto max-w-5xl">
         <div className="mb-16 text-center">
-          <h2 className="mb-4 text-3xl font-heading font-bold text-foreground sm:text-4xl lg:text-5xl">
+          <h2 className="mb-4 text-3xl font-heading text-foreground sm:text-4xl lg:text-5xl">
             Simple, Transparent{" "}
             <span className="font-serif italic text-primary tracking-[0.015em]">
               Pricing
@@ -119,22 +119,22 @@ export default function PricingSection() {
           {plans.map((plan) => (
             <div
               key={plan.id}
-              className={`relative flex flex-col rounded-3xl border bg-card p-8 ${
+              className={`relative flex flex-col overflow-hidden rounded-3xl border bg-card p-8 ${
                 plan.popular
                   ? "border-primary ring-1 ring-primary/30 shadow-2xl shadow-primary/10"
                   : "border-border"
               }`}
             >
               {plan.popular && (
-                <div className="absolute right-0 top-0 rounded-bl-lg bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground">
+                <div className="absolute right-0 top-0 rounded-bl-lg bg-primary px-3 py-1 text-[10px] uppercase tracking-widest text-primary-foreground">
                   Most Popular
                 </div>
               )}
 
               <div className="mb-8">
-                <h3 className="mb-2 text-xl font-bold text-foreground">{plan.name}</h3>
+                <h3 className="mb-2 text-xl text-foreground">{plan.name}</h3>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-primary">{plan.price}</span>
+                  <span className="text-4xl text-primary">{plan.price}</span>
                   <span className="text-sm font-medium text-muted-foreground">{plan.period}</span>
                 </div>
                 <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -158,7 +158,7 @@ export default function PricingSection() {
                 variant={plan.popular ? "default" : "outline"}
                 disabled={activeCheckoutPlan !== null}
                 onClick={() => void handleCheckout(plan.id)}
-                className={`w-full rounded-xl py-6 text-base font-bold ${
+                className={`w-full rounded-xl py-6 text-base ${
                   plan.popular
                     ? "shadow-lg shadow-primary/20"
                     : "border-border text-foreground hover:bg-secondary/50"
