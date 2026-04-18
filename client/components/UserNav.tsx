@@ -8,7 +8,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Settings } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Settings01Icon, Logout01Icon } from "@hugeicons/core-free-icons";
 import { Link, useNavigate } from "react-router-dom";
 
 export function UserNav() {
@@ -28,7 +29,7 @@ export function UserNav() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-          <Settings className="h-5 w-5" />
+          <HugeiconsIcon icon={Settings01Icon} className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -43,12 +44,12 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link to="/settings">
-            <Settings className="mr-2 h-4 w-4" />
+            <HugeiconsIcon icon={Settings01Icon} className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
+          <HugeiconsIcon icon={Logout01Icon} className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

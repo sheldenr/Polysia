@@ -6,9 +6,7 @@ export default {
   prefix: "",
   theme: {
     fontFamily: {
-      sans: ["Inter", "sans-serif"],
-      serif: ["Playfair Display", "serif"],
-      heading: ["Instrument Sans Variable", "sans-serif"],
+      serif: ["Georgia", "Cambria", '"Times New Roman"', "Times", "serif"],
     },
     container: {
       center: true,

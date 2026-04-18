@@ -25,8 +25,8 @@ export default function CharacterScroller() {
   );
 
   return (
-    <section className="w-full overflow-hidden bg-secondary/20 py-12 transition-colors duration-300">
-      <div className="marquee-viewport py-2">
+    <section className="w-full overflow-hidden bg-secondary/20 pb-8 pt-4 transition-colors duration-300 sm:pb-10 sm:pt-6">
+      <div className="marquee-viewport py-0">
         <div className="marquee-strip flex w-max items-center">
           {renderTrack("primary")}
           {renderTrack("clone")}

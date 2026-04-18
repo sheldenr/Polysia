@@ -6,7 +6,7 @@ export default function HeroSection() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <section className="dark-gradient-dither relative isolate w-full overflow-hidden px-6 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
+    <section className="dark-gradient-dither relative isolate w-full overflow-hidden px-6 pb-8 pt-16 sm:px-6 sm:pb-12 sm:pt-24 lg:px-8 lg:pb-16 lg:pt-32">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 top-0 h-[52rem] w-[100rem] -translate-x-1/2 -translate-y-[58%] rounded-full"
@@ -36,7 +36,7 @@ export default function HeroSection() {
         {/* Main Heading */}
         <h1 className="text-5xl sm:text-6xl lg:text-8xl font-heading mb-6 leading-[1.1] tracking-tight text-foreground">
           Learn Chinese with
-          <span className="block font-serif italic text-primary tracking-[0.015em]">confidence.</span>
+          <span className="block italic-serif text-primary">confidence.</span>
         </h1>
 
         {/* Subheading */}

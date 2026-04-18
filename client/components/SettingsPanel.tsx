@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { LogOut, Moon, Palette, Sun, UserRound } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  UserIcon,
+  PaintBoardIcon,
+  Logout01Icon,
+  SunIcon,
+  MoonIcon,
+} from "@hugeicons/core-free-icons";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +17,6 @@ interface SettingsPanelProps {
   onLogout: () => Promise<void> | void;
 }
 
-type SettingsTab = "profile" | "appearance";
-
 function toInitial(value: string) {
   return value.slice(0, 1).toUpperCase();
 }
@@ -19,7 +24,7 @@ function toInitial(value: string) {
 export default function SettingsPanel({ className, onLogout }: SettingsPanelProps) {
   const { user } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "appearance">("profile");
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("theme");
@@ -62,7 +67,7 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
             className="rounded-xl"
             onClick={() => setActiveTab("profile")}
           >
-            <UserRound className="h-4 w-4" />
+            <HugeiconsIcon icon={UserIcon} className="h-4 w-4" />
             Profile
           </Button>
           <Button
@@ -71,7 +76,7 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
             className="rounded-xl"
             onClick={() => setActiveTab("appearance")}
           >
-            <Palette className="h-4 w-4" />
+            <HugeiconsIcon icon={PaintBoardIcon} className="h-4 w-4" />
             Appearance
           </Button>
         </div>
@@ -82,7 +87,7 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
           className="rounded-xl"
           onClick={() => void onLogout()}
         >
-          <LogOut className="h-4 w-4" />
+          <HugeiconsIcon icon={Logout01Icon} className="h-4 w-4" />
           Log out
         </Button>
       </div>
@@ -123,7 +128,11 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
               className="rounded-xl"
               onClick={() => setIsDarkMode((prev) => !prev)}
             >
-              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {isDarkMode ? (
+                <HugeiconsIcon icon={SunIcon} className="h-4 w-4" />
+              ) : (
+                <HugeiconsIcon icon={MoonIcon} className="h-4 w-4" />
+              )}
               {isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
             </Button>
           </CardContent>

@@ -988,9 +988,9 @@ export default function LearningHub() {
             {/* Slide 1: Flashcards */}
             <section
               ref={(el) => (slideRefs.current[0] = el)}
-              className="flow-slide flex flex-col items-center justify-center px-5 pt-24 pb-32 sm:px-8 sm:py-10 bg-gradient-to-b from-background to-secondary/10"
+              className="flow-slide flex flex-col items-center justify-center px-5 pt-12 pb-16 sm:px-8 sm:py-5 bg-gradient-to-b from-background to-secondary/10"
             >
-              <div className="w-full max-w-3xl animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <div className="w-full max-w-[46rem] animate-in fade-in slide-in-from-bottom-8 duration-700">
                 {dueCards.length > 0 ? (
                   <div className="space-y-8 sm:space-y-14">
                     <div className="relative aspect-[4/3] sm:aspect-[16/10] group perspective-1000">
@@ -998,7 +998,7 @@ export default function LearningHub() {
                       <button
                         type="button"
                         onClick={() => setIsFlashcardFlipped((prev) => !prev)}
-                        className="relative w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-6 sm:p-12 text-center transition-all duration-500 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 overflow-hidden"
+                        className="relative w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-5 sm:p-10 text-center transition-all duration-500 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 overflow-hidden"
                         aria-label="Flip flashcard"
                         aria-pressed={isFlashcardFlipped}
                       >
@@ -1121,7 +1121,7 @@ export default function LearningHub() {
             {/* Slide 2: AI Reading */}
             <section 
               ref={el => slideRefs.current[1] = el}
-              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-24 sm:px-8 sm:py-10 bg-gradient-to-b from-secondary/10 to-primary/5"
+              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-12 sm:px-8 sm:py-5 bg-gradient-to-b from-secondary/10 to-primary/5"
             >
               <div className="w-full max-w-6xl space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center space-y-3">
@@ -1246,7 +1246,7 @@ export default function LearningHub() {
             {/* Slide 3: AI Roleplay */}
             <section 
               ref={el => slideRefs.current[2] = el}
-              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-24 sm:px-8 sm:py-10 bg-gradient-to-b from-primary/5 to-background"
+              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-12 sm:px-8 sm:py-5 bg-gradient-to-b from-primary/5 to-background"
             >
               <div className="w-full max-w-4xl space-y-7 sm:space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center">

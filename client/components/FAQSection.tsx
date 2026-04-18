@@ -44,7 +44,7 @@ export default function FAQSection() {
         <div className="w-full lg:w-1/3">
           <h2 className="text-3xl font-heading text-foreground sm:text-4xl mb-4 leading-tight">
             Frequently Asked{" "}
-            <span className="font-serif italic block text-primary tracking-[0.015em]">questions</span>
+            <span className="italic-serif block text-primary">questions</span>
           </h2>
           <p className="text-lg text-muted-foreground">
             Everything you need to know about Polysia and how it helps you master Chinese.

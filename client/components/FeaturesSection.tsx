@@ -1,26 +1,32 @@
-import { Check, Sparkles, BookOpen, MessageSquare, Zap } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Message01Icon,
+  ZapIcon,
+  Book02Icon,
+  SparklesIcon,
+} from "@hugeicons/core-free-icons";
 
 export default function FeaturesSection() {
   const features = [
     {
       title: "Roleplay Simulator",
       subtitle: "Practice real dialogue scenarios with adaptive AI prompts.",
-      icon: MessageSquare,
+      icon: Message01Icon,
     },
     {
       title: "On-Demand Vocab",
       subtitle: "Capture and learn words instantly from any lesson.",
-      icon: Zap,
+      icon: ZapIcon,
     },
     {
       title: "Smart Reading",
       subtitle: "Get contextual help without breaking your flow.",
-      icon: BookOpen,
+      icon: Book02Icon,
     },
     {
       title: "Daily Review",
       subtitle: "Spaced repetition sessions that keep progress compounding.",
-      icon: Sparkles,
+      icon: SparklesIcon,
     },
   ];
 
@@ -34,12 +40,11 @@ export default function FeaturesSection() {
           <div className="mb-12">
             <h2 className="mb-6 text-4xl font-heading text-foreground sm:text-5xl lg:text-6xl tracking-tight leading-[1.1]">
               Everything you need to{" "}
-              <span className="font-serif italic text-primary">master</span> the
+              <span className="italic-serif text-primary">master</span> the
               language.
             </h2>
             <p className="mx-auto max-w-xl text-lg text-muted-foreground lg:mx-0 leading-relaxed">
-              The interface
-              learning curve and make retention effortless.
+              The interface learning curve and make retention effortless.
             </p>
           </div>
 
@@ -52,7 +57,7 @@ export default function FeaturesSection() {
                   className="group flex flex-col items-center lg:items-start p-5 rounded-2xl border border-border bg-card/50 hover:bg-card hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <Icon className="w-5 h-5" strokeWidth={2.5} />
+                    <HugeiconsIcon icon={Icon} className="w-5 h-5" strokeWidth={2.5} />
                   </div>
                   <div className="text-center lg:text-left">
                     <h3 className="text-lg text-foreground mb-1 group-hover:text-primary transition-colors">
@@ -68,7 +73,7 @@ export default function FeaturesSection() {
           </div>
         </div>
 
-        <div className="flex w-full justify-center lg:w-2/5">
+        <div className="mt-10 flex w-full justify-center sm:mt-12 lg:mt-0 lg:w-2/5">
           <div className="relative w-full max-w-sm">
             {/* Ambient Glow */}
             <div className="absolute -inset-4 bg-gradient-to-br from-primary/20 to-transparent rounded-[2.5rem] blur-2xl opacity-50" />

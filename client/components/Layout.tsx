@@ -1,5 +1,6 @@
 import { ReactNode, useState, useEffect, useLayoutEffect } from "react";
-import { Github, X } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { GithubIcon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -205,7 +206,7 @@ export default function Layout({ children }: LayoutProps) {
                 className="text-white hover:bg-white/20"
                 aria-label="Dismiss beta banner"
               >
-                <X className="h-4 w-4" />
+                <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -312,7 +313,7 @@ export default function Layout({ children }: LayoutProps) {
                 className="text-muted-foreground hover:text-primary transition-colors"
                 aria-label="GitHub"
               >
-                <Github className="w-5 h-5" />
+                <HugeiconsIcon icon={GithubIcon} className="w-5 h-5" />
               </a>
             </div>
           </div>

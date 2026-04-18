@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Tick02Icon, Loading03Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +40,7 @@ const plans: Array<{
   {
     id: "lifetime",
     name: "Lifetime",
-    price: "$79",
+    price: "$44.99",
     period: " one-time",
     description: "Secure your mastery with a single payment.",
     features: [
@@ -106,8 +107,8 @@ export default function PricingSection() {
         <div className="mb-16 text-center">
           <h2 className="mb-4 text-3xl font-heading text-foreground sm:text-4xl lg:text-5xl">
             Simple, Transparent{" "}
-            <span className="font-serif italic text-primary tracking-[0.015em]">
-              Pricing
+            <span className="italic-serif text-primary">
+              potential.
             </span>
           </h2>
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
@@ -146,7 +147,7 @@ export default function PricingSection() {
                 {plan.features.map((feature) => (
                   <div key={feature} className="flex items-start gap-3">
                     <div className="mt-1 shrink-0">
-                      <Check className="h-4 w-4 text-primary" strokeWidth={3} />
+                      <HugeiconsIcon icon={Tick02Icon} className="h-4 w-4 text-primary" strokeWidth={3} />
                     </div>
                     <span className="text-sm leading-tight text-foreground/80">{feature}</span>
                   </div>
@@ -166,7 +167,7 @@ export default function PricingSection() {
               >
                 {activeCheckoutPlan === plan.id ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <HugeiconsIcon icon={Loading03Icon} className="mr-2 h-4 w-4 animate-spin" />
                     Redirecting...
                   </>
                 ) : (

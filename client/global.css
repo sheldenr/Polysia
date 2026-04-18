@@ -1,9 +1,8 @@
 /** @import must precede all other statements */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap");
+@import url("https://fonts.cdnfonts.com/css/georgia-2");
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/noto-serif";
 @import "@fontsource-variable/instrument-sans";
 
 @tailwind base;
@@ -11,14 +10,6 @@
 @tailwind utilities;
 
 @layer base {
-  .font-serif {
-    font-weight: 700;
-  }
-  /**
-   * Tailwind CSS theme
-   * tailwind.config.ts expects the following color variables to be expressed as HSL values.
-   * A different format will require also updating the theme in tailwind.config.ts.
-  */
   :root {
     --background: oklch(1 0 0);
     --foreground: oklch(0.141 0.005 285.823);
@@ -32,7 +23,7 @@
     --primary: oklch(0.52 0.105 223.128);
     --primary-foreground: oklch(0.984 0.019 200.873);
 
-    --secondary: oklch(0.967 0.001 286.375);
+    --secondary: oklch(96.7% 0.01 205);
     --secondary-foreground: oklch(0.21 0.006 285.885);
 
     --muted: oklch(0.967 0.001 286.375);
@@ -51,33 +42,27 @@
     --radius: 0.625rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: oklch(0.141 0.005 285.823);
-
     --sidebar-primary: oklch(0.609 0.126 221.723);
-
     --sidebar-primary-foreground: oklch(0.984 0.019 200.873);
-
     --sidebar-accent: oklch(0.967 0.001 286.375);
-
     --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-
     --sidebar-border: oklch(0.92 0.004 286.32);
-
     --sidebar-ring: oklch(0.705 0.015 286.067);
 
     --chart-1: oklch(0.865 0.127 207.078);
-
     --chart-2: oklch(0.715 0.143 215.221);
-
     --chart-3: oklch(0.609 0.126 221.723);
-
     --chart-4: oklch(0.52 0.105 223.128);
-
     --chart-5: oklch(0.45 0.085 224.283);
 
     --sidebar: oklch(0.985 0 0);
+
+    --font-serif: Georgia, "Times New Roman", Times, serif;
+    --font-heading: "Instrument Sans Variable", sans-serif;
+    --font-sans: "Inter", sans-serif;
   }
+
   .dark {
     --background: oklch(0.141 0.005 285.823);
     --foreground: oklch(0.985 0 0);
@@ -87,7 +72,7 @@
     --popover-foreground: oklch(0.985 0 0);
     --primary: oklch(0.49 0.09 224.283);
     --primary-foreground: oklch(0.984 0.019 200.873);
-    --secondary: oklch(0.274 0.006 286.033);
+    --secondary: oklch(0.25 0.02 225);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.274 0.006 286.033);
     --muted-foreground: oklch(0.705 0.015 286.067);
@@ -111,37 +96,27 @@
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.552 0.016 285.938);
   }
-  .theme {
-    --font-serif: "Noto Serif Variable", serif;
-    --font-heading: "Instrument Sans Variable", sans-serif;
-    --font-sans: "Inter", sans-serif;
-  }
+
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
   }
+
   html {
-    @apply font-sans;
-  }
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-heading;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
+    font-family: var(--font-sans);
   }
 
-  body {
-    @apply bg-background text-foreground font-sans;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+
+  .font-serif {
+    font-family: var(--font-serif);
+    letter-spacing: -0.035em;
   }
 
   :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
@@ -149,22 +124,24 @@
     word-break: break-word;
   }
 
-  pre,
-  code {
+  pre, code {
     overflow-x: auto;
     white-space: pre;
   }
 }
 
+@layer utilities {
+  .italic-serif {
+    font-family: var(--font-serif) !important;
+    font-style: italic !important;
+    letter-spacing: -0.035em !important;
+  }
+}
+
 @layer components {
   @keyframes marquee-scroll {
-    from {
-      transform: translate3d(0, 0, 0);
-    }
-
-    to {
-      transform: translate3d(-50%, 0, 0);
-    }
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
   }
 
   .site-animations .reveal-on-scroll {
@@ -211,24 +188,9 @@
     transform: translate3d(0, 0, 0);
   }
 
-  .marquee-track {
-    will-change: auto;
-  }
-
   .serif-font {
-    @apply font-serif;
-    letter-spacing: 0.015em;
-    font-variant-ligatures: none;
-  }
-
-  .italic-serif {
-    @apply font-serif italic;
-    letter-spacing: 0.015em;
-    font-variant-ligatures: none;
-  }
-
-  .font-serif {
-    letter-spacing: 0.015em;
+    font-family: var(--font-serif);
+    letter-spacing: -0.035em;
     font-variant-ligatures: none;
   }
 
