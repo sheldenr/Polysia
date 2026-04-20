@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +38,8 @@ export default function Onboarding() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get("preview") === "true";
 
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -100,7 +102,7 @@ export default function Onboarding() {
   }, [age, currentStep.key, dailyMinutes, goal, proficiencyLevel, reason]);
 
   useEffect(() => {
-    if (!supabase || !user) {
+    if (!supabase || !user || isPreview) {
       return;
     }
 
@@ -143,6 +145,18 @@ export default function Onboarding() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!supabase || !user || !canContinue || dailyMinutes === null) {
+      return;
+    }
+
+    if (isPreview) {
+      setIsSubmitting(true);
+      window.setTimeout(() => {
+        setIsSubmitting(false);
+        setIsFinishing(true);
+        window.setTimeout(() => {
+          navigate("/learning-hub", { replace: true });
+        }, 1800);
+      }, 1000);
       return;
     }
 

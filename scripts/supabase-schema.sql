@@ -71,6 +71,11 @@ create table if not exists public.flashcards (
   english text not null,
   grammar text not null default '',
   notes text not null default '',
+  state text not null default 'NEW' check (state in ('NEW', 'LEARNING', 'REVIEW', 'RELEARNING')),
+  step_index integer not null default 0,
+  hsk_level integer not null default 1,
+  source_id text,
+  seen_at timestamptz,
   interval integer not null default 0,
   repetition integer not null default 0,
   efactor numeric not null default 2.5,
@@ -79,7 +84,17 @@ create table if not exists public.flashcards (
   updated_at timestamptz not null default now()
 );
 
+alter table public.flashcards add column if not exists state text not null default 'NEW';
+alter table public.flashcards add column if not exists step_index integer not null default 0;
+alter table public.flashcards add column if not exists hsk_level integer not null default 1;
+alter table public.flashcards add column if not exists source_id text;
+alter table public.flashcards add column if not exists seen_at timestamptz;
+
 create index if not exists idx_flashcards_user_due_date on public.flashcards(user_id, due_date);
+create index if not exists idx_flashcards_user_hsk_level on public.flashcards(user_id, hsk_level);
+create unique index if not exists idx_flashcards_user_source_id_unique
+  on public.flashcards(user_id, source_id)
+  where source_id is not null;
 
 drop trigger if exists trg_flashcards_updated_at on public.flashcards;
 create trigger trg_flashcards_updated_at

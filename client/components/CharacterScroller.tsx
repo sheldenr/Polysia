@@ -12,11 +12,11 @@ export default function CharacterScroller() {
       {characters.map((character, index) => (
         <div
           key={`${trackKey}-${index}`}
-          className="group flex-shrink-0 w-48 h-32 sm:w-64 sm:h-44 rounded-2xl border border-border bg-card flex items-center justify-center transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5"
+          className="group flex-shrink-0 w-48 h-32 sm:w-64 sm:h-44 rounded-2xl border border-border bg-card flex items-center justify-center transition-all duration-300 hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/5"
         >
           <ChineseTooltipText
             text={character}
-            className="text-4xl sm:text-6xl font-heading font-light text-foreground/40 transition-colors duration-300 group-hover:text-primary"
+            className="text-4xl sm:text-6xl font-heading font-light text-foreground/40 transition-colors duration-300 group-hover:text-primary-foreground antialiased"
             enableTooltip={false}
           />
         </div>

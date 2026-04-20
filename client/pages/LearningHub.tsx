@@ -129,7 +129,7 @@ export default function LearningHub() {
   const [isFlashcardFlipped, setIsFlashcardFlipped] = useState(false);
   const [skipTransition, setSkipTransition] = useState(false);
 
-  const { loading: srsLoading, getDueCards, rateCard, deck } = useSRS();
+  const { loading: srsLoading, getDueCards, rateCard, deck, hskProgress } = useSRS();
 
   const formatRelativeTime = useCallback((isoTimestamp: string) => {
     const timestamp = new Date(isoTimestamp).getTime();
@@ -991,6 +991,14 @@ export default function LearningHub() {
               className="flow-slide flex flex-col items-center justify-center px-5 pt-12 pb-16 sm:px-8 sm:py-5 bg-gradient-to-b from-background to-secondary/10"
             >
               <div className="w-full max-w-[46rem] animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="mb-4 text-center">
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">
+                    HSK {hskProgress.currentLevel} Progress
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Learned {hskProgress.learned}/{hskProgress.total} · Unlocked through HSK {hskProgress.unlockedLevel}
+                  </p>
+                </div>
                 {dueCards.length > 0 ? (
                   <div className="space-y-8 sm:space-y-14">
                     <div className="relative aspect-[4/3] sm:aspect-[16/10] group perspective-1000">
