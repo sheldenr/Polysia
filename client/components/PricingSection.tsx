@@ -3,6 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Tick02Icon, Loading03Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { parseJsonResponse } from "@/lib/http";
 import { useToast } from "@/hooks/use-toast";
 import type {
   BillingPlanId,
@@ -75,9 +76,13 @@ export default function PricingSection() {
         body: JSON.stringify(payload),
       });
 
-      const data = (await response.json()) as
+      const data = await parseJsonResponse<
         | CreateCheckoutSessionResponse
-        | { error?: string };
+        | { error?: string }
+      >(response, {
+        emptyMessage: "Unable to start checkout: the server returned no response.",
+        invalidMessage: "Unable to start checkout: received an invalid server response.",
+      });
 
       if (!response.ok || !("checkoutUrl" in data)) {
         throw new Error(

@@ -27,6 +27,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { parseJsonResponse } from "@/lib/http";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useSRS, type SRSRating } from "@/hooks/use-srs";
@@ -515,9 +516,15 @@ export default function LearningHub() {
 
       try {
         const response = await fetch("/api/ai/reading-prompt");
-        const payload = (await response.json()) as
+        const payload = await parseJsonResponse<
           | DeepSeekReadingPromptResponse
-          | { error?: string };
+          | { error?: string }
+        >(response, {
+          emptyMessage:
+            "Could not load today's reading prompt: the server returned no response.",
+          invalidMessage:
+            "Could not load today's reading prompt: received an invalid server response.",
+        });
 
         if (
           !response.ok ||
@@ -698,7 +705,13 @@ export default function LearningHub() {
         }),
       });
 
-      const payload = (await response.json()) as DeepSeekV3Response & { error?: string };
+      const payload = await parseJsonResponse<DeepSeekV3Response & { error?: string }>(
+        response,
+        {
+          emptyMessage: "Roleplay request failed: the server returned no response.",
+          invalidMessage: "Roleplay request failed: received an invalid server response.",
+        },
+      );
 
       if (!response.ok) {
         throw new Error(payload.error ?? "Roleplay request failed");
