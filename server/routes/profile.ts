@@ -1,5 +1,5 @@
 import { RequestHandler } from "express";
-import { users, sanitizeUser } from "../lib/auth.js";
+import { users, sanitizeUser } from "../lib/auth";
 
 export const handleProfile: RequestHandler = (req, res) => {
   const userId = req.userId; // Set by requireAuth middleware

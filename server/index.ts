@@ -2,13 +2,13 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { handleDemo } from "./routes/demo.js";
-import { handleSignup, handleLogin, handleVerifyToken } from "./routes/auth.js";
-import { handleProfile } from "./routes/profile.js";
-import { handleDeepSeekRoleplay } from "./routes/deepseek-roleplay.js";
-import { handleDeepSeekReading } from "./routes/deepseek-reading.js";
-import { handleCreateCheckoutSession } from "./routes/billing.js";
-import { requireAuth } from "./middleware/auth.js";
+import { handleDemo } from "./routes/demo";
+import { handleSignup, handleLogin, handleVerifyToken } from "./routes/auth";
+import { handleProfile } from "./routes/profile";
+import { handleDeepSeekRoleplay } from "./routes/deepseek-roleplay";
+import { handleDeepSeekReading } from "./routes/deepseek-reading";
+import { handleCreateCheckoutSession } from "./routes/billing";
+import { requireAuth } from "./middleware/auth";
 
 export function createServer() {
   const app = express();
@@ -43,6 +43,20 @@ export function createServer() {
   // Mount the router at both /api and root to handle different deployment environments
   app.use("/api", apiRouter);
   app.use(apiRouter);
+
+  // 404 handler
+  app.use((_req, res) => {
+    res.status(404).json({ error: "Route not found" });
+  });
+
+  // Error handler
+  app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("Express error:", err);
+    res.status(500).json({ 
+      error: "Internal server error", 
+      message: err instanceof Error ? err.message : String(err) 
+    });
+  });
 
   return app;
 }

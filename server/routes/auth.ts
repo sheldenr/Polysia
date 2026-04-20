@@ -1,5 +1,5 @@
 import { RequestHandler } from "express";
-import { signupSchema, loginSchema, AuthResponse, VerifyResponse } from "../../shared/auth.js";
+import { signupSchema, loginSchema, AuthResponse, VerifyResponse } from "../../shared/auth";
 import {
   users,
   hashPassword,
@@ -7,7 +7,7 @@ import {
   generateToken,
   verifyToken,
   sanitizeUser,
-} from "../lib/auth.js";
+} from "../lib/auth";
 import { randomUUID } from "crypto";
 
 export const handleSignup: RequestHandler = (req, res) => {

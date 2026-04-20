@@ -2,13 +2,19 @@
   "framework": "vite",
   "buildCommand": "pnpm build:client",
   "outputDirectory": "dist/spa",
-  "routes": [
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
     {
-      "handle": "filesystem"
+      "source": "/api/(.*)",
+      "destination": "/api"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
