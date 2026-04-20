@@ -146,10 +146,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(supabaseConfigError ?? "Supabase is not configured");
     }
 
+    // Ensure we use http for localhost to avoid SSL errors during dev
+    let redirectTo = `${window.location.origin}/auth/callback`;
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      redirectTo = redirectTo.replace("https://", "http://");
+    }
+
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo,
       },
     });
   };

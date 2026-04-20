@@ -104,16 +104,21 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
           quiz?: Array<{ question?: string; answer?: boolean }>;
         }
       | null = null;
+    const strippedContent = stripCodeFences(content);
     try {
-      parsed = JSON.parse(stripCodeFences(content)) as {
+      parsed = JSON.parse(strippedContent) as {
         titleZh?: string;
         titleEn?: string;
         text?: string;
         quiz?: Array<{ question?: string; answer?: boolean }>;
       };
-    } catch {
+    } catch (err) {
+      console.error("DeepSeek JSON Parse Error:", err);
+      console.error("Raw Content:", content);
+      console.error("Stripped Content:", strippedContent);
       return res.status(502).json({
         error: "DeepSeek returned an invalid reading payload.",
+        debug: process.env.NODE_ENV === "development" ? { content, err: String(err) } : undefined,
       });
     }
 
@@ -130,8 +135,11 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
       quiz.length !== 2 ||
       quiz.some((item) => !item.question?.trim() || typeof item.answer !== "boolean")
     ) {
+      console.error("DeepSeek Validation Error: Missing required fields");
+      console.error("Parsed Data:", parsed);
       return res.status(502).json({
         error: "DeepSeek reading payload is missing required fields.",
+        debug: process.env.NODE_ENV === "development" ? { parsed } : undefined,
       });
     }
 

@@ -30,3 +30,5 @@ AUTH.md
 DESIGN.md
 SECURITY_CHECKLIST.md
 SUPABASE_SETUP.md
+.vercel
+.env*.local

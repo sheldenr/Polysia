@@ -56,17 +56,21 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
     };
 
     if (!upstream.ok) {
+      console.error(`DeepSeek API error (${upstream.status}):`, upstreamBody.error);
       return res.status(502).json({
         error:
           upstreamBody.error?.message ??
           "DeepSeek request failed. Please try again.",
+        debug: process.env.NODE_ENV === "development" ? upstreamBody : undefined,
       });
     }
 
     const content = upstreamBody.choices?.[0]?.message?.content?.trim();
     if (!content) {
+      console.error("DeepSeek returned an empty response choices:", upstreamBody.choices);
       return res.status(502).json({
         error: "DeepSeek returned an empty response.",
+        debug: process.env.NODE_ENV === "development" ? upstreamBody : undefined,
       });
     }
 

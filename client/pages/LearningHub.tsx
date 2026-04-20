@@ -30,7 +30,7 @@ import { useAuth } from "@/lib/auth";
 import { parseJsonResponse } from "@/lib/http";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { useSRS, type SRSRating } from "@/hooks/use-srs";
+import { useSRS, type SRSRating, getProjectedIntervals } from "@/hooks/use-srs";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import type {
   DeepSeekMessage,
@@ -318,10 +318,14 @@ export default function LearningHub() {
     async function loadProfile() {
       if (!supabase || !user) return;
 
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
 
       if (error) {
-        console.error("Failed to load profile", error);
+        console.error("[Supabase Error] Failed to load profile:", error);
         return;
       }
 
@@ -1066,26 +1070,32 @@ export default function LearningHub() {
                         isFlashcardFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
                       }`}
                     >
-                      {[
-                        { label: "Again", rating: 1 },
-                        { label: "Hard", rating: 2 },
-                        { label: "Good", rating: 3 },
-                        { label: "Easy", rating: 4 },
-                      ].map((item, idx) => (
-                        <button
-                          key={item.label}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRate(item.rating as SRSRating);
-                          }}
-                          className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-2xl border bg-card hover:border-primary/30 hover:bg-secondary transition-all"
-                        >
-                          <span className="text-xs text-muted-foreground uppercase tracking-widest">
-                            {idx + 1}
-                          </span>
-                          <span>{item.label}</span>
-                        </button>
-                      ))}
+                      {(() => {
+                        const intervals = currentCard ? getProjectedIntervals(currentCard) : null;
+                        return [
+                          { label: "Again", rating: 1 },
+                          { label: "Hard", rating: 2 },
+                          { label: "Good", rating: 3 },
+                          { label: "Easy", rating: 4 },
+                        ].map((item, idx) => (
+                          <button
+                            key={item.label}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRate(item.rating as SRSRating);
+                            }}
+                            className="flex flex-col items-center gap-1 p-3 sm:p-4 rounded-2xl border bg-card hover:border-primary/30 hover:bg-secondary transition-all"
+                          >
+                            <span className="text-xs text-muted-foreground uppercase tracking-widest leading-none mb-1">
+                              {idx + 1}
+                            </span>
+                            <span className="font-medium">{item.label}</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground font-mono">
+                              {intervals?.[item.rating as SRSRating] ?? "--"}
+                            </span>
+                          </button>
+                        ));
+                      })()}
                     </div>
                   </div>
                 ) : (
@@ -1114,26 +1124,34 @@ export default function LearningHub() {
                   }`}
                 >
                   <div className="mx-auto grid max-w-md grid-cols-4 gap-2">
-                    {[
-                      { label: "Again", rating: 1 },
-                      { label: "Hard", rating: 2 },
-                      { label: "Good", rating: 3 },
-                      { label: "Easy", rating: 4 },
-                    ].map((item, idx) => (
-                      <button
-                        key={`mobile-${item.label}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRate(item.rating as SRSRating);
-                        }}
-                        className="flex flex-col items-center gap-1 rounded-xl border bg-card px-2 py-2 hover:border-primary/30 hover:bg-secondary transition-all"
-                      >
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                          {idx + 1}
-                        </span>
-                        <span className="text-xs">{item.label}</span>
-                      </button>
-                    ))}
+                    {(() => {
+                      const intervals = currentCard ? getProjectedIntervals(currentCard) : null;
+                      return [
+                        { label: "Again", rating: 1 },
+                        { label: "Hard", rating: 2 },
+                        { label: "Good", rating: 3 },
+                        { label: "Easy", rating: 4 },
+                      ].map((item, idx) => (
+                        <button
+                          key={`mobile-${item.label}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRate(item.rating as SRSRating);
+                          }}
+                          className="flex flex-col items-center gap-0.5 rounded-xl border bg-card px-2 py-2 hover:border-primary/30 hover:bg-secondary transition-all"
+                        >
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide leading-none">
+                            {idx + 1}
+                          </span>
+                          <span className="text-xs font-medium whitespace-nowrap">
+                            {item.label}{" "}
+                            <span className="text-[9px] text-muted-foreground font-mono font-normal">
+                              ({intervals?.[item.rating as SRSRating] ?? "--"})
+                            </span>
+                          </span>
+                        </button>
+                      ));
+                    })()}
                   </div>
                 </div>
               )}

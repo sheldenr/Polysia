@@ -111,7 +111,7 @@ export default function Onboarding() {
         .from("profiles")
         .select("onboarding_complete")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Failed to check onboarding status", error);

@@ -16,7 +16,12 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: "dist/spa",
   },
-  plugins: [react(), expressPlugin()],
+  plugins: [
+    react(), 
+    // Only use the express plugin if NOT running under Vercel CLI
+    // This allows vercel dev to handle the API routes via the api/ directory
+    !process.env.VERCEL && expressPlugin()
+  ].filter(Boolean) as Plugin[],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./client"),

@@ -265,6 +265,31 @@ function getCurrentProgressLevel(cards: Flashcard[]): number {
     ?? getUnlockedLevel(cards);
 }
 
+export function formatInterval(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return "<1m";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+export function getProjectedIntervals(card: Flashcard): Record<SRSRating, string> {
+  const now = Date.now();
+  const ratings: SRSRating[] = [1, 2, 3, 4];
+  const result: Partial<Record<SRSRating, string>> = {};
+
+  for (const rating of ratings) {
+    const updates = calculateNextReview(card, rating);
+    const dueDate = updates.dueDate ?? now;
+    result[rating] = formatInterval(dueDate - now);
+  }
+
+  return result as Record<SRSRating, string>;
+}
+
 export function useSRS() {
   const { user } = useAuth();
   const [deck, setDeck] = useState<Flashcard[]>([]);

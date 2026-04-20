@@ -1,7 +1,7 @@
 {
-  "framework": "vite",
   "buildCommand": "pnpm build:client",
   "outputDirectory": "dist/spa",
+  "devCommand": "vite --port $PORT",
   "functions": {
     "api/**/*.ts": {
       "maxDuration": 60
@@ -11,10 +11,6 @@
     {
       "source": "/api/(.*)",
       "destination": "/api"
-    },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
     }
   ]
 }

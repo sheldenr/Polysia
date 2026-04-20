@@ -19,6 +19,16 @@ export function createServer() {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
+  // Request logger for debugging
+  app.use((req, _res, next) => {
+    if (process.env.NODE_ENV === "development" || !process.env.NODE_ENV) {
+      console.log(`[Express] ${req.method} ${req.path}`);
+      console.log(`  Accept: ${req.get("Accept")}`);
+      console.log(`  Content-Type: ${req.get("Content-Type")}`);
+    }
+    next();
+  });
+
   const apiRouter = express.Router();
 
   // Example API routes
@@ -40,14 +50,13 @@ export function createServer() {
   // Protected routes (require authentication)
   apiRouter.get("/profile", requireAuth, handleProfile);
 
-  // Mount the router at both /api and root to handle different deployment environments
+  // Mount the router
+  // If we are already under /api (e.g. Vercel/Netlify), this handles the subpaths
+  // If we are at root, this mounts everything under /api
   app.use("/api", apiRouter);
+  
+  // Also mount at root for environments that don't auto-prefix
   app.use(apiRouter);
-
-  // 404 handler
-  app.use((_req, res) => {
-    res.status(404).json({ error: "Route not found" });
-  });
 
   // Error handler
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
