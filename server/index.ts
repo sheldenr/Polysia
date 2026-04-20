@@ -19,24 +19,30 @@ export function createServer() {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
+  const apiRouter = express.Router();
+
   // Example API routes
-  app.get("/api/ping", (_req, res) => {
+  apiRouter.get("/ping", (_req, res) => {
     const ping = process.env.PING_MESSAGE ?? "ping";
     res.json({ message: ping });
   });
 
-  app.get("/api/demo", handleDemo);
-  app.post("/api/ai/roleplay", handleDeepSeekRoleplay);
-  app.get("/api/ai/reading-prompt", handleDeepSeekReading);
-  app.post("/api/billing/checkout", handleCreateCheckoutSession);
+  apiRouter.get("/demo", handleDemo);
+  apiRouter.post("/ai/roleplay", handleDeepSeekRoleplay);
+  apiRouter.get("/ai/reading-prompt", handleDeepSeekReading);
+  apiRouter.post("/billing/checkout", handleCreateCheckoutSession);
 
   // Auth routes (public)
-  app.post("/api/auth/signup", handleSignup);
-  app.post("/api/auth/login", handleLogin);
-  app.get("/api/auth/verify", handleVerifyToken);
+  apiRouter.post("/auth/signup", handleSignup);
+  apiRouter.post("/auth/login", handleLogin);
+  apiRouter.get("/auth/verify", handleVerifyToken);
 
   // Protected routes (require authentication)
-  app.get("/api/profile", requireAuth, handleProfile);
+  apiRouter.get("/profile", requireAuth, handleProfile);
+
+  // Mount the router at both /api and root to handle different deployment environments
+  app.use("/api", apiRouter);
+  app.use(apiRouter);
 
   return app;
 }
