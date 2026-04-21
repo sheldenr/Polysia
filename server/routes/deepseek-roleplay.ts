@@ -67,10 +67,14 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
   }
 
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
+  const timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS ?? 25000);
 
   // Create an AbortController to implement a timeout
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9000); // 9 second timeout
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 25000,
+  );
 
   try {
     const upstream = await fetch("https://api.deepseek.com/chat/completions", {

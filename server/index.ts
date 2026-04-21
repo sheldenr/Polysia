@@ -2,12 +2,12 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { handleDemo } from "./routes/demo";
-import { handleProfile } from "./routes/profile";
-import { handleDeepSeekRoleplay } from "./routes/deepseek-roleplay";
-import { handleDeepSeekReading } from "./routes/deepseek-reading";
-import { handleCreateCheckoutSession } from "./routes/billing";
-import { requireAuth } from "./middleware/auth";
+import { handleDemo } from "./routes/demo.js";
+import { handleProfile } from "./routes/profile.js";
+import { handleDeepSeekRoleplay } from "./routes/deepseek-roleplay.js";
+import { handleDeepSeekReading } from "./routes/deepseek-reading.js";
+import { handleCreateCheckoutSession } from "./routes/billing.js";
+import { requireAuth } from "./middleware/auth.js";
 
 export function createServer() {
   const app = express();

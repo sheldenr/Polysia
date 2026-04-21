@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { verifySupabaseToken } from "../lib/auth";
+import { verifySupabaseToken } from "../lib/auth.js";
 import type { User } from "@supabase/supabase-js";
 
 declare global {

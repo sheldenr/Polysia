@@ -94,12 +94,16 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
   }
 
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
+  const timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS ?? 25000);
   const selectedTopic =
     randomTopics[Math.floor(Math.random() * randomTopics.length)];
 
   // Create an AbortController to implement a timeout
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9000); // 9 second timeout
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 25000,
+  );
 
   try {
     console.log(`[DeepSeek Reading] Fetching from DeepSeek with topic: ${selectedTopic}`);

@@ -77,8 +77,12 @@ const handleDeepSeekRoleplay = async (req, res) => {
     });
   }
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
+  const timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS ?? 25e3);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9e3);
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 25e3
+  );
   try {
     const upstream = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
@@ -209,9 +213,13 @@ const handleDeepSeekReading = async (_req, res) => {
     });
   }
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
+  const timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS ?? 25e3);
   const selectedTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9e3);
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 25e3
+  );
   try {
     console.log(`[DeepSeek Reading] Fetching from DeepSeek with topic: ${selectedTopic}`);
     const upstream = await fetch("https://api.deepseek.com/chat/completions", {
