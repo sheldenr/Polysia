@@ -23,6 +23,7 @@ import {
   Activity,
   Home,
   LayoutDashboard,
+  AlertCircle,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useSRS, type SRSRating, getProjectedIntervals } from "@/hooks/use-srs";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type {
   DeepSeekMessage,
   DeepSeekReadingPromptResponse,
@@ -79,7 +81,7 @@ const statEventActions = {
 } as const;
 
 export default function LearningHub() {
-  const { user } = useAuth();
+  const { user, supabaseConfigError } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -781,6 +783,32 @@ export default function LearningHub() {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      {/* Configuration Error Overlay */}
+      {supabaseConfigError && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/95 backdrop-blur-md p-4">
+          <div className="max-w-md w-full shadow-2xl">
+            <Alert variant="destructive" className="bg-card border-destructive p-6">
+              <AlertCircle className="h-6 w-6 mb-2" />
+              <AlertTitle className="text-xl font-heading mb-4">Supabase Configuration Required</AlertTitle>
+              <AlertDescription className="mt-2 space-y-4">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {supabaseConfigError}
+                </p>
+                <div className="pt-4 flex flex-col gap-2">
+                  <Button variant="default" className="w-full rounded-xl" onClick={() => window.location.reload()}>
+                    Retry Connection
+                  </Button>
+                  <Button variant="outline" asChild className="w-full rounded-xl">
+                    <a href="https://github.com/sheldenr/polysia#supabase-setup" target="_blank" rel="noreferrer">
+                      View Setup Guide
+                    </a>
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          </div>
+        </div>
+      )}
       <style>{`
         .flow-shell {
           height: 100vh;

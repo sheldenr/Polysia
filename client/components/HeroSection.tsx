@@ -1,12 +1,25 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function HeroSection() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, supabaseConfigError } = useAuth();
 
   return (
     <section className="dark-gradient-dither relative isolate w-full overflow-hidden px-6 pb-8 pt-16 sm:px-6 sm:pb-12 sm:pt-24 lg:px-8 lg:pb-16 lg:pt-32">
+      {supabaseConfigError && (
+        <div className="mx-auto max-w-2xl mb-8">
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive-foreground">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Configuration Error</AlertTitle>
+            <AlertDescription className="text-xs">
+              {supabaseConfigError}
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 top-0 h-[52rem] w-[100rem] -translate-x-1/2 -translate-y-[58%] rounded-full"

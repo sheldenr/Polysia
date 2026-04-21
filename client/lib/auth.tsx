@@ -7,6 +7,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  supabaseConfigError: string | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (
     email: string,
@@ -167,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         isLoading,
         isAuthenticated: !!user,
+        supabaseConfigError,
         login,
         signup,
         logout,

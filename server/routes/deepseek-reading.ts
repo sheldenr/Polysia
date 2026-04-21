@@ -26,20 +26,36 @@ function normalizeReadingText(text: string) {
 }
 
 function stripCodeFences(raw: string) {
-  const trimmed = raw.trim();
-  if (!trimmed.startsWith("```")) {
-    return trimmed;
+  let content = raw.trim();
+  
+  // Try to find a JSON block with regex first if it's not a plain JSON string
+  if (!content.startsWith("{")) {
+    const match = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (match && match[1]) {
+      content = match[1].trim();
+    }
   }
 
-  return trimmed
+  // If still no luck, try a broader search for anything between curly braces
+  if (!content.startsWith("{")) {
+    const match = content.match(/(\{[\s\S]*\})/);
+    if (match && match[1]) {
+      content = match[1].trim();
+    }
+  }
+
+  return content
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/, "")
     .trim();
 }
 
 export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
+  console.log("[DeepSeek Reading] Received request for reading prompt");
+  
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
+    console.error("[DeepSeek Reading] Missing DEEPSEEK_API_KEY");
     return res.status(500).json({
       error: "DeepSeek is not configured. Add DEEPSEEK_API_KEY to your environment.",
     });
@@ -49,17 +65,23 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
   const selectedTopic =
     randomTopics[Math.floor(Math.random() * randomTopics.length)];
 
+  // Create an AbortController to implement a timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 9000); // 9 second timeout
+
   try {
+    console.log(`[DeepSeek Reading] Fetching from DeepSeek with topic: ${selectedTopic}`);
     const upstream = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model,
-        temperature: 0.8,
-        max_tokens: 320,
+        temperature: 0.6, // Slightly lower temperature for faster/more stable generation
+        max_tokens: 400, // Slightly more tokens to avoid truncation
         messages: [
           {
             role: "system",
@@ -75,6 +97,8 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
       }),
     });
 
+    clearTimeout(timeoutId);
+
     const upstreamBody = (await upstream.json()) as {
       model?: string;
       choices?: Array<{ message?: { content?: string } }>;
@@ -82,6 +106,7 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
     };
 
     if (!upstream.ok) {
+      console.error("[DeepSeek Reading] Upstream error:", upstream.status, upstreamBody.error);
       return res.status(502).json({
         error:
           upstreamBody.error?.message ??
@@ -91,10 +116,13 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
 
     const content = upstreamBody.choices?.[0]?.message?.content?.trim();
     if (!content) {
+      console.error("[DeepSeek Reading] Empty content from DeepSeek");
       return res.status(502).json({
         error: "DeepSeek returned an empty reading prompt.",
       });
     }
+
+    console.log("[DeepSeek Reading] Successfully received response from DeepSeek");
 
     let parsed:
       | {
@@ -156,6 +184,13 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
 
     return res.status(200).json(response);
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error("[DeepSeek Reading] Request timed out");
+      return res.status(504).json({
+        error: "DeepSeek took too long to respond. Please try again in a moment.",
+      });
+    }
+
     console.error("DeepSeek reading prompt error:", error);
     return res.status(500).json({
       error: "Unable to generate reading prompt right now.",

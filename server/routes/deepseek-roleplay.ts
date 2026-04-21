@@ -17,6 +17,7 @@ const deepSeekRequestSchema = z.object({
 });
 
 export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
+  console.log("[DeepSeek Roleplay] Received request");
   const parsed = deepSeekRequestSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -26,12 +27,17 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
 
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
+    console.error("[DeepSeek Roleplay] Missing DEEPSEEK_API_KEY");
     return res.status(500).json({
       error: "DeepSeek is not configured. Add DEEPSEEK_API_KEY to your environment.",
     });
   }
 
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
+
+  // Create an AbortController to implement a timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 9000); // 9 second timeout
 
   try {
     const upstream = await fetch("https://api.deepseek.com/chat/completions", {
@@ -40,6 +46,7 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model,
         messages: parsed.data.messages,
@@ -47,6 +54,8 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
         max_tokens: parsed.data.max_tokens ?? 220,
       }),
     });
+
+    clearTimeout(timeoutId);
 
     const upstreamBody = (await upstream.json()) as {
       model?: string;
@@ -56,7 +65,7 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
     };
 
     if (!upstream.ok) {
-      console.error(`DeepSeek API error (${upstream.status}):`, upstreamBody.error);
+      console.error(`[DeepSeek Roleplay] API error (${upstream.status}):`, upstreamBody.error);
       return res.status(502).json({
         error:
           upstreamBody.error?.message ??
@@ -67,7 +76,7 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
 
     const content = upstreamBody.choices?.[0]?.message?.content?.trim();
     if (!content) {
-      console.error("DeepSeek returned an empty response choices:", upstreamBody.choices);
+      console.error("[DeepSeek Roleplay] Empty response choices:", upstreamBody.choices);
       return res.status(502).json({
         error: "DeepSeek returned an empty response.",
         debug: process.env.NODE_ENV === "development" ? upstreamBody : undefined,
@@ -82,6 +91,13 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
 
     return res.status(200).json(response);
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error("[DeepSeek Roleplay] Request timed out");
+      return res.status(504).json({
+        error: "DeepSeek took too long to respond. Please try again.",
+      });
+    }
+
     console.error("DeepSeek roleplay error:", error);
     return res.status(500).json({
       error: "Unable to reach DeepSeek right now.",
