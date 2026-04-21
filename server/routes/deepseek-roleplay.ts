@@ -1,6 +1,6 @@
 import { RequestHandler } from "express";
 import { z } from "zod";
-import { DeepSeekV3Response } from "../../shared/api";
+import type { DeepSeekV3Response } from "../../shared/api";
 
 const deepSeekRequestSchema = z.object({
   messages: z
@@ -15,6 +15,39 @@ const deepSeekRequestSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   max_tokens: z.number().int().min(1).max(1000).optional(),
 });
+
+type DeepSeekUpstreamBody = {
+  model?: string;
+  usage?: DeepSeekV3Response["usage"];
+  choices?: Array<{ message?: { content?: string } }>;
+  error?: { message?: string };
+};
+
+async function parseDeepSeekUpstreamBody(response: Response) {
+  const rawBody = await response.text();
+
+  if (!rawBody) {
+    return {
+      body: {} as DeepSeekUpstreamBody,
+      parseError: false,
+      rawBody: "",
+    };
+  }
+
+  try {
+    return {
+      body: JSON.parse(rawBody) as DeepSeekUpstreamBody,
+      parseError: false,
+      rawBody,
+    };
+  } catch {
+    return {
+      body: {} as DeepSeekUpstreamBody,
+      parseError: true,
+      rawBody,
+    };
+  }
+}
 
 export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
   console.log("[DeepSeek Roleplay] Received request");
@@ -55,22 +88,26 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
       }),
     });
 
-    clearTimeout(timeoutId);
-
-    const upstreamBody = (await upstream.json()) as {
-      model?: string;
-      usage?: DeepSeekV3Response["usage"];
-      choices?: Array<{ message?: { content?: string } }>;
-      error?: { message?: string };
-    };
+    const { body: upstreamBody, parseError, rawBody } =
+      await parseDeepSeekUpstreamBody(upstream);
 
     if (!upstream.ok) {
-      console.error(`[DeepSeek Roleplay] API error (${upstream.status}):`, upstreamBody.error);
+      console.error(
+        `[DeepSeek Roleplay] API error (${upstream.status}):`,
+        upstreamBody.error ?? rawBody.slice(0, 300),
+      );
       return res.status(502).json({
         error:
           upstreamBody.error?.message ??
-          "DeepSeek request failed. Please try again.",
+          `DeepSeek request failed with status ${upstream.status}.`,
         debug: process.env.NODE_ENV === "development" ? upstreamBody : undefined,
+      });
+    }
+
+    if (parseError) {
+      console.error("[DeepSeek Roleplay] Upstream returned non-JSON body:", rawBody.slice(0, 300));
+      return res.status(502).json({
+        error: "DeepSeek returned a non-JSON response.",
       });
     }
 
@@ -102,6 +139,7 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
     return res.status(500).json({
       error: "Unable to reach DeepSeek right now.",
     });
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
-

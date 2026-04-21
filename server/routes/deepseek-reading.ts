@@ -1,5 +1,5 @@
 import { RequestHandler } from "express";
-import { DeepSeekReadingPromptResponse } from "../../shared/api";
+import type { DeepSeekReadingPromptResponse } from "../../shared/api";
 
 const randomTopics = [
   "a surprising street food discovery",
@@ -50,6 +50,38 @@ function stripCodeFences(raw: string) {
     .trim();
 }
 
+type DeepSeekUpstreamBody = {
+  model?: string;
+  choices?: Array<{ message?: { content?: string } }>;
+  error?: { message?: string };
+};
+
+async function parseDeepSeekUpstreamBody(response: Response) {
+  const rawBody = await response.text();
+
+  if (!rawBody) {
+    return {
+      body: {} as DeepSeekUpstreamBody,
+      parseError: false,
+      rawBody: "",
+    };
+  }
+
+  try {
+    return {
+      body: JSON.parse(rawBody) as DeepSeekUpstreamBody,
+      parseError: false,
+      rawBody,
+    };
+  } catch {
+    return {
+      body: {} as DeepSeekUpstreamBody,
+      parseError: true,
+      rawBody,
+    };
+  }
+}
+
 export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
   console.log("[DeepSeek Reading] Received request for reading prompt");
   
@@ -97,20 +129,22 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
       }),
     });
 
-    clearTimeout(timeoutId);
-
-    const upstreamBody = (await upstream.json()) as {
-      model?: string;
-      choices?: Array<{ message?: { content?: string } }>;
-      error?: { message?: string };
-    };
+    const { body: upstreamBody, parseError, rawBody } =
+      await parseDeepSeekUpstreamBody(upstream);
 
     if (!upstream.ok) {
-      console.error("[DeepSeek Reading] Upstream error:", upstream.status, upstreamBody.error);
+      console.error("[DeepSeek Reading] Upstream error:", upstream.status, upstreamBody.error ?? rawBody.slice(0, 300));
       return res.status(502).json({
         error:
           upstreamBody.error?.message ??
-          "DeepSeek reading prompt request failed.",
+          `DeepSeek reading prompt request failed with status ${upstream.status}.`,
+      });
+    }
+
+    if (parseError) {
+      console.error("[DeepSeek Reading] Upstream returned non-JSON body:", rawBody.slice(0, 300));
+      return res.status(502).json({
+        error: "DeepSeek returned a non-JSON response.",
       });
     }
 
@@ -195,5 +229,7 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
     return res.status(500).json({
       error: "Unable to generate reading prompt right now.",
     });
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
