@@ -272,14 +272,14 @@ export default function LearningHub() {
       onClick: () => enterFlow(0),
     },
     {
-      name: "AI Reading",
+      name: "Reading",
       description:
         "Read short passages with instant help for unfamiliar words.",
       icon: BookOpen,
       onClick: () => enterFlow(1),
     },
     {
-      name: "AI Roleplay",
+      name: "Roleplay",
       description:
         "Practice realistic conversation prompts and spoken responses.",
       icon: MessageCircle,

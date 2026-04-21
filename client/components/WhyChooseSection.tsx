@@ -18,18 +18,18 @@ export default function WhyChooseSection() {
       iconColor: "text-white dark:text-primary",
     },
     {
-      title: "Intelligent Feedback",
-      description: "AI-powered insights tailored to your learning pace",
+      title: "Adaptive Learning",
+      description: "Tailored studying that adapt to your reason for learning",
       icon: Idea01Icon,
-      cardClass: "bg-secondary border-none",
-      titleClass: "text-primary",
-      descriptionClass: "text-primary",
-      iconColor: "text-primary",
+      cardClass: "bg-black dark:bg-muted border-none",
+      titleClass: "text-white dark:text-foreground",
+      descriptionClass: "text-white/80 dark:text-muted-foreground",
+      iconColor: "text-white dark:text-primary",
     },
     {
       title: "Track Progress",
       description:
-        "See measurable improvements with our comprehensive analytics",
+        "See measurable improvements with real-time statistics",
       icon: Analytics01Icon,
       cardClass: "bg-transparent border border-border/60",
       titleClass: "text-foreground",
@@ -38,7 +38,7 @@ export default function WhyChooseSection() {
     },
     {
       title: "Cultural Context",
-      description: "Understand language beyond flat objective translations",
+      description: "Understand characters beyond flat objective translations",
       icon: GlobalIcon,
       cardClass: "bg-transparent border border-border/60",
       titleClass: "text-foreground",
@@ -55,16 +55,15 @@ export default function WhyChooseSection() {
           <div className="flex items-center gap-2 mb-4">
             <div className="h-1 w-8 bg-primary rounded-full" />
             <span className="text-xs tracking-widest uppercase text-muted-foreground">
-              Philosophy
+              Approach
             </span>
           </div>
           <h2 className="text-4xl sm:text-6xl font-heading mb-6 tracking-tight text-foreground lg:max-w-3x1">
-            Language learning reimagined for{" "}
-            <span className="italic-serif text-primary">efficiency.</span>
+            Language learning reimagined with{" "}
+            <span className="italic-serif text-primary">AI.</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
-            Our approach combines modern cognitive science with cutting-edge AI to
-            create an immersive, intuitive experience that fits into your life.
+            Polysia generates authentic conversations, provides real-time feedback, and tracks your improvement over time, making language learning more effective and engaging than ever before.
           </p>
         </div>
 
@@ -75,7 +74,7 @@ export default function WhyChooseSection() {
             return (
               <div
                 key={index}
-                className={`group relative flex flex-col p-6 rounded-2xl transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl ${reason.cardClass}`}
+                className={`group relative flex flex-col p-6 rounded-2xl transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/10 ${reason.cardClass}`}
               >
                 <div className="relative z-10">
                   <div className="mb-6 flex h-12 w-12 items-center justify-center transition-all duration-500 group-hover:scale-110">

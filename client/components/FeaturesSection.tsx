@@ -19,12 +19,12 @@ export default function FeaturesSection() {
       icon: ZapIcon,
     },
     {
-      title: "Smart Reading",
+      title: "Tailored Reading",
       subtitle: "Get contextual help without breaking your flow.",
       icon: Book02Icon,
     },
     {
-      title: "Daily Review",
+      title: "Character Flashcards",
       subtitle: "Spaced repetition sessions that keep progress compounding.",
       icon: SparklesIcon,
     },
@@ -40,11 +40,11 @@ export default function FeaturesSection() {
           <div className="mb-12">
             <h2 className="mb-6 text-4xl font-heading text-foreground sm:text-5xl lg:text-6xl tracking-tight leading-[1.1]">
               Everything you need to{" "}
-              <span className="italic-serif text-primary">master</span> the
+              <span className="italic-serif text-primary">learn</span> the
               language.
             </h2>
             <p className="mx-auto max-w-xl text-lg text-muted-foreground lg:mx-0 leading-relaxed">
-              The interface learning curve and make retention effortless.
+              Learn more than just daily words through a daily course. Polysia makes it easily to learn the language in a way that feels natural and intuitive, without a tutor.
             </p>
           </div>
 
@@ -54,13 +54,13 @@ export default function FeaturesSection() {
               return (
                 <div
                   key={index}
-                  className="group flex flex-col items-center lg:items-start p-5 rounded-2xl border border-border bg-card/50 hover:bg-card hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300"
+                  className="group flex flex-col items-center lg:items-start p-5 rounded-2xl border border-border bg-card/50 hover:bg-card hover:border-black/20 hover:shadow-xl hover:shadow-black/5 transition-all duration-300"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
                     <HugeiconsIcon icon={Icon} className="w-5 h-5" strokeWidth={2.5} />
                   </div>
                   <div className="text-center lg:text-left">
-                    <h3 className="text-lg text-foreground mb-1 group-hover:text-primary transition-colors">
+                    <h3 className="text-lg text-foreground mb-1 group-hover:text-black dark:group-hover:text-white transition-colors">
                       {feature.title}
                     </h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">
@@ -87,10 +87,10 @@ export default function FeaturesSection() {
                 
                 <div className="mb-8">
                   <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-xl bg-primary/5 border border-primary/10 text-primary tracking-wider text-[11px] mb-3">
-                    nǐ hǎo
+                    Nǐ Hǎo
                   </div>
                   <p className="text-2xl text-foreground">
-                    hello
+                    Hey; Hello
                   </p>
                 </div>
 

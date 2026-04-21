@@ -4,6 +4,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/instrument-sans";
+@import "@fontsource-variable/noto-serif";
 
 @tailwind base;
 @tailwind components;
@@ -58,7 +59,7 @@
 
     --sidebar: oklch(0.985 0 0);
 
-    --font-serif: Georgia, "Times New Roman", Times, serif;
+    --font-serif: Georgia, "Noto Serif Variable", "Times New Roman", serif;
     --font-heading: "Instrument Sans Variable", sans-serif;
     --font-sans: "Inter", sans-serif;
   }
@@ -108,6 +109,7 @@
 
   html {
     font-family: var(--font-sans);
+    scroll-behavior: smooth;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -135,6 +137,7 @@
     font-family: var(--font-serif) !important;
     font-style: italic !important;
     letter-spacing: -0.035em !important;
+    font-size: 1.05em !important;
   }
 }
 

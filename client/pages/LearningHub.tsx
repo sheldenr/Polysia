@@ -305,11 +305,11 @@ export default function LearningHub() {
       }
 
       if (modeIndex === 0) {
-        await logLearningActivity("flashcards", `Studied flashcards for ${minutesSpent} min`, minutesSpent);
+        await logLearningActivity("flashcards", `Studied character flashcards for ${minutesSpent} min`, minutesSpent);
       } else if (modeIndex === 1) {
-        await logLearningActivity("reading", `Completed AI reading for ${minutesSpent} min`, minutesSpent);
+        await logLearningActivity("reading", `Completed tailored reading for ${minutesSpent} min`, minutesSpent);
       } else if (modeIndex === 2) {
-        await logLearningActivity("roleplay", `Practiced AI roleplay for ${minutesSpent} min`, minutesSpent);
+        await logLearningActivity("roleplay", `Completed practice conversations for ${minutesSpent} min`, minutesSpent);
       }
     },
     [logLearningActivity],
@@ -401,10 +401,10 @@ export default function LearningHub() {
 
   const statItems = [
     {
-      label: "Flashcards",
+      label: "Character Flashcards",
       value: stats.flashcards.toLocaleString(),
       icon: Layers,
-      color: "text-blue-500",
+      color: "text-primary",
     },
     {
       label: "Perfected",
@@ -569,8 +569,7 @@ export default function LearningHub() {
       } catch (error) {
         toast({
           variant: "destructive",
-          title: "AI reading unavailable",
-          description:
+          title: "Tailored reading unavailable",          description:
             error instanceof Error
               ? error.message
               : "Could not load today's reading prompt.",
@@ -731,7 +730,7 @@ export default function LearningHub() {
       );
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Roleplay request failed");
+        throw new Error(payload.error ?? "Conversation request failed");
       }
 
       setRoleplayMessages((prev) => [...prev, { role: "ai", text: payload.content }]);
@@ -743,7 +742,7 @@ export default function LearningHub() {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "AI roleplay unavailable",
+        title: "Practice conversations unavailable",
         description:
           error instanceof Error
             ? error.message
@@ -756,7 +755,7 @@ export default function LearningHub() {
 
   const modeCards = [
     {
-      name: "Flashcards",
+      name: "Character Flashcards",
       desc: "Strengthen recall with active spaced repetition.",
       icon: Zap,
       index: 0,
@@ -765,7 +764,7 @@ export default function LearningHub() {
       eta: `${Math.max(modeTargets.flashcards - todayProgress.flashcards, 0)} left`,
     },
     {
-      name: "AI Reading",
+      name: "Tailored Reading",
       desc: "Build comprehension with contextual short passages.",
       icon: BookMarked,
       index: 1,
@@ -774,7 +773,7 @@ export default function LearningHub() {
       eta: `${Math.max(modeTargets.reading - todayProgress.reading, 0)} min left`,
     },
     {
-      name: "AI Roleplay",
+      name: "Practice Conversations",
       desc: "Practice natural speaking in guided scenarios.",
       icon: MessageCircle,
       index: 2,
@@ -785,9 +784,9 @@ export default function LearningHub() {
   ];
 
   const weeklyModeRows = [
-    { label: "Flashcards", minutes: weeklyModeMinutes.flashcards, icon: Layers },
-    { label: "AI Reading", minutes: weeklyModeMinutes.reading, icon: BookOpen },
-    { label: "AI Roleplay", minutes: weeklyModeMinutes.roleplay, icon: MessageCircle },
+    { label: "Character Flashcards", minutes: weeklyModeMinutes.flashcards, icon: Layers },
+    { label: "Tailored Reading", minutes: weeklyModeMinutes.reading, icon: BookOpen },
+    { label: "Practice Conversations", minutes: weeklyModeMinutes.roleplay, icon: MessageCircle },
   ];
 
   const maxWeeklyModeMinutes = Math.max(...weeklyModeRows.map((item) => item.minutes), 1);
@@ -1041,7 +1040,7 @@ export default function LearningHub() {
           </div>
 
           <div className="flow-shell" ref={flowContainerRef}>
-            {/* Slide 1: Flashcards */}
+            {/* Slide 1: Character Flashcards */}
             <section
               ref={(el) => (slideRefs.current[0] = el)}
               className="flow-slide flex flex-col items-center justify-center px-5 pt-12 pb-16 sm:px-8 sm:py-5 bg-gradient-to-b from-background to-secondary/10"
@@ -1147,9 +1146,8 @@ export default function LearningHub() {
                       <p className="text-muted-foreground">Come back later for your next reviews.</p>
                     </div>
                     <Button onClick={() => setActiveFlowIndex(1)} variant="outline" className="rounded-full">
-                      Continue to Reading <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </div>
+                      Continue to Tailored Reading <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>                  </div>
                 )}
               </div>
 
@@ -1203,7 +1201,7 @@ export default function LearningHub() {
             >
               <div className="w-full max-w-6xl space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center space-y-3">
-                  <h2 className="text-3xl sm:text-4xl font-heading tracking-tight">AI Reading</h2>
+                  <h2 className="text-3xl sm:text-4xl font-heading tracking-tight">Tailored Reading</h2>
                   <p className="text-muted-foreground">Practice comprehension with context</p>
                 </div>
                 
@@ -1321,14 +1319,14 @@ export default function LearningHub() {
               </div>
             </section>
 
-            {/* Slide 3: AI Roleplay */}
+            {/* Slide 3: Practice Conversations */}
             <section 
               ref={el => slideRefs.current[2] = el}
               className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-12 sm:px-8 sm:py-5 bg-gradient-to-b from-primary/5 to-background"
             >
               <div className="w-full max-w-4xl space-y-7 sm:space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center">
-                  <h2 className="text-3xl sm:text-4xl font-heading tracking-tight mb-2">AI Roleplay</h2>
+                  <h2 className="text-3xl sm:text-4xl font-heading tracking-tight mb-2">Practice Conversations</h2>
                   <p className="text-muted-foreground">Scenario: Ordering food at a Shanghai cafe.</p>
                 </div>
 

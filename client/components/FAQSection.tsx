@@ -9,17 +9,17 @@ const faqs = [
   {
     question: "What is Polysia?",
     answer:
-      "Polysia is a premium Chinese learning platform that combines AI-powered roleplay, smart reading tools, and spaced repetition vocabulary building to help you master Mandarin effectively.",
+      "Polysia is a premium Chinese learning platform that combines AI-powered conversations, tailored reading tools, and character flashcards to help you master Mandarin effectively.",
   },
   {
     question: "Is Polysia suitable for beginners?",
     answer:
-      "Absolutely! Polysia is designed for learners at all levels. Our reading tools and AI roleplay sessions can be adjusted to match your current proficiency, from absolute beginner to advanced.",
+      "Absolutely! Polysia is designed for learners at all levels. Our tailored reading tools and conversation sessions can be adjusted to match your current proficiency, from absolute beginner to advanced.",
   },
   {
-    question: "How does the AI Roleplay work?",
+    question: "How do the Practice Conversations work?",
     answer:
-      "The AI Roleplay feature allows you to practice realistic Mandarin conversations in various scenarios. It provides instant feedback, suggests improvements, and helps you build confidence in speaking and listening.",
+      "The Conversations feature allows you to practice realistic Mandarin dialogues in various scenarios. It provides instant feedback, suggests improvements, and helps you build confidence in speaking and listening.",
   },
   {
     question: "How can I get started with Polysia?",
@@ -29,7 +29,7 @@ const faqs = [
   {
     question: "What makes Polysia different from other apps?",
     answer:
-      "Unlike many apps that focus on repetitive drills, Polysia emphasizes contextual learning. Our smart reading tool and AI roleplay simulate real-world usage, ensuring that what you learn is immediately applicable.",
+      "Unlike many apps that focus on repetitive drills, Polysia emphasizes contextual learning. Our tailored reading tool and interactive conversations simulate real-world usage, ensuring that what you learn is immediately applicable.",
   },
 ];
 

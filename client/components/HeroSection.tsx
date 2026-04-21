@@ -48,15 +48,14 @@ export default function HeroSection() {
       <div className="relative z-10 mx-auto max-w-6xl text-center">
         {/* Main Heading */}
         <h1 className="text-5xl sm:text-6xl lg:text-8xl font-heading mb-6 leading-[1.1] tracking-tight text-foreground">
-          Learn Chinese with
-          <span className="block italic-serif text-primary">confidence.</span>
+          Learn Chinese,
+          <span className="block italic-serif text-primary">see real progress.</span>
         </h1>
 
         {/* Subheading */}
         <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-          Polysia is an AI-powered Chinese learning app for vocabulary, reading,
-          and conversation practice. Build your personal word bank and remember
-          more with spaced repetition.
+          Learn Chinese <span className="italic-serif">reliably</span>, at your own
+          pace, with words you can <span className="italic-serif">actually</span> read and understand. Practice conversations with an AI tutor that adapts to <span className="italic-serif">your</span> level.
         </p>
 
         {/* CTA Button */}
@@ -64,10 +63,10 @@ export default function HeroSection() {
           <Button
             size="lg"
             asChild
-            className="rounded-full px-8 h-12 text-base shadow-xl hover:shadow-primary/20 transition-all"
+            className="rounded-full px-10 h-14 text-lg font-medium bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 shadow-xl hover:shadow-black/20 transition-all border-none"
           >
             <Link to={isAuthenticated ? "/learning-hub" : "/signup"}>
-              {isAuthenticated ? "Continue learning" : "Try for free"}
+              {isAuthenticated ? "Continue your progress" : "Start learning for free"}
             </Link>
           </Button>
         </div>

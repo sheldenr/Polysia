@@ -26,16 +26,15 @@ const plans: Array<{
     name: "Pro",
     price: "$2.99",
     period: "/mo",
-    description: "Complete access to all AI-powered learning tools.",
+    description: "Complete access to all of Polysia.",
     features: [
-      "Unlimited AI Roleplay sessions",
-      "Unlimited Smart Reading support",
-      "Advanced Spaced Repetition (SRS)",
-      "Cloud Vocabulary Synchronization",
-      "Detailed Learning Analytics",
-      "Priority AI response times",
+      "Unlimited Practice Conversations",
+      "Tailored Reading support",
+      "Character Flashcards",
+      "Cloud Vocabulary Sync",
+      "Learning Analytics",
     ],
-    buttonText: "Start Pro",
+    buttonText: "Pay Monthly",
     popular: true,
   },
   {
@@ -43,13 +42,12 @@ const plans: Array<{
     name: "Lifetime",
     price: "$44.99",
     period: " one-time",
-    description: "Secure your mastery with a single payment.",
+    description: "Secure your fluency with a single payment.",
     features: [
       "All Pro features forever",
-      "Lifetime feature updates",
-      "Exclusive Founder Badge",
-      "Direct priority support",
-      "No recurring subscriptions",
+      "Lifetime updates",
+      "Priority Support",
+      "No recurring fees",
     ],
     buttonText: "Get Lifetime",
     popular: false,
@@ -118,13 +116,13 @@ export default function PricingSection() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-16 text-center">
           <h2 className="mb-4 text-3xl font-heading text-foreground sm:text-4xl lg:text-5xl">
-            Simple, Transparent{" "}
+            Fair and effective{" "}
             <span className="italic-serif text-primary">
-              potential.
+              pricing.
             </span>
           </h2>
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-            Choose the plan that fits your learning pace. Secure checkout is powered by Stripe.
+            Choose between a monthly subscription and a lifelong plan for learning. Secure checkout is powered by Stripe.
           </p>
         </div>
 
