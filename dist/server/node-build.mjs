@@ -5,169 +5,27 @@ import express__default from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { z } from "zod";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
-import { randomUUID } from "crypto";
 import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
 const handleDemo = (req, res) => {
   const response = {
     message: "Hello from Express server"
   };
   res.status(200).json(response);
 };
-const signupSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters")
-});
-const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required")
-});
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
-const JWT_EXPIRES_IN = "7d";
-const users = /* @__PURE__ */ new Map();
-function hashPassword(password) {
-  return bcrypt.hashSync(password, 10);
-}
-function comparePassword(password, hash) {
-  return bcrypt.compareSync(password, hash);
-}
-function generateToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-}
-function verifyToken(token) {
-  try {
-    return jwt.verify(token, JWT_SECRET);
-  } catch {
-    return null;
-  }
-}
-function sanitizeUser(user) {
-  return {
-    id: user.id,
-    email: user.email,
-    createdAt: user.createdAt
-  };
-}
-const handleSignup = (req, res) => {
-  try {
-    const validation = signupSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({
-        success: false,
-        message: validation.error.errors[0].message
-      });
-    }
-    const { email, password } = validation.data;
-    const existingUser = Array.from(users.values()).find((u) => u.email === email);
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "User with this email already exists"
-      });
-    }
-    const userId = randomUUID();
-    const passwordHash = hashPassword(password);
-    const newUser = {
-      id: userId,
-      email,
-      passwordHash,
-      createdAt: /* @__PURE__ */ new Date()
-    };
-    users.set(userId, newUser);
-    const token = generateToken(userId);
-    return res.status(201).json({
-      success: true,
-      user: sanitizeUser(newUser),
-      token
-    });
-  } catch (error) {
-    console.error("Signup error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error"
-    });
-  }
-};
-const handleLogin = (req, res) => {
-  try {
-    const validation = loginSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({
-        success: false,
-        message: validation.error.errors[0].message
-      });
-    }
-    const { email, password } = validation.data;
-    const user = Array.from(users.values()).find((u) => u.email === email);
-    if (!user || !comparePassword(password, user.passwordHash)) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password"
-      });
-    }
-    const token = generateToken(user.id);
-    return res.status(200).json({
-      success: true,
-      user: sanitizeUser(user),
-      token
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error"
-    });
-  }
-};
-const handleVerifyToken = (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "No token provided"
-      });
-    }
-    const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid or expired token"
-      });
-    }
-    const user = users.get(decoded.userId);
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "User not found"
-      });
-    }
-    return res.status(200).json({
-      success: true,
-      user: sanitizeUser(user)
-    });
-  } catch (error) {
-    console.error("Token verification error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error"
-    });
-  }
-};
 const handleProfile = (req, res) => {
-  const userId = req.userId;
-  if (!userId) {
-    return res.status(401).json({ success: false, message: "Unauthorized" });
-  }
-  const user = users.get(userId);
+  const user = req.user;
   if (!user) {
-    return res.status(404).json({ success: false, message: "User not found" });
+    return res.status(401).json({ success: false, message: "Unauthorized" });
   }
   return res.json({
     success: true,
-    user: sanitizeUser(user)
+    user: {
+      id: user.id,
+      email: user.email,
+      createdAt: user.created_at,
+      metadata: user.user_metadata
+    }
   });
 };
 const deepSeekRequestSchema = z.object({
@@ -180,6 +38,29 @@ const deepSeekRequestSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   max_tokens: z.number().int().min(1).max(1e3).optional()
 });
+async function parseDeepSeekUpstreamBody$1(response) {
+  const rawBody = await response.text();
+  if (!rawBody) {
+    return {
+      body: {},
+      parseError: false,
+      rawBody: ""
+    };
+  }
+  try {
+    return {
+      body: JSON.parse(rawBody),
+      parseError: false,
+      rawBody
+    };
+  } catch {
+    return {
+      body: {},
+      parseError: true,
+      rawBody
+    };
+  }
+}
 const handleDeepSeekRoleplay = async (req, res) => {
   console.log("[DeepSeek Roleplay] Received request");
   const parsed = deepSeekRequestSchema.safeParse(req.body);
@@ -213,13 +94,21 @@ const handleDeepSeekRoleplay = async (req, res) => {
         max_tokens: parsed.data.max_tokens ?? 220
       })
     });
-    clearTimeout(timeoutId);
-    const upstreamBody = await upstream.json();
+    const { body: upstreamBody, parseError, rawBody } = await parseDeepSeekUpstreamBody$1(upstream);
     if (!upstream.ok) {
-      console.error(`[DeepSeek Roleplay] API error (${upstream.status}):`, upstreamBody.error);
+      console.error(
+        `[DeepSeek Roleplay] API error (${upstream.status}):`,
+        upstreamBody.error ?? rawBody.slice(0, 300)
+      );
       return res.status(502).json({
-        error: upstreamBody.error?.message ?? "DeepSeek request failed. Please try again.",
+        error: upstreamBody.error?.message ?? `DeepSeek request failed with status ${upstream.status}.`,
         debug: false ? upstreamBody : void 0
+      });
+    }
+    if (parseError) {
+      console.error("[DeepSeek Roleplay] Upstream returned non-JSON body:", rawBody.slice(0, 300));
+      return res.status(502).json({
+        error: "DeepSeek returned a non-JSON response."
       });
     }
     const content = upstreamBody.choices?.[0]?.message?.content?.trim();
@@ -247,6 +136,8 @@ const handleDeepSeekRoleplay = async (req, res) => {
     return res.status(500).json({
       error: "Unable to reach DeepSeek right now."
     });
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 const randomTopics = [
@@ -284,6 +175,29 @@ function stripCodeFences(raw) {
     }
   }
   return content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+}
+async function parseDeepSeekUpstreamBody(response) {
+  const rawBody = await response.text();
+  if (!rawBody) {
+    return {
+      body: {},
+      parseError: false,
+      rawBody: ""
+    };
+  }
+  try {
+    return {
+      body: JSON.parse(rawBody),
+      parseError: false,
+      rawBody
+    };
+  } catch {
+    return {
+      body: {},
+      parseError: true,
+      rawBody
+    };
+  }
 }
 const handleDeepSeekReading = async (_req, res) => {
   console.log("[DeepSeek Reading] Received request for reading prompt");
@@ -325,12 +239,17 @@ const handleDeepSeekReading = async (_req, res) => {
         ]
       })
     });
-    clearTimeout(timeoutId);
-    const upstreamBody = await upstream.json();
+    const { body: upstreamBody, parseError, rawBody } = await parseDeepSeekUpstreamBody(upstream);
     if (!upstream.ok) {
-      console.error("[DeepSeek Reading] Upstream error:", upstream.status, upstreamBody.error);
+      console.error("[DeepSeek Reading] Upstream error:", upstream.status, upstreamBody.error ?? rawBody.slice(0, 300));
       return res.status(502).json({
-        error: upstreamBody.error?.message ?? "DeepSeek reading prompt request failed."
+        error: upstreamBody.error?.message ?? `DeepSeek reading prompt request failed with status ${upstream.status}.`
+      });
+    }
+    if (parseError) {
+      console.error("[DeepSeek Reading] Upstream returned non-JSON body:", rawBody.slice(0, 300));
+      return res.status(502).json({
+        error: "DeepSeek returned a non-JSON response."
       });
     }
     const content = upstreamBody.choices?.[0]?.message?.content?.trim();
@@ -388,6 +307,8 @@ const handleDeepSeekReading = async (_req, res) => {
     return res.status(500).json({
       error: "Unable to generate reading prompt right now."
     });
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 const checkoutRequestSchema = z.object({
@@ -465,21 +386,38 @@ const handleCreateCheckoutSession = async (req, res) => {
     });
   }
 };
-function requireAuth(req, res, next) {
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+if (!supabase) {
+  console.warn("⚠️ Supabase environment variables are missing. Auth will fail.");
+}
+async function verifySupabaseToken(token) {
+  if (!supabase) {
+    console.error("Auth failed: Supabase client not initialized.");
+    return null;
+  }
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
+    return user;
+  } catch (err) {
+    console.error("Supabase token verification error:", err);
+    return null;
+  }
+}
+async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ success: false, message: "No token provided" });
   }
   const token = authHeader.substring(7);
-  const decoded = verifyToken(token);
-  if (!decoded) {
+  const user = await verifySupabaseToken(token);
+  if (!user) {
     return res.status(401).json({ success: false, message: "Invalid or expired token" });
   }
-  const user = users.get(decoded.userId);
-  if (!user) {
-    return res.status(401).json({ success: false, message: "User not found" });
-  }
-  req.userId = decoded.userId;
+  req.user = user;
+  req.userId = user.id;
   next();
 }
 function createServer() {
@@ -500,9 +438,6 @@ function createServer() {
   apiRouter.post("/ai/roleplay", handleDeepSeekRoleplay);
   apiRouter.get("/ai/reading-prompt", handleDeepSeekReading);
   apiRouter.post("/billing/checkout", handleCreateCheckoutSession);
-  apiRouter.post("/auth/signup", handleSignup);
-  apiRouter.post("/auth/login", handleLogin);
-  apiRouter.get("/auth/verify", handleVerifyToken);
   apiRouter.get("/profile", requireAuth, handleProfile);
   app2.use("/api", apiRouter);
   app2.use(apiRouter);
