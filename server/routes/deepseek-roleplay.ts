@@ -1,6 +1,6 @@
 import { RequestHandler } from "express";
 import { z } from "zod";
-import { DeepSeekV3Response } from "@shared/api";
+import { DeepSeekV3Response } from "../../shared/api";
 
 const deepSeekRequestSchema = z.object({
   messages: z

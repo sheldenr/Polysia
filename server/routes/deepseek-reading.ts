@@ -1,5 +1,5 @@
 import { RequestHandler } from "express";
-import { DeepSeekReadingPromptResponse } from "@shared/api";
+import { DeepSeekReadingPromptResponse } from "../../shared/api";
 
 const randomTopics = [
   "a surprising street food discovery",

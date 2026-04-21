@@ -5,7 +5,7 @@ import type {
   BillingPlanId,
   CreateCheckoutSessionRequest,
   CreateCheckoutSessionResponse,
-} from "@shared/api";
+} from "../../shared/api";
 
 const checkoutRequestSchema = z.object({
   plan: z.enum(["pro_monthly", "lifetime"]),
