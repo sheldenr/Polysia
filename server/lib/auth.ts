@@ -1,41 +1,21 @@
-import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
-import { User } from "../../shared/auth";
+import { createClient } from "@supabase/supabase-js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
-const JWT_EXPIRES_IN = "7d";
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-export interface UserWithPassword extends User {
-  passwordHash: string;
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn("Supabase environment variables are missing on the server.");
 }
 
-// In-memory user storage (replace with database in production)
-export const users: Map<string, UserWithPassword> = new Map();
+export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "");
 
-export function hashPassword(password: string): string {
-  return bcrypt.hashSync(password, 10);
-}
-
-export function comparePassword(password: string, hash: string): boolean {
-  return bcrypt.compareSync(password, hash);
-}
-
-export function generateToken(userId: string): string {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-}
-
-export function verifyToken(token: string): { userId: string } | null {
+export async function verifySupabaseToken(token: string) {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string };
-  } catch {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
+    return user;
+  } catch (err) {
+    console.error("Supabase token verification error:", err);
     return null;
   }
-}
-
-export function sanitizeUser(user: UserWithPassword): User {
-  return {
-    id: user.id,
-    email: user.email,
-    createdAt: user.createdAt,
-  };
 }

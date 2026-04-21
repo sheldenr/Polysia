@@ -181,6 +181,7 @@ const deepSeekRequestSchema = z.object({
   max_tokens: z.number().int().min(1).max(1e3).optional()
 });
 const handleDeepSeekRoleplay = async (req, res) => {
+  console.log("[DeepSeek Roleplay] Received request");
   const parsed = deepSeekRequestSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -189,11 +190,14 @@ const handleDeepSeekRoleplay = async (req, res) => {
   }
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
+    console.error("[DeepSeek Roleplay] Missing DEEPSEEK_API_KEY");
     return res.status(500).json({
       error: "DeepSeek is not configured. Add DEEPSEEK_API_KEY to your environment."
     });
   }
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 9e3);
   try {
     const upstream = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
@@ -201,6 +205,7 @@ const handleDeepSeekRoleplay = async (req, res) => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model,
         messages: parsed.data.messages,
@@ -208,16 +213,21 @@ const handleDeepSeekRoleplay = async (req, res) => {
         max_tokens: parsed.data.max_tokens ?? 220
       })
     });
+    clearTimeout(timeoutId);
     const upstreamBody = await upstream.json();
     if (!upstream.ok) {
+      console.error(`[DeepSeek Roleplay] API error (${upstream.status}):`, upstreamBody.error);
       return res.status(502).json({
-        error: upstreamBody.error?.message ?? "DeepSeek request failed. Please try again."
+        error: upstreamBody.error?.message ?? "DeepSeek request failed. Please try again.",
+        debug: false ? upstreamBody : void 0
       });
     }
     const content = upstreamBody.choices?.[0]?.message?.content?.trim();
     if (!content) {
+      console.error("[DeepSeek Roleplay] Empty response choices:", upstreamBody.choices);
       return res.status(502).json({
-        error: "DeepSeek returned an empty response."
+        error: "DeepSeek returned an empty response.",
+        debug: false ? upstreamBody : void 0
       });
     }
     const response = {
@@ -227,6 +237,12 @@ const handleDeepSeekRoleplay = async (req, res) => {
     };
     return res.status(200).json(response);
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error("[DeepSeek Roleplay] Request timed out");
+      return res.status(504).json({
+        error: "DeepSeek took too long to respond. Please try again."
+      });
+    }
     console.error("DeepSeek roleplay error:", error);
     return res.status(500).json({
       error: "Unable to reach DeepSeek right now."
@@ -254,32 +270,49 @@ function normalizeReadingText(text) {
   return trimmed.replace(/[，。！？；、]*$/, "。");
 }
 function stripCodeFences(raw) {
-  const trimmed = raw.trim();
-  if (!trimmed.startsWith("```")) {
-    return trimmed;
+  let content = raw.trim();
+  if (!content.startsWith("{")) {
+    const match = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (match && match[1]) {
+      content = match[1].trim();
+    }
   }
-  return trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  if (!content.startsWith("{")) {
+    const match = content.match(/(\{[\s\S]*\})/);
+    if (match && match[1]) {
+      content = match[1].trim();
+    }
+  }
+  return content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
 }
 const handleDeepSeekReading = async (_req, res) => {
+  console.log("[DeepSeek Reading] Received request for reading prompt");
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
+    console.error("[DeepSeek Reading] Missing DEEPSEEK_API_KEY");
     return res.status(500).json({
       error: "DeepSeek is not configured. Add DEEPSEEK_API_KEY to your environment."
     });
   }
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
   const selectedTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 9e3);
   try {
+    console.log(`[DeepSeek Reading] Fetching from DeepSeek with topic: ${selectedTopic}`);
     const upstream = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model,
-        temperature: 0.8,
-        max_tokens: 320,
+        temperature: 0.6,
+        // Slightly lower temperature for faster/more stable generation
+        max_tokens: 400,
+        // Slightly more tokens to avoid truncation
         messages: [
           {
             role: "system",
@@ -292,24 +325,33 @@ const handleDeepSeekReading = async (_req, res) => {
         ]
       })
     });
+    clearTimeout(timeoutId);
     const upstreamBody = await upstream.json();
     if (!upstream.ok) {
+      console.error("[DeepSeek Reading] Upstream error:", upstream.status, upstreamBody.error);
       return res.status(502).json({
         error: upstreamBody.error?.message ?? "DeepSeek reading prompt request failed."
       });
     }
     const content = upstreamBody.choices?.[0]?.message?.content?.trim();
     if (!content) {
+      console.error("[DeepSeek Reading] Empty content from DeepSeek");
       return res.status(502).json({
         error: "DeepSeek returned an empty reading prompt."
       });
     }
+    console.log("[DeepSeek Reading] Successfully received response from DeepSeek");
     let parsed = null;
+    const strippedContent = stripCodeFences(content);
     try {
-      parsed = JSON.parse(stripCodeFences(content));
-    } catch {
+      parsed = JSON.parse(strippedContent);
+    } catch (err) {
+      console.error("DeepSeek JSON Parse Error:", err);
+      console.error("Raw Content:", content);
+      console.error("Stripped Content:", strippedContent);
       return res.status(502).json({
-        error: "DeepSeek returned an invalid reading payload."
+        error: "DeepSeek returned an invalid reading payload.",
+        debug: false ? { content, err: String(err) } : void 0
       });
     }
     const titleZh = parsed.titleZh?.trim();
@@ -317,8 +359,11 @@ const handleDeepSeekReading = async (_req, res) => {
     const text = parsed.text?.trim();
     const quiz = parsed.quiz;
     if (!titleZh || !titleEn || !text || !Array.isArray(quiz) || quiz.length !== 2 || quiz.some((item) => !item.question?.trim() || typeof item.answer !== "boolean")) {
+      console.error("DeepSeek Validation Error: Missing required fields");
+      console.error("Parsed Data:", parsed);
       return res.status(502).json({
-        error: "DeepSeek reading payload is missing required fields."
+        error: "DeepSeek reading payload is missing required fields.",
+        debug: false ? { parsed } : void 0
       });
     }
     const response = {
@@ -333,6 +378,12 @@ const handleDeepSeekReading = async (_req, res) => {
     };
     return res.status(200).json(response);
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error("[DeepSeek Reading] Request timed out");
+      return res.status(504).json({
+        error: "DeepSeek took too long to respond. Please try again in a moment."
+      });
+    }
     console.error("DeepSeek reading prompt error:", error);
     return res.status(500).json({
       error: "Unable to generate reading prompt right now."
@@ -437,18 +488,31 @@ function createServer() {
   app2.use(express__default.json());
   app2.use(express__default.urlencoded({ extended: true }));
   app2.use(cookieParser());
-  app2.get("/api/ping", (_req, res) => {
+  app2.use((req, _res, next) => {
+    next();
+  });
+  const apiRouter = express__default.Router();
+  apiRouter.get("/ping", (_req, res) => {
     const ping = process.env.PING_MESSAGE ?? "ping";
     res.json({ message: ping });
   });
-  app2.get("/api/demo", handleDemo);
-  app2.post("/api/ai/roleplay", handleDeepSeekRoleplay);
-  app2.get("/api/ai/reading-prompt", handleDeepSeekReading);
-  app2.post("/api/billing/checkout", handleCreateCheckoutSession);
-  app2.post("/api/auth/signup", handleSignup);
-  app2.post("/api/auth/login", handleLogin);
-  app2.get("/api/auth/verify", handleVerifyToken);
-  app2.get("/api/profile", requireAuth, handleProfile);
+  apiRouter.get("/demo", handleDemo);
+  apiRouter.post("/ai/roleplay", handleDeepSeekRoleplay);
+  apiRouter.get("/ai/reading-prompt", handleDeepSeekReading);
+  apiRouter.post("/billing/checkout", handleCreateCheckoutSession);
+  apiRouter.post("/auth/signup", handleSignup);
+  apiRouter.post("/auth/login", handleLogin);
+  apiRouter.get("/auth/verify", handleVerifyToken);
+  apiRouter.get("/profile", requireAuth, handleProfile);
+  app2.use("/api", apiRouter);
+  app2.use(apiRouter);
+  app2.use((err, _req, res, _next) => {
+    console.error("Express error:", err);
+    res.status(500).json({
+      error: "Internal server error",
+      message: err instanceof Error ? err.message : String(err)
+    });
+  });
   return app2;
 }
 const app = createServer();

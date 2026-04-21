@@ -81,7 +81,7 @@ const statEventActions = {
 } as const;
 
 export default function LearningHub() {
-  const { user, supabaseConfigError } = useAuth();
+  const { user, session, supabaseConfigError } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -521,7 +521,14 @@ export default function LearningHub() {
       setIsReadingPromptLoading(true);
 
       try {
-        const response = await fetch("/api/ai/reading-prompt");
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+
+        const response = await fetch("/api/ai/reading-prompt", {
+          headers,
+        });
         const payload = await parseJsonResponse<
           | DeepSeekReadingPromptResponse
           | { error?: string }
@@ -699,18 +706,22 @@ export default function LearningHub() {
     ];
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch("/api/ai/roleplay", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           messages: deepSeekMessages,
           temperature: 0.7,
           max_tokens: 220,
         }),
       });
-
       const payload = await parseJsonResponse<DeepSeekV3Response & { error?: string }>(
         response,
         {

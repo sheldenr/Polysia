@@ -57,7 +57,7 @@ const plans: Array<{
 ];
 
 export default function PricingSection() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
   const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<BillingPlanId | null>(null);
 
@@ -70,9 +70,16 @@ export default function PricingSection() {
         customerEmail: user?.email,
       };
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(payload),
       });
 

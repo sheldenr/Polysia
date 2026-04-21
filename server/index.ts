@@ -3,7 +3,6 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { handleDemo } from "./routes/demo";
-import { handleSignup, handleLogin, handleVerifyToken } from "./routes/auth";
 import { handleProfile } from "./routes/profile";
 import { handleDeepSeekRoleplay } from "./routes/deepseek-roleplay";
 import { handleDeepSeekReading } from "./routes/deepseek-reading";
@@ -41,11 +40,6 @@ export function createServer() {
   apiRouter.post("/ai/roleplay", handleDeepSeekRoleplay);
   apiRouter.get("/ai/reading-prompt", handleDeepSeekReading);
   apiRouter.post("/billing/checkout", handleCreateCheckoutSession);
-
-  // Auth routes (public)
-  apiRouter.post("/auth/signup", handleSignup);
-  apiRouter.post("/auth/login", handleLogin);
-  apiRouter.get("/auth/verify", handleVerifyToken);
 
   // Protected routes (require authentication)
   apiRouter.get("/profile", requireAuth, handleProfile);

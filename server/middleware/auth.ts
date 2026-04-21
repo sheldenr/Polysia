@@ -1,15 +1,17 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyToken, users } from "../lib/auth";
+import { verifySupabaseToken } from "../lib/auth";
+import type { User } from "@supabase/supabase-js";
 
 declare global {
   namespace Express {
     interface Request {
+      user?: User;
       userId?: string;
     }
   }
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -17,17 +19,13 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 
   const token = authHeader.substring(7);
-  const decoded = verifyToken(token);
+  const user = await verifySupabaseToken(token);
 
-  if (!decoded) {
+  if (!user) {
     return res.status(401).json({ success: false, message: "Invalid or expired token" });
   }
 
-  const user = users.get(decoded.userId);
-  if (!user) {
-    return res.status(401).json({ success: false, message: "User not found" });
-  }
-
-  req.userId = decoded.userId;
+  req.user = user;
+  req.userId = user.id;
   next();
 }

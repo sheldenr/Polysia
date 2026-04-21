@@ -1,21 +1,19 @@
 import { RequestHandler } from "express";
-import { users, sanitizeUser } from "../lib/auth";
 
 export const handleProfile: RequestHandler = (req, res) => {
-  const userId = req.userId; // Set by requireAuth middleware
-
-  if (!userId) {
-    return res.status(401).json({ success: false, message: "Unauthorized" });
-  }
-
-  const user = users.get(userId);
+  const user = req.user; // Set by requireAuth middleware
 
   if (!user) {
-    return res.status(404).json({ success: false, message: "User not found" });
+    return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
   return res.json({
     success: true,
-    user: sanitizeUser(user),
+    user: {
+      id: user.id,
+      email: user.email,
+      createdAt: user.created_at,
+      metadata: user.user_metadata,
+    },
   });
 };
