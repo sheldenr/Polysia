@@ -177,8 +177,8 @@ export default function Layout({ children }: LayoutProps) {
                     <p className="m-0 inline-flex items-center text-white/90">
                       <span>Note: </span>
                       <span className="ml-1">
-                        Polysia is currently in alpha. This is a
-                        solo-development project, thanks for helping us improve.
+                          Polysia is currently in beta. This is a
+                          solo-development project, thanks for helping the project improve.
                       </span>
                     </p>
                     <p
@@ -187,16 +187,16 @@ export default function Layout({ children }: LayoutProps) {
                     >
                       <span>Note: </span>
                       <span className="ml-1">
-                        Polysia is currently in alpha. This is a
-                        solo-development project, thanks for helping us improve.
+                        Polysia is currently in beta. This is a
+                        solo-development project, thanks for helping the project improve.
                       </span>
                     </p>
                   </div>
                 </div>
                 <p className="hidden w-full text-center sm:block text-white/90">
                   <span>Note: </span>
-                  Polysia is currently in alpha. This is a solo-development
-                  project, thanks for helping us improve.
+                  Polysia is currently in beta. This is a solo-development
+                  project, thanks for helping the project improve.
                 </p>
               </div>
               <Button

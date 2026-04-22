@@ -48,8 +48,8 @@ export default function HeroSection() {
       <div className="relative z-10 mx-auto max-w-6xl text-center">
         {/* Main Heading */}
         <h1 className="text-5xl sm:text-6xl lg:text-8xl font-heading mb-6 leading-[1.1] tracking-tight text-foreground">
-          Learn Chinese,
-          <span className="block italic-serif text-primary">see real progress.</span>
+          Study Chinese,
+          <span className="block italic-serif text-primary">reach real fluency.</span>
         </h1>
 
         {/* Subheading */}
@@ -66,7 +66,7 @@ export default function HeroSection() {
             className="rounded-full px-10 h-14 text-lg font-medium bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 shadow-xl hover:shadow-black/20 transition-all border-none"
           >
             <Link to={isAuthenticated ? "/learning-hub" : "/signup"}>
-              {isAuthenticated ? "Continue your progress" : "Start learning for free"}
+              {isAuthenticated ? "Continue your progress" : "Start learning now"}
             </Link>
           </Button>
         </div>
