@@ -41,6 +41,7 @@ export interface DeepSeekReadingPromptResponse {
   titleEn: string;
   text: string;
   model: string;
+  hskLevel?: string;
 }
 
 export type BillingPlanId = "pro_monthly" | "lifetime";

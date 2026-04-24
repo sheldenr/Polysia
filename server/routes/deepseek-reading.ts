@@ -1,4 +1,5 @@
 import { RequestHandler } from "express";
+import { supabase } from "../lib/auth.js";
 import type { DeepSeekReadingPromptResponse } from "../../shared/api";
 
 const randomTopics = [
@@ -82,9 +83,10 @@ async function parseDeepSeekUpstreamBody(response: Response) {
   }
 }
 
-export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
+export const handleDeepSeekReading: RequestHandler = async (req, res) => {
   console.log("[DeepSeek Reading] Received request for reading prompt");
   
+  const userId = req.userId;
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     console.error("[DeepSeek Reading] Missing DEEPSEEK_API_KEY");
@@ -92,6 +94,28 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
       error: "DeepSeek is not configured. Add DEEPSEEK_API_KEY to your environment.",
     });
   }
+
+  // Fetch user's HSK level from profile
+  let hskLevel = "Beginner";
+  if (userId && supabase) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_hsk_level")
+      .eq("id", userId)
+      .maybeSingle();
+    
+    if (profile?.onboarding_hsk_level) {
+      hskLevel = profile.onboarding_hsk_level;
+    }
+  }
+
+  const hskConstraint = hskLevel === "Beginner" 
+    ? "The user is at HSK 1 level. Use only HSK 1 vocabulary and basic grammar." 
+    : hskLevel === "Intermediate"
+      ? "The user is at HSK 2-3 level. Use vocabulary and grammar structures appropriate for HSK 2 and 3."
+      : "The user is at HSK 3-4 level. Use vocabulary and grammar structures appropriate for HSK 3 and 4.";
+
+  const vocabConstraint = `${hskConstraint} Ensure the text is natural but accessible for this level.`;
 
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
   const timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS ?? 25000);
@@ -122,12 +146,12 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
           {
             role: "system",
             content:
-              'You are a Chinese reading tutor. Return strict JSON only (no markdown): {"titleZh":"...","titleEn":"...","text":"...","quiz":[{"question":"...","answer":true},{"question":"...","answer":false}]}. titleZh should be a concise Chinese topic title (4-12 chars). titleEn should be the natural English translation of that Chinese title. text must be a single Mandarin passage between 180 and 220 Chinese characters. text must contain only Chinese (no English, no pinyin, no bullets). quiz must contain exactly 2 true/false questions that are directly based on details from text. Each question must be in English and each answer must be a boolean.',
+              `You are a Chinese reading tutor. ${vocabConstraint} Return strict JSON only (no markdown): {"titleZh":"...","titleEn":"...","text":"...","quiz":[{"question":"...","answer":true},{"question":"...","answer":false}]}. titleZh should be a concise Chinese topic title (4-12 chars). titleEn should be the natural English translation of that Chinese title. text must be a single Mandarin passage between 180 and 220 Chinese characters. text must contain only Chinese (no English, no pinyin, no bullets). quiz must contain exactly 2 true/false questions that are directly based on details from text. Each question must be in English and each answer must be a boolean.`,
           },
           {
             role: "user",
             content:
-              `Create today's reading passage for an intermediate learner. Use a random topic around: ${selectedTopic}.`,
+              `Create today's reading passage for the user. Use a random topic around: ${selectedTopic}.`,
           },
         ],
       }),
@@ -218,6 +242,7 @@ export const handleDeepSeekReading: RequestHandler = async (_req, res) => {
         answer: item.answer as boolean,
       })),
       model: upstreamBody.model ?? model,
+      hskLevel,
     };
 
     return res.status(200).json(response);

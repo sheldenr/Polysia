@@ -1,5 +1,6 @@
 import { RequestHandler } from "express";
 import { z } from "zod";
+import { supabase } from "../lib/auth.js";
 import type { DeepSeekV3Response } from "../../shared/api";
 
 const deepSeekRequestSchema = z.object({
@@ -48,7 +49,6 @@ async function parseDeepSeekUpstreamBody(response: Response) {
     };
   }
 }
-
 export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
   console.log("[DeepSeek Roleplay] Received request");
   const parsed = deepSeekRequestSchema.safeParse(req.body);
@@ -58,11 +58,43 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
     });
   }
 
+  const userId = req.userId;
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     console.error("[DeepSeek Roleplay] Missing DEEPSEEK_API_KEY");
     return res.status(500).json({
       error: "DeepSeek is not configured. Add DEEPSEEK_API_KEY to your environment.",
+    });
+  }
+
+  // Fetch user's known characters/words from flashcards
+  let knownVocab: string[] = [];
+  if (userId && supabase) {
+    const { data: flashcards } = await supabase
+      .from("flashcards")
+      .select("simplified")
+      .eq("user_id", userId)
+      .not("state", "eq", "NEW");
+
+    if (flashcards) {
+      knownVocab = flashcards.map(f => f.simplified);
+    }
+  }
+
+  const vocabList = knownVocab.length > 0 ? knownVocab.join(", ") : "basic HSK 1";
+  const vocabConstraint = knownVocab.length > 0 
+    ? `The user knows these Chinese characters/words: [${vocabList}]. Heavily prioritize using these known words in your responses. You can introduce a very small amount of new vocabulary (1-2 new words per response) if necessary for the context, but keep it mostly within their known set.`
+    : "The user is a beginner. Use only very basic HSK 1 vocabulary.";
+
+  // Prepend vocabulary constraint to the system message if it exists
+  const messages = [...parsed.data.messages];
+  const systemMessageIdx = messages.findIndex(m => m.role === "system");
+  if (systemMessageIdx !== -1) {
+    messages[systemMessageIdx].content = `${vocabConstraint} ${messages[systemMessageIdx].content}`;
+  } else {
+    messages.unshift({
+      role: "system",
+      content: vocabConstraint,
     });
   }
 
@@ -86,11 +118,12 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        messages: parsed.data.messages,
+        messages,
         temperature: parsed.data.temperature ?? 0.7,
         max_tokens: parsed.data.max_tokens ?? 220,
       }),
     });
+
 
     const { body: upstreamBody, parseError, rawBody } =
       await parseDeepSeekUpstreamBody(upstream);

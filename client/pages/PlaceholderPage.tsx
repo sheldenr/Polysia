@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft, Mail, LayoutDashboard } from "lucide-react";
 
 interface PlaceholderPageProps {
   title: string;
@@ -17,7 +17,7 @@ export default function PlaceholderPage({
       <div className="min-h-[70vh] flex items-center justify-center px-6 py-24 transition-colors duration-300">
         <div className="text-center max-w-2xl mx-auto">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-8 rounded-3xl bg-primary/10 text-primary">
-            <span className="text-5xl">🚀</span>
+            <LayoutDashboard className="h-10 w-10" />
           </div>
           <h1 className="text-4xl sm:text-6xl font-heading mb-6 tracking-tight text-foreground">
             {title}

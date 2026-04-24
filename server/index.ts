@@ -37,8 +37,8 @@ export function createServer() {
   });
 
   apiRouter.get("/demo", handleDemo);
-  apiRouter.post("/ai/roleplay", handleDeepSeekRoleplay);
-  apiRouter.get("/ai/reading-prompt", handleDeepSeekReading);
+  apiRouter.post("/ai/roleplay", requireAuth, handleDeepSeekRoleplay);
+  apiRouter.get("/ai/reading-prompt", requireAuth, handleDeepSeekReading);
   apiRouter.post("/billing/checkout", handleCreateCheckoutSession);
 
   // Protected routes (require authentication)

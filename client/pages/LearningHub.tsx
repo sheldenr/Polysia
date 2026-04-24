@@ -24,6 +24,7 @@ import {
   Home,
   LayoutDashboard,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSRS, type SRSRating, getProjectedIntervals } from "@/hooks/use-srs";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type {
   DeepSeekMessage,
   DeepSeekReadingPromptResponse,
@@ -47,6 +49,7 @@ const defaultReadingContent = {
   titleZh: "咖啡店偶遇",
   titleEn: "A Chance Meeting at a Cafe",
   text: "今天下班后，我去小区旁边的新咖啡馆点了一杯热拿铁，顺便和店员聊了几句最近的天气，感觉中文表达越来越自然。",
+  hskLevel: "Beginner",
   quiz: [
     {
       question: "The speaker visited a new cafe near home after work.",
@@ -70,8 +73,8 @@ interface LearningActivity {
 
 const modeTargets: Record<LearningMode, number> = {
   flashcards: 20,
-  reading: 15,
-  roleplay: 18,
+  reading: 1,
+  roleplay: 5,
 };
 
 const statEventActions = {
@@ -79,6 +82,17 @@ const statEventActions = {
   dialogueResponse: "stat:dialogue-response",
   wordsRead: "stat:words-read",
 } as const;
+
+const textbookTopics = [
+  "Ordering a coffee at a cafe",
+  "Checking into a hotel",
+  "Asking for directions to the train station",
+  "Buying fruit at a local market",
+  "Ordering food at a restaurant",
+  "Taking a taxi to the airport",
+  "Asking to work in at a machine",
+  "Meeting an online friend for the first time",
+];
 
 export default function LearningHub() {
   const { user, session, supabaseConfigError } = useAuth();
@@ -88,7 +102,13 @@ export default function LearningHub() {
   const [isFlowActive, setIsFlowActive] = useState(false);
   const [activeFlowIndex, setActiveFlowIndex] = useState(0);
   const [isRoleplayLoading, setIsRoleplayLoading] = useState(false);
-  const [readingContent, setReadingContent] = useState(defaultReadingContent);
+  const [readingContent, setReadingContent] = useState<{
+    titleZh: string;
+    titleEn: string;
+    text: string;
+    hskLevel?: string;
+    quiz: Array<{ question: string; answer: boolean }>;
+  }>(defaultReadingContent);
   const [isReadingPromptLoading, setIsReadingPromptLoading] = useState(false);
   const [streakDays, setStreakDays] = useState(0);
   const [stats, setStats] = useState({
@@ -107,6 +127,8 @@ export default function LearningHub() {
     reading: 0,
     roleplay: 0,
   });
+  const sessionFlashcardsRef = useRef(0);
+  const sessionExchangesRef = useRef(0);
   const [recentActivity, setRecentActivity] = useState<LearningActivity[]>([]);
   const [readingQuizAnswers, setReadingQuizAnswers] = useState<Array<boolean | null>>(
     Array(defaultReadingContent.quiz.length).fill(null),
@@ -119,20 +141,82 @@ export default function LearningHub() {
   const flowModeEntryTimestampRef = useRef<number | null>(null);
   const activeModeIndexRef = useRef<number>(0);
 
-  // Learning State (Mocked)
+  // Learning State
   const [roleplayMessages, setRoleplayMessages] = useState<
     Array<{ role: "ai" | "user"; text: string }>
-  >([
-    {
-      role: "ai",
-      text: "你好！今天我们练习一个关于日常生活的对话。你能告诉我你今天做了什么吗？",
-    },
-  ]);
+  >([]);
   const [roleplayInput, setRoleplayInput] = useState("");
+  const [roleplayTopic, setRoleplayTopic] = useState("");
+  const [isTopicSelected, setIsTopicSelected] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isFlashcardFlipped, setIsFlashcardFlipped] = useState(false);
   const [skipTransition, setSkipTransition] = useState(false);
 
   const { loading: srsLoading, getDueCards, rateCard, deck, hskProgress } = useSRS();
+
+  useEffect(() => {
+    if (isTopicSelected || !isFlowActive || activeFlowIndex !== 2) return;
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % textbookTopics.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isTopicSelected, isFlowActive, activeFlowIndex]);
+
+  const handleStartRoleplay = useCallback(async (topic: string) => {
+    const selectedTopic = topic.trim() || textbookTopics[0];
+    setRoleplayTopic(selectedTopic);
+    setIsTopicSelected(true);
+    setIsRoleplayLoading(true);
+
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch("/api/ai/roleplay", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content: `You are a Mandarin Chinese roleplay tutor. Start a conversation based on the topic: "${selectedTopic}". Reply mostly in Chinese, keep responses short (1-3 sentences), and gently correct mistakes naturally. Start by introducing the scenario and asking the user an initial question.`,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 220,
+        }),
+      });
+      
+      const payload = await parseJsonResponse<DeepSeekV3Response & { error?: string }>(
+        response,
+        {
+          emptyMessage: "Roleplay start failed: the server returned no response.",
+          invalidMessage: "Roleplay start failed: received an invalid server response.",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to start conversation");
+      }
+
+      setRoleplayMessages([{ role: "ai", text: payload.content }]);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Could not start conversation",
+        description: error instanceof Error ? error.message : "AI tutor is unavailable.",
+      });
+      setIsTopicSelected(false);
+    } finally {
+      setIsRoleplayLoading(false);
+    }
+  }, [session, toast]);
+
+  const seenCharacters = deck.filter((card) => card.state !== "NEW").length;
 
   const formatRelativeTime = useCallback((isoTimestamp: string) => {
     const timestamp = new Date(isoTimestamp).getTime();
@@ -242,20 +326,23 @@ export default function LearningHub() {
         continue;
       }
 
+      const mode = row.mode as LearningMode;
+      const isToday = new Date(row.created_at) >= dayStart;
+
       if (row.action.startsWith("stat:")) {
+        if (isToday) {
+          if (row.action === statEventActions.flashcardSuccess) {
+            nextTodayProgress.flashcards += 1;
+          } else if (row.action === statEventActions.dialogueResponse) {
+            nextTodayProgress.roleplay += 1;
+          } else if (row.action === statEventActions.wordsRead) {
+            nextTodayProgress.reading += 1;
+          }
+        }
         continue;
       }
 
-      const mode = row.mode as LearningMode;
       nextWeeklyModeMinutes[mode] += row.minutes_spent ?? 0;
-
-      if (new Date(row.created_at) >= dayStart) {
-        if (mode === "flashcards") {
-          nextTodayProgress.flashcards += 1;
-        } else {
-          nextTodayProgress[mode] += row.minutes_spent ?? 0;
-        }
-      }
     }
 
     setWeeklyModeMinutes(nextWeeklyModeMinutes);
@@ -273,6 +360,17 @@ export default function LearningHub() {
       perfected: perfectedResult.count ?? 0,
       wordsRead: totalWordsRead,
     }));
+
+    // Refresh streak from profile
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("streak_days")
+      .eq("id", user.id)
+      .maybeSingle();
+    
+    if (profileData) {
+      setStreakDays(profileData.streak_days || 0);
+    }
   }, [user]);
 
   const logLearningActivity = useCallback(
@@ -305,11 +403,23 @@ export default function LearningHub() {
       }
 
       if (modeIndex === 0) {
-        await logLearningActivity("flashcards", `Studied character flashcards for ${minutesSpent} min`, minutesSpent);
+        await logLearningActivity(
+          "flashcards",
+          `Studied ${sessionFlashcardsRef.current} cards`,
+          minutesSpent,
+        );
       } else if (modeIndex === 1) {
-        await logLearningActivity("reading", `Completed tailored reading for ${minutesSpent} min`, minutesSpent);
+        await logLearningActivity(
+          "reading",
+          "Read 1 passage",
+          minutesSpent,
+        );
       } else if (modeIndex === 2) {
-        await logLearningActivity("roleplay", `Completed practice conversations for ${minutesSpent} min`, minutesSpent);
+        await logLearningActivity(
+          "roleplay",
+          `Had ${sessionExchangesRef.current} exchanges`,
+          minutesSpent,
+        );
       }
     },
     [logLearningActivity],
@@ -429,6 +539,9 @@ export default function LearningHub() {
       if (!currentCard) return;
       setSkipTransition(true);
       rateCard(currentCard.h, rating);
+      
+      sessionFlashcardsRef.current += 1;
+
       if (rating === 3 || rating === 4) {
         setStats((prev) => ({
           ...prev,
@@ -478,109 +591,78 @@ export default function LearningHub() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isFlowActive]);
 
-  useEffect(() => {
+  const fetchReadingPrompt = useCallback(async (ignoreCache = false) => {
+    setIsReadingPromptLoading(true);
+
     const userKey = user?.id ?? "anonymous";
     const promptStorageKey = `reading-prompt:${readingPromptCacheVersion}:${userKey}`;
     const promptTimestampStorageKey = `reading-prompt-ts:${readingPromptCacheVersion}:${userKey}`;
-    const lastPromptRaw = window.localStorage.getItem(promptStorageKey);
-    const lastPromptTimestampRaw = window.localStorage.getItem(
-      promptTimestampStorageKey,
-    );
-    const lastPromptTimestamp = lastPromptTimestampRaw
-      ? Number(lastPromptTimestampRaw)
-      : 0;
-    const isFresh =
-      !!lastPromptRaw &&
-      Number.isFinite(lastPromptTimestamp) &&
-      Date.now() - lastPromptTimestamp < readingPromptTTL;
 
-    if (isFresh && lastPromptRaw) {
-      try {
-        const cached = JSON.parse(lastPromptRaw) as DeepSeekReadingPromptResponse;
-        if (
-          cached.titleZh &&
-          cached.titleEn &&
-          cached.text &&
-          Array.isArray(cached.quiz) &&
-          cached.quiz.length === 2
-        ) {
-          setReadingContent({
-            titleZh: cached.titleZh,
-            titleEn: cached.titleEn,
-            text: cached.text,
-            quiz: cached.quiz,
-          });
-          return;
+    if (!ignoreCache) {
+      const lastPromptRaw = window.localStorage.getItem(promptStorageKey);
+      const lastPromptTimestampRaw = window.localStorage.getItem(promptTimestampStorageKey);
+      const lastPromptTimestamp = lastPromptTimestampRaw ? Number(lastPromptTimestampRaw) : 0;
+      const isFresh = !!lastPromptRaw && Number.isFinite(lastPromptTimestamp) && Date.now() - lastPromptTimestamp < readingPromptTTL;
+
+      if (isFresh && lastPromptRaw) {
+        try {
+          const cached = JSON.parse(lastPromptRaw) as DeepSeekReadingPromptResponse;
+          if (cached.titleZh && cached.titleEn && cached.text && Array.isArray(cached.quiz) && cached.quiz.length === 2) {
+            setReadingContent({
+              titleZh: cached.titleZh,
+              titleEn: cached.titleEn,
+              text: cached.text,
+              hskLevel: cached.hskLevel,
+              quiz: cached.quiz,
+            });
+            setIsReadingPromptLoading(false);
+            return;
+          }
+        } catch {
+          // Fall through to fetch
         }
-      } catch {
-        // Ignore old cache format and fetch a fresh prompt.
       }
     }
 
-    const fetchReadingPrompt = async () => {
-      setIsReadingPromptLoading(true);
-
-      try {
-        const headers: Record<string, string> = {};
-        if (session?.access_token) {
-          headers["Authorization"] = `Bearer ${session.access_token}`;
-        }
-
-        const response = await fetch("/api/ai/reading-prompt", {
-          headers,
-        });
-        const payload = await parseJsonResponse<
-          | DeepSeekReadingPromptResponse
-          | { error?: string }
-        >(response, {
-          emptyMessage:
-            "Could not load today's reading prompt: the server returned no response.",
-          invalidMessage:
-            "Could not load today's reading prompt: received an invalid server response.",
-        });
-
-        if (
-          !response.ok ||
-          !("titleZh" in payload) ||
-          !("titleEn" in payload) ||
-          !("text" in payload) ||
-          !("quiz" in payload) ||
-          !Array.isArray(payload.quiz) ||
-          payload.quiz.length !== 2
-        ) {
-          throw new Error(
-            "error" in payload
-              ? payload.error
-              : "Could not generate the reading prompt.",
-          );
-        }
-
-        setReadingContent({
-          titleZh: payload.titleZh,
-          titleEn: payload.titleEn,
-          text: payload.text,
-          quiz: payload.quiz,
-        });
-        window.localStorage.setItem(promptStorageKey, JSON.stringify(payload));
-        window.localStorage.setItem(
-          promptTimestampStorageKey,
-          String(Date.now()),
-        );
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Tailored reading unavailable",          description:
-            error instanceof Error
-              ? error.message
-              : "Could not load today's reading prompt.",
-        });
-      } finally {
-        setIsReadingPromptLoading(false);
+    try {
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
       }
-    };
 
+      const response = await fetch("/api/ai/reading-prompt", { headers });
+      const payload = await parseJsonResponse<DeepSeekReadingPromptResponse | { error?: string }>(response, {
+        emptyMessage: "Could not load today's reading prompt: the server returned no response.",
+        invalidMessage: "Could not load today's reading prompt: received an invalid server response.",
+      });
+
+      if (!response.ok || !("titleZh" in payload) || !("titleEn" in payload) || !("text" in payload) || !("quiz" in payload) || !Array.isArray(payload.quiz) || payload.quiz.length !== 2) {
+        throw new Error("error" in payload ? payload.error : "Could not generate the reading prompt.");
+      }
+
+      setReadingContent({
+        titleZh: payload.titleZh,
+        titleEn: payload.titleEn,
+        text: payload.text,
+        hskLevel: payload.hskLevel,
+        quiz: payload.quiz,
+      });
+      window.localStorage.setItem(promptStorageKey, JSON.stringify(payload));
+      window.localStorage.setItem(promptTimestampStorageKey, String(Date.now()));
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Tailored reading unavailable",
+        description: error instanceof Error ? error.message : "Could not load today's reading prompt.",
+      });
+    } finally {
+      setIsReadingPromptLoading(false);
+    }
+  }, [session, toast, user?.id]);
+
+  useEffect(() => {
     void fetchReadingPrompt();
-  }, [toast, user?.id]);
+  }, [fetchReadingPrompt]);
 
   useEffect(() => {
     if (!isFlowActive) {
@@ -642,6 +724,8 @@ export default function LearningHub() {
     activeModeIndexRef.current = index;
     flowModeEntryTimestampRef.current = Date.now();
     setIsFlashcardFlipped(false);
+    sessionFlashcardsRef.current = 0;
+    sessionExchangesRef.current = 0;
     setTimeout(() => {
       slideRefs.current[index]?.scrollIntoView({ behavior: "smooth" });
     }, 100);
@@ -655,6 +739,12 @@ export default function LearningHub() {
     }
     flowModeEntryTimestampRef.current = null;
     setIsFlowActive(false);
+    
+    // Reset roleplay state
+    setIsTopicSelected(false);
+    setRoleplayMessages([]);
+    setRoleplayTopic("");
+    setRoleplayInput("");
   };
 
   useEffect(() => {
@@ -677,6 +767,8 @@ export default function LearningHub() {
       void trackModeTime(activeModeIndexRef.current, minutesSpent);
       activeModeIndexRef.current = activeFlowIndex;
       flowModeEntryTimestampRef.current = now;
+      sessionFlashcardsRef.current = 0;
+      sessionExchangesRef.current = 0;
     }
   }, [activeFlowIndex, isFlowActive, trackModeTime]);
 
@@ -696,7 +788,7 @@ export default function LearningHub() {
       {
         role: "system",
         content:
-          "You are a Mandarin Chinese roleplay tutor. Stay in the cafe-ordering scenario, reply mostly in Chinese, keep responses short (1-3 sentences), and gently correct mistakes naturally.",
+          `You are a Mandarin Chinese roleplay tutor. Stay in the scenario: "${roleplayTopic}". Reply mostly in Chinese. If the user makes a grammatical mistake or uses awkward phrasing, provide a very brief correction in English at the start of your response in brackets, e.g., "[Correction: ...]". Then continue the conversation in Chinese. Keep responses short (1-3 sentences).`,
       },
       ...nextMessages.map<DeepSeekMessage>((message) => ({
         role: message.role === "ai" ? "assistant" : "user",
@@ -734,6 +826,7 @@ export default function LearningHub() {
       }
 
       setRoleplayMessages((prev) => [...prev, { role: "ai", text: payload.content }]);
+      sessionExchangesRef.current += 1;
       void logLearningActivity("roleplay", statEventActions.dialogueResponse, 0);
       setStats((prev) => ({
         ...prev,
@@ -768,18 +861,20 @@ export default function LearningHub() {
       desc: "Build comprehension with contextual short passages.",
       icon: BookMarked,
       index: 1,
-      objective: `${todayProgress.reading}/${modeTargets.reading} min today`,
+      objective: `${todayProgress.reading}/${modeTargets.reading} passage today`,
       progress: Math.min(100, Math.round((todayProgress.reading / modeTargets.reading) * 100)),
-      eta: `${Math.max(modeTargets.reading - todayProgress.reading, 0)} min left`,
+      eta: `${Math.max(modeTargets.reading - todayProgress.reading, 0)} left`,
+      restricted: seenCharacters < 100,
     },
     {
       name: "Practice Conversations",
       desc: "Practice natural speaking in guided scenarios.",
       icon: MessageCircle,
       index: 2,
-      objective: `${todayProgress.roleplay}/${modeTargets.roleplay} min today`,
+      objective: `${todayProgress.roleplay}/${modeTargets.roleplay} exchanges today`,
       progress: Math.min(100, Math.round((todayProgress.roleplay / modeTargets.roleplay) * 100)),
-      eta: `${Math.max(modeTargets.roleplay - todayProgress.roleplay, 0)} min left`,
+      eta: `${Math.max(modeTargets.roleplay - todayProgress.roleplay, 0)} left`,
+      restricted: seenCharacters < 100,
     },
   ];
 
@@ -851,7 +946,7 @@ export default function LearningHub() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
-                  <Flame className="w-4 h-4 text-primary fill-primary" />
+                  <Flame className={`w-4 h-4 text-primary ${streakDays > 0 ? "fill-primary" : ""}`} />
                   <span className="text-xs text-primary">{streakDays} days</span>
                 </div>
                 <button
@@ -894,9 +989,10 @@ export default function LearningHub() {
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
                           <mode.icon className="h-5 w-5 text-primary" />
                         </div>
+
                         <h3 className="text-2xl font-heading">{mode.name}</h3>
                       </div>
-                      <span className="rounded-full border bg-background px-3 py-1 text-xs font-semibold text-muted-foreground">
+                      <span className="shrink-0 whitespace-nowrap rounded-full border bg-background px-3 py-1 text-xs font-semibold text-muted-foreground">
                         {mode.eta}
                       </span>
                     </div>
@@ -910,14 +1006,17 @@ export default function LearningHub() {
                         <span>Today&apos;s progress</span>
                         <span className="font-semibold text-foreground">{mode.progress}%</span>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                      <div className="h-2 overflow-hidden rounded-full bg-zinc-200/50">
                         <div
                           className="h-full rounded-full bg-primary transition-all duration-500"
                           style={{ width: `${mode.progress}%` }}
                         />
                       </div>
                     </div>
-                    <Button onClick={() => enterFlow(mode.index)} className="mt-6 w-full rounded-xl">
+                    <Button 
+                      onClick={() => enterFlow(mode.index)} 
+                      className="mt-6 h-11 w-full rounded-xl bg-primary hover:bg-black text-primary-foreground hover:text-white transition-all duration-300 border-none"
+                    >
                       Start session
                     </Button>
                   </article>
@@ -942,9 +1041,10 @@ export default function LearningHub() {
                               </span>
                               {item.label}
                             </span>
+
                            <span className="text-muted-foreground">{item.minutes} min</span>
                           </div>
-                          <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                          <div className="h-2 overflow-hidden rounded-full bg-zinc-200/50">
                             <div
                               className="h-full rounded-full bg-primary/80"
                               style={{ width: `${Math.round((item.minutes / maxWeeklyModeMinutes) * 100)}%` }}
@@ -976,7 +1076,15 @@ export default function LearningHub() {
                               <ActivityIcon className="h-4 w-4 text-primary" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm font-medium">{activity.action}</p>
+                              <p className="text-sm font-medium text-foreground">
+                                {activity.action.includes("min")
+                                  ? activity.mode === "flashcards"
+                                    ? "Studied flashcards"
+                                    : activity.mode === "reading"
+                                      ? "Read passage"
+                                      : "Had practice conversation"
+                                  : activity.action}
+                              </p>
                               <p className="text-xs text-muted-foreground">
                                 {formatRelativeTime(activity.created_at)}
                               </p>
@@ -1033,10 +1141,6 @@ export default function LearningHub() {
             >
               <X className="w-5 h-5 group-hover:scale-110 transition-transform" />
             </button>
-            <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border bg-background/80 backdrop-blur-md shadow-lg">
-              <img src="/logo only.svg" alt="Polysia" className="h-5 w-5" />
-              <span className="text-xs uppercase tracking-widest text-muted-foreground">Learning Session</span>
-            </div>
           </div>
 
           <div className="flow-shell" ref={flowContainerRef}>
@@ -1047,11 +1151,9 @@ export default function LearningHub() {
             >
               <div className="w-full max-w-[46rem] animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="mb-4 text-center">
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                    HSK {hskProgress.currentLevel} Progress
-                  </p>
+                  <h2 className="text-2xl sm:text-3xl font-heading tracking-tight mb-1">Character Flashcards</h2>
                   <p className="text-sm text-muted-foreground">
-                    Learned {hskProgress.learned}/{hskProgress.total} · Unlocked through HSK {hskProgress.unlockedLevel}
+                    Learning HSK {hskProgress.currentLevel} set · Learned {hskProgress.learned}/{hskProgress.total}
                   </p>
                 </div>
                 {dueCards.length > 0 ? (
@@ -1132,6 +1234,7 @@ export default function LearningHub() {
                               {intervals?.[item.rating as SRSRating] ?? "--"}
                             </span>
                           </button>
+
                         ));
                       })()}
                     </div>
@@ -1200,20 +1303,35 @@ export default function LearningHub() {
               className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-12 sm:px-8 sm:py-5 bg-gradient-to-b from-secondary/10 to-primary/5"
             >
               <div className="w-full max-w-6xl space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="text-center space-y-3">
+                <div className="text-center space-y-3 relative">
                   <h2 className="text-3xl sm:text-4xl font-heading tracking-tight">Tailored Reading</h2>
-                  <p className="text-muted-foreground">Practice comprehension with context</p>
+                  <p className="text-muted-foreground">
+                    Practice authentic reading at your {readingContent.hskLevel || "Beginner"} level.
+                  </p>
+                  
+                  <div className="flex justify-center mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void fetchReadingPrompt(true)}
+                      disabled={isReadingPromptLoading}
+                      className="text-xs h-8 gap-2 rounded-full hover:bg-primary/5"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isReadingPromptLoading ? "animate-spin" : ""}`} />
+                      {isReadingPromptLoading ? "Generating..." : "Get New Prompt"}
+                    </Button>
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-12 items-start">
                   <div className="order-1 space-y-8 lg:order-1 lg:col-span-2">
                     <article className="max-h-[72vh] overflow-y-auto p-6 sm:max-h-none sm:overflow-visible sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card shadow-xl leading-relaxed text-base sm:text-2xl space-y-6 sm:space-y-9">
-                      <h3 className="text-2xl sm:text-4xl mb-4 sm:mb-8 font-heading">
+                      <h3 className="text-2xl sm:text-4xl mb-4 sm:mb-8 font-heading flex items-center gap-3 flex-wrap">
                         <ChineseTooltipText text={readingContent.titleZh} />
+                        <span className="text-sm sm:text-lg font-normal text-muted-foreground">
+                          ({readingContent.titleEn})
+                        </span>
                       </h3>
-                      <p className="-mt-3 text-sm font-medium tracking-wide text-muted-foreground sm:text-base">
-                        {readingContent.titleEn}
-                      </p>
                       <p>
                         <ChineseTooltipText text={readingContent.text} />
                       </p>
@@ -1327,53 +1445,86 @@ export default function LearningHub() {
               <div className="w-full max-w-4xl space-y-7 sm:space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center">
                   <h2 className="text-3xl sm:text-4xl font-heading tracking-tight mb-2">Practice Conversations</h2>
-                  <p className="text-muted-foreground">Scenario: Ordering food at a Shanghai cafe.</p>
+                  <p className="text-muted-foreground">
+                    {isTopicSelected ? `Scenario: ${roleplayTopic}` : "Practice speaking naturally in real-life scenarios. Start by selecting a topic."}
+                  </p>
                 </div>
 
-                <div className="h-[65vh] sm:h-[550px] flex flex-col rounded-[1.5rem] sm:rounded-[3rem] border bg-card overflow-hidden shadow-2xl relative">
-                  <div className="flex-1 overflow-y-auto p-4 sm:p-10 space-y-4 sm:space-y-8">
-                    {roleplayMessages.map((msg, idx) => (
-                      <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[88%] sm:max-w-[80%] px-4 sm:px-8 py-3 sm:py-5 rounded-[1.25rem] sm:rounded-[2rem] text-base sm:text-lg ${
-                          msg.role === "user" 
-                          ? "bg-primary text-primary-foreground rounded-tr-none shadow-xl shadow-primary/20" 
-                          : "bg-secondary text-foreground rounded-tl-none"
-                        }`}>
-                          <p className="leading-relaxed">
-                            <ChineseTooltipText text={msg.text} />
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                <div 
+                  className={`flex flex-col rounded-[1.5rem] sm:rounded-[3rem] border bg-card overflow-hidden shadow-2xl relative transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                    isTopicSelected ? "h-[65vh] sm:h-[550px]" : "h-[82px] sm:h-[116px]"
+                  }`}
+                >
+                  <div 
+                    className={`overflow-y-auto transition-all duration-700 ${
+                      isTopicSelected 
+                        ? "flex-1 p-4 sm:p-10 opacity-100" 
+                        : "h-0 p-0 opacity-0 pointer-events-none"
+                    }`}
+                  >
+                    <div className="space-y-4 sm:space-y-8">
+                      {roleplayMessages.map((msg, idx) => {
+                        const correctionMatch = msg.text.match(/^\[Correction: (.*?)\]\s*([\s\S]*)$/i);
+                        const hasCorrection = msg.role === "ai" && correctionMatch;
+                        const correctionText = hasCorrection ? correctionMatch[1] : null;
+                        const mainText = hasCorrection ? correctionMatch[2] : msg.text;
+
+                        return (
+                          <div key={idx} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                            {hasCorrection && (
+                              <div className="mb-2 max-w-[85%] px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50 rounded-xl text-xs sm:text-sm text-amber-800 dark:text-amber-200 animate-in fade-in slide-in-from-bottom-1">
+                                <span className="font-bold mr-1">Tip:</span>
+                                {correctionText}
+                              </div>
+
+                            )}
+                            <div className={`max-w-[88%] sm:max-w-[80%] px-4 sm:px-8 py-3 sm:py-5 rounded-[1.25rem] sm:rounded-[2rem] text-base sm:text-lg ${
+                              msg.role === "user" 
+                              ? "bg-primary text-primary-foreground rounded-tr-none shadow-xl shadow-primary/20" 
+                              : "bg-secondary text-foreground rounded-tl-none"
+                            }`}>
+                              <p className="leading-relaxed">
+                                <ChineseTooltipText text={mainText} />
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  <div className="p-4 sm:p-8 bg-secondary/30 border-t">
+                  <div className={`p-3 sm:p-6 bg-secondary/30 transition-all ${isTopicSelected ? "border-t" : "flex-1 flex items-center"}`}>
                     <form
-                      className="flex gap-3 sm:gap-4"
+                      className="flex gap-3 sm:gap-4 w-full"
                       onSubmit={(event) => {
                         event.preventDefault();
-                        void handleRoleplaySubmit();
+                        if (!isTopicSelected) {
+                          handleStartRoleplay(roleplayInput || textbookTopics[placeholderIndex]);
+                        } else {
+                          void handleRoleplaySubmit();
+                        }
                       }}
                     >
                       <input
                         value={roleplayInput}
                         onChange={(e) => setRoleplayInput(e.target.value)}
-                        placeholder="Type your response in Chinese..."
+                        placeholder={
+                          isTopicSelected 
+                            ? "Type your response in Chinese..." 
+                            : `e.g., ${textbookTopics[placeholderIndex]}...`
+                        }
                         disabled={isRoleplayLoading}
                         className="flex-1 bg-card border rounded-2xl px-4 sm:px-8 py-3 sm:py-4 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm disabled:opacity-60"
                       />
                       <Button
                         type="submit"
                         size="icon"
-                        disabled={isRoleplayLoading || !roleplayInput.trim()}
-                        className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl shrink-0 shadow-lg"
+                        disabled={isRoleplayLoading || (isTopicSelected && !roleplayInput.trim())}
+                        className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl shrink-0 shadow-lg bg-black hover:bg-black/90 text-white border-none"
                       >
                         <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
                       </Button>
                     </form>
-                    {isRoleplayLoading && (
-                      <p className="mt-3 text-sm text-muted-foreground">AI is responding...</p>
-                    )}
                   </div>
                 </div>
               </div>

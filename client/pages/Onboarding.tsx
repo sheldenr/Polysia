@@ -162,7 +162,8 @@ export default function Onboarding() {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.from("profiles").upsert(
+    // 1. Save profile
+    const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: user.id,
         onboarding_complete: true,
@@ -176,14 +177,51 @@ export default function Onboarding() {
       { onConflict: "id" },
     );
 
-    if (error) {
+    if (profileError) {
       setIsSubmitting(false);
       toast({
         variant: "destructive",
         title: "Could not save onboarding",
-        description: error.message,
+        description: profileError.message,
       });
       return;
+    }
+
+    // 2. Seed initial flashcards based on level
+    try {
+      const response = await fetch("/chinese-dictionary-custom.json");
+      const dictionary = await response.json();
+      
+      const targetLevel = proficiencyLevel === "Beginner" ? 1 : proficiencyLevel === "Intermediate" ? 2 : 3;
+      
+      // Filter cards up to target level
+      const seedCards = dictionary.filter((card: any) => {
+        const match = card.n?.match(/HSK level (\d+)/i);
+        const level = match ? parseInt(match[1], 10) : 1;
+        return level <= targetLevel;
+      }).slice(0, targetLevel * 20); // Seed 20, 40, or 60 cards
+
+      if (seedCards.length > 0) {
+        const flashcardsToInsert = seedCards.map((card: any) => ({
+          user_id: user.id,
+          simplified: card.s,
+          traditional: card.t,
+          pinyin: card.p,
+          english: card.e,
+          grammar: card.g || "",
+          notes: card.n || "",
+          hsk_level: parseInt(card.n?.match(/HSK level (\d+)/i)?.[1] || "1", 10),
+          state: proficiencyLevel === "Beginner" ? "LEARNING" : "REVIEW", // Mark as seen
+          repetition: proficiencyLevel === "Beginner" ? 0 : 3,
+          efactor: 2.5,
+          due_date: new Date().toISOString(),
+        }));
+
+        await supabase.from("flashcards").insert(flashcardsToInsert);
+      }
+    } catch (e) {
+      console.error("Failed to seed flashcards:", e);
+      // Non-critical, continue to hub
     }
 
     setIsSubmitting(false);
@@ -306,7 +344,7 @@ export default function Onboarding() {
               )}
 
               <div className="pt-2">
-                <div className="mb-4 h-2 overflow-hidden rounded-full bg-secondary">
+                <div className="mb-4 h-2 overflow-hidden rounded-full bg-zinc-200/50">
                   <div
                     className="h-full rounded-full bg-primary transition-all"
                     style={{ width: `${((activeStep + 1) / steps.length) * 100}%` }}

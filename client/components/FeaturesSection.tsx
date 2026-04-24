@@ -103,7 +103,7 @@ export default function FeaturesSection() {
               </div>
 
               <div className="flex flex-col gap-3">
-                <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                <div className="h-2 w-full bg-zinc-200/50 rounded-full overflow-hidden">
                   <div className="h-full w-1/3 bg-primary rounded-full" />
                 </div>
                 <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-wider">

@@ -168,6 +168,46 @@ on public.learning_activity
 for delete
 using (auth.uid() = user_id);
 
+alter table public.profiles add column if not exists last_activity_date date;
+
+create or replace function public.handle_learning_activity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  today date := (new.created_at at time zone 'utc')::date;
+  yesterday date := today - interval '1 day';
+  user_profile record;
+begin
+  select streak_days, last_activity_date into user_profile from public.profiles where id = new.user_id;
+
+  if user_profile.last_activity_date = today then
+    -- Already active today, do nothing
+  elsif user_profile.last_activity_date = yesterday then
+    -- Active yesterday, increment streak
+    update public.profiles
+    set streak_days = user_profile.streak_days + 1,
+        last_activity_date = today
+    where id = new.user_id;
+  else
+    -- Not active yesterday, reset streak to 1
+    update public.profiles
+    set streak_days = 1,
+        last_activity_date = today
+    where id = new.user_id;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_on_learning_activity on public.learning_activity;
+create trigger trg_on_learning_activity
+after insert on public.learning_activity
+for each row execute procedure public.handle_learning_activity();
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
