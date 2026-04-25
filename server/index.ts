@@ -6,6 +6,7 @@ import { handleDemo } from "./routes/demo.js";
 import { handleProfile } from "./routes/profile.js";
 import { handleDeepSeekRoleplay } from "./routes/deepseek-roleplay.js";
 import { handleDeepSeekReading } from "./routes/deepseek-reading.js";
+import { handleTTS } from "./routes/tts.js";
 import { handleCreateCheckoutSession } from "./routes/billing.js";
 import { requireAuth } from "./middleware/auth.js";
 
@@ -39,6 +40,7 @@ export function createServer() {
   apiRouter.get("/demo", handleDemo);
   apiRouter.post("/ai/roleplay", requireAuth, handleDeepSeekRoleplay);
   apiRouter.get("/ai/reading-prompt", requireAuth, handleDeepSeekReading);
+  apiRouter.post("/ai/tts", requireAuth, handleTTS);
   apiRouter.post("/billing/checkout", handleCreateCheckoutSession);
 
   // Protected routes (require authentication)

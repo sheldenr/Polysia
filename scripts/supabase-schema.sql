@@ -1,6 +1,3 @@
--- Polysia Supabase schema
--- Run this once in Supabase SQL Editor.
-
 create extension if not exists pgcrypto;
 
 create or replace function public.set_updated_at()
@@ -181,9 +178,20 @@ declare
   yesterday date := today - interval '1 day';
   user_profile record;
 begin
+  -- Ensure profile exists
+  insert into public.profiles (id)
+  values (new.user_id)
+  on conflict (id) do nothing;
+
   select streak_days, last_activity_date into user_profile from public.profiles where id = new.user_id;
 
-  if user_profile.last_activity_date = today then
+  if user_profile.last_activity_date is null then
+    -- First activity ever
+    update public.profiles
+    set streak_days = 1,
+        last_activity_date = today
+    where id = new.user_id;
+  elsif user_profile.last_activity_date = today then
     -- Already active today, do nothing
   elsif user_profile.last_activity_date = yesterday then
     -- Active yesterday, increment streak
@@ -192,7 +200,7 @@ begin
         last_activity_date = today
     where id = new.user_id;
   else
-    -- Not active yesterday, reset streak to 1
+    -- Not active yesterday or today, reset streak to 1
     update public.profiles
     set streak_days = 1,
         last_activity_date = today

@@ -7,6 +7,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  onboardingComplete: boolean;
   supabaseConfigError: string | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (
@@ -15,6 +16,7 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; error?: string; requiresEmailVerification?: boolean }>;
   logout: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +25,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      if (!supabase) return;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("onboarding_complete")
+        .eq("id", userId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      setOnboardingComplete(data?.onboarding_complete ?? false);
+    } catch (err) {
+      console.error("Error fetching profile:", err);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  };
 
   const clearAuthParamsFromUrl = () => {
     const url = new URL(window.location.href);
@@ -59,10 +84,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id).finally(() => {
+          setIsLoading(false);
+        });
+      } else {
+        setIsLoading(false);
+      }
       if (session) {
         clearAuthParamsFromUrl();
       }
-      setIsLoading(false);
     });
 
     // Listen for auth changes
@@ -71,10 +102,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id).finally(() => {
+          setIsLoading(false);
+        });
+      } else {
+        setOnboardingComplete(false);
+        setIsLoading(false);
+      }
       if (session) {
         clearAuthParamsFromUrl();
       }
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -168,11 +206,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         isLoading,
         isAuthenticated: !!user,
+        onboardingComplete,
         supabaseConfigError,
         login,
         signup,
         logout,
         signInWithGoogle,
+        refreshProfile,
       }}
     >
       {children}

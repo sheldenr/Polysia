@@ -6,8 +6,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const proficiencyLevels = ["Beginner", "Intermediate", "Advanced"];
+const proficiencyLevels = [
+  "HSK 1",
+  "HSK 2",
+  "HSK 3",
+  "HSK 4",
+  "HSK 5",
+  "HSK 6",
+  "HSK 7",
+  "HSK 8",
+  "HSK 9",
+];
 const learningGoals = [
   "Travel conversations",
   "Career growth",
@@ -35,7 +53,7 @@ const dailyTimeOptions = [10, 20, 30, 45, 60, 90];
 type OnboardingStep = "level" | "goal" | "reason" | "age" | "time";
 
 export default function Onboarding() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -192,38 +210,62 @@ export default function Onboarding() {
       const response = await fetch("/chinese-dictionary-custom.json");
       const dictionary = await response.json();
       
-      const targetLevel = proficiencyLevel === "Beginner" ? 1 : proficiencyLevel === "Intermediate" ? 2 : 3;
-      
-      // Filter cards up to target level
+      let hskTarget = 1;
+      const hskMatch = proficiencyLevel.match(/HSK (\d+)/);
+      if (hskMatch) {
+        hskTarget = parseInt(hskMatch[1], 10);
+      }
+
+      // We'll seed all cards up to the target level.
+      // Cards below the target level will be marked as "REVIEW" (mastered).
+      // Cards at the target level will be marked as "NEW".
       const seedCards = dictionary.filter((card: any) => {
-        const match = card.n?.match(/HSK level (\d+)/i);
+        const match = card.h?.match(/hsk-L(\d+)/i) ?? card.n?.match(/HSK level (\d+)/i);
         const level = match ? parseInt(match[1], 10) : 1;
-        return level <= targetLevel;
-      }).slice(0, targetLevel * 20); // Seed 20, 40, or 60 cards
+        return level <= hskTarget;
+      });
 
       if (seedCards.length > 0) {
-        const flashcardsToInsert = seedCards.map((card: any) => ({
-          user_id: user.id,
-          simplified: card.s,
-          traditional: card.t,
-          pinyin: card.p,
-          english: card.e,
-          grammar: card.g || "",
-          notes: card.n || "",
-          hsk_level: parseInt(card.n?.match(/HSK level (\d+)/i)?.[1] || "1", 10),
-          state: proficiencyLevel === "Beginner" ? "LEARNING" : "REVIEW", // Mark as seen
-          repetition: proficiencyLevel === "Beginner" ? 0 : 3,
-          efactor: 2.5,
-          due_date: new Date().toISOString(),
-        }));
+        const flashcardsToInsert = seedCards.map((card: any) => {
+          const match = card.h?.match(/hsk-L(\d+)/i) ?? card.n?.match(/HSK level (\d+)/i);
+          const level = match ? parseInt(match[1], 10) : 1;
+          
+          const isBelowTarget = level < hskTarget;
+          
+          return {
+            user_id: user.id,
+            simplified: card.s,
+            traditional: card.t,
+            pinyin: card.p,
+            english: card.e,
+            grammar: card.g || "",
+            notes: card.n || "",
+            hsk_level: level,
+            state: isBelowTarget ? "REVIEW" : "NEW",
+            repetition: isBelowTarget ? 5 : 0, // 5+ reps marks it as perfected/mastered
+            interval: isBelowTarget ? 30 : 0,  // 30 days interval for mastered cards
+            efactor: 2.5,
+            due_date: isBelowTarget 
+              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() 
+              : new Date().toISOString(),
+            source_id: card.h || null,
+            seen_at: isBelowTarget ? new Date().toISOString() : null,
+          };
+        });
 
-        await supabase.from("flashcards").insert(flashcardsToInsert);
+        // Insert in chunks
+        const chunkSize = 100;
+        for (let i = 0; i < flashcardsToInsert.length; i += chunkSize) {
+          const chunk = flashcardsToInsert.slice(i, i + chunkSize);
+          await supabase.from("flashcards").insert(chunk);
+        }
       }
     } catch (e) {
       console.error("Failed to seed flashcards:", e);
       // Non-critical, continue to hub
     }
 
+    await refreshProfile();
     setIsSubmitting(false);
     setIsFinishing(true);
     window.setTimeout(() => {
@@ -264,18 +306,38 @@ export default function Onboarding() {
             </CardHeader>
             <CardContent className="space-y-5 text-center">
               {currentStep.key === "level" && (
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  {proficiencyLevels.map((level) => (
-                    <Button
-                      key={level}
-                      type="button"
-                      variant={proficiencyLevel === level ? "default" : "outline"}
-                      className="min-w-[150px] rounded-xl border-primary text-center"
-                      onClick={() => setProficiencyLevel(level)}
+                <div className="flex flex-col items-center justify-center gap-6">
+                  <div className="w-full max-w-[280px] space-y-4">
+                    <Select
+                      value={proficiencyLevel.startsWith("HSK") ? proficiencyLevel : ""}
+                      onValueChange={(value) => setProficiencyLevel(value)}
                     >
-                      {level}
-                    </Button>
-                  ))}
+                      <SelectTrigger className="w-full h-12 rounded-2xl text-lg border-primary/30">
+                        <SelectValue placeholder="Select HSK Level" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl">
+                        <SelectGroup>
+                          {proficiencyLevels.map((level) => (
+                            <SelectItem 
+                              key={level} 
+                              value={level}
+                              className="text-lg py-3"
+                            >
+                              {level}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+
+                    <button
+                      type="button"
+                      onClick={() => setProficiencyLevel("I don't know")}
+                      className="text-sm font-medium text-primary hover:opacity-80 transition-opacity"
+                    >
+                      I don't know my level
+                    </button>
+                  </div>
                 </div>
               )}
 

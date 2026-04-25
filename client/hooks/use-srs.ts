@@ -124,22 +124,27 @@ function buildLearningUpdate(
     };
   }
 
-  if (rating === 2) {
+  // If "Good" or "Easy" in learning mode, graduated to REVIEW immediately
+  if (rating >= 3) {
     return {
-      state,
-      stepIndex: currentStep,
+      state: "REVIEW",
+      stepIndex: 0,
+      interval: 1,
+      repetition: Math.max(1, card.repetition + 1),
+      efactor: Math.max(EASE_FLOOR, card.efactor || START_EASE),
       seenAt: card.seenAt ?? now,
-      dueDate: now + steps[currentStep],
+      dueDate: now + DAY_MS,
     };
   }
 
+  // "Hard" stays in current state, but moves to next step if available
   const nextStep = currentStep + 1;
   if (nextStep >= steps.length) {
     return {
       state: "REVIEW",
       stepIndex: 0,
       interval: 1,
-      repetition: Math.max(1, card.repetition),
+      repetition: Math.max(1, card.repetition + 1),
       efactor: Math.max(EASE_FLOOR, card.efactor || START_EASE),
       seenAt: card.seenAt ?? now,
       dueDate: now + DAY_MS,
@@ -412,7 +417,26 @@ export function useSRS() {
 
         let mappedDeck: Flashcard[] = ((data ?? []) as FlashcardRow[]).map(mapDbRowToFlashcard);
         if (!mappedDeck.length) {
-          mappedDeck = await seedHskLevel(1, []);
+          // If deck is empty, check profile for onboarding level
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("onboarding_hsk_level")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          let targetLevel = 1;
+          if (profile?.onboarding_hsk_level) {
+            const hskMatch = profile.onboarding_hsk_level.match(/HSK (\d+)/);
+            if (hskMatch) {
+              targetLevel = parseInt(hskMatch[1], 10);
+            }
+          }
+
+          // Seed levels up to targetLevel
+          // This logic is mostly for safety if onboarding seeding failed
+          for (let l = 1; l <= targetLevel; l++) {
+            mappedDeck = await seedHskLevel(l, mappedDeck);
+          }
         }
 
         mappedDeck = await unlockNextLevelIfNeeded(mappedDeck);
@@ -429,10 +453,31 @@ export function useSRS() {
 
   const getDueCards = useCallback(() => {
     const now = Date.now();
+    // Use a slightly more lenient "now" for daily reviews (e.g., 4 hours early) 
+    // to allow users to study at different times of the day without missing reviews.
+    const lenientNow = now + (4 * 60 * 60 * 1000); 
+
     return deck
-      .filter((card) => card.dueDate <= now)
+      .filter((card) => {
+        if (card.state === "NEW") return card.dueDate <= now;
+        return card.dueDate <= lenientNow;
+      })
       .sort((a, b) => {
+        // Priority 1: State (Relearning > Learning > Review > New)
+        const statePriority: Record<SRSState, number> = {
+          RELEARNING: 0,
+          LEARNING: 1,
+          REVIEW: 2,
+          NEW: 3,
+        };
+        if (statePriority[a.state] !== statePriority[b.state]) {
+          return statePriority[a.state] - statePriority[b.state];
+        }
+
+        // Priority 2: Due date (overdue first)
         if (a.dueDate !== b.dueDate) return a.dueDate - b.dueDate;
+
+        // Priority 3: HSK Level
         return a.hskLevel - b.hskLevel;
       });
   }, [deck]);

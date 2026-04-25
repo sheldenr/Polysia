@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function SignUp() {
   const navigate = useNavigate();
-  const { signup, signInWithGoogle, isAuthenticated } = useAuth();
+  const { signup, signInWithGoogle, isAuthenticated, onboardingComplete } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,9 +17,13 @@ export default function SignUp() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/learning-hub");
+      if (onboardingComplete) {
+        navigate("/learning-hub");
+      } else {
+        navigate("/onboarding");
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, onboardingComplete, navigate]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -51,7 +55,7 @@ export default function SignUp() {
           title: "Account created!",
           description: "You are now signed in.",
         });
-        navigate("/learning-hub");
+        navigate("/onboarding");
       } else {
         toast({
           variant: "destructive",

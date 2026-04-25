@@ -42,6 +42,8 @@ import type {
   DeepSeekV3Response,
 } from "@shared/api";
 
+import ActivityTracker from "@/components/ActivityTracker";
+
 type View = "dashboard" | "flashcards" | "reading" | "roleplay";
 const readingPromptTTL = 24 * 60 * 60 * 1000;
 const readingPromptCacheVersion = "v3";
@@ -130,6 +132,7 @@ export default function LearningHub() {
   const sessionFlashcardsRef = useRef(0);
   const sessionExchangesRef = useRef(0);
   const [recentActivity, setRecentActivity] = useState<LearningActivity[]>([]);
+  const [allActivities, setAllActivities] = useState<LearningActivity[]>([]);
   const [readingQuizAnswers, setReadingQuizAnswers] = useState<Array<boolean | null>>(
     Array(defaultReadingContent.quiz.length).fill(null),
   );
@@ -140,6 +143,7 @@ export default function LearningHub() {
   const slideRefs = useRef<Array<HTMLElement | null>>([]);
   const flowModeEntryTimestampRef = useRef<number | null>(null);
   const activeModeIndexRef = useRef<number>(0);
+  const hasShownMandarinVoiceWarningRef = useRef(false);
 
   // Learning State
   const [roleplayMessages, setRoleplayMessages] = useState<
@@ -204,6 +208,7 @@ export default function LearningHub() {
       }
 
       setRoleplayMessages([{ role: "ai", text: payload.content }]);
+      setRoleplayInput("");
     } catch (error) {
       toast({
         variant: "destructive",
@@ -253,6 +258,9 @@ export default function LearningHub() {
       return;
     }
 
+    const trackerStart = new Date();
+    trackerStart.setDate(trackerStart.getDate() - 365);
+
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - 7);
 
@@ -263,7 +271,7 @@ export default function LearningHub() {
       .from("learning_activity")
       .select("id, mode, action, minutes_spent, created_at")
       .eq("user_id", user.id)
-      .gte("created_at", weekStart.toISOString())
+      .gte("created_at", trackerStart.toISOString())
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -310,6 +318,8 @@ export default function LearningHub() {
     }
 
     const rows = (data ?? []) as LearningActivity[];
+    setAllActivities(rows);
+
     const nextWeeklyModeMinutes: Record<LearningMode, number> = {
       flashcards: 0,
       reading: 0,
@@ -327,7 +337,9 @@ export default function LearningHub() {
       }
 
       const mode = row.mode as LearningMode;
-      const isToday = new Date(row.created_at) >= dayStart;
+      const createdAt = new Date(row.created_at);
+      const isToday = createdAt >= dayStart;
+      const isThisWeek = createdAt >= weekStart;
 
       if (row.action.startsWith("stat:")) {
         if (isToday) {
@@ -342,12 +354,54 @@ export default function LearningHub() {
         continue;
       }
 
-      nextWeeklyModeMinutes[mode] += row.minutes_spent ?? 0;
+      if (isThisWeek) {
+        nextWeeklyModeMinutes[mode] += row.minutes_spent ?? 0;
+      }
     }
 
     setWeeklyModeMinutes(nextWeeklyModeMinutes);
     setTodayProgress(nextTodayProgress);
-    setRecentActivity(rows.filter((row) => !row.action.startsWith("stat:")).slice(0, 3));
+    setRecentActivity(
+      rows
+        .filter((row) => {
+          if (row.action.startsWith("stat:")) return false;
+          // Filter out activities with zero counts
+          if (row.action.includes(" 0 ")) return false;
+          return true;
+        })
+        .slice(0, 3)
+    );
+
+    // Calculate streak from activity history as a fallback/verification
+    const activityDates = Array.from(
+      new Set(
+        rows
+          .filter(r => !r.action.startsWith("stat:"))
+          .map(r => new Date(r.created_at).toLocaleDateString())
+      )
+    ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    let calculatedStreak = 0;
+    if (activityDates.length > 0) {
+      const todayStr = new Date().toLocaleDateString();
+      const yesterdayStr = new Date(Date.now() - 86400000).toLocaleDateString();
+      
+      // Streak continues if active today or yesterday
+      if (activityDates[0] === todayStr || activityDates[0] === yesterdayStr) {
+        calculatedStreak = 1;
+        for (let i = 0; i < activityDates.length - 1; i++) {
+          const current = new Date(activityDates[i]);
+          const next = new Date(activityDates[i + 1]);
+          const diffDays = Math.round((current.getTime() - next.getTime()) / 86400000);
+          
+          if (diffDays === 1) {
+            calculatedStreak++;
+          } else {
+            break;
+          }
+        }
+      }
+    }
 
     const totalWordsRead = (wordsReadResult.data ?? []).reduce(
       (sum, row) => sum + (row.minutes_spent ?? 0),
@@ -368,10 +422,11 @@ export default function LearningHub() {
       .eq("id", user.id)
       .maybeSingle();
     
-    if (profileData) {
-      setStreakDays(profileData.streak_days || 0);
-    }
+    // Use the maximum of calculated and stored streak to be safe and accurate
+    const finalStreak = Math.max(calculatedStreak, profileData?.streak_days || 0);
+    setStreakDays(finalStreak);
   }, [user]);
+
 
   const logLearningActivity = useCallback(
     async (mode: LearningMode, action: string, minutesSpent: number) => {
@@ -555,20 +610,79 @@ export default function LearningHub() {
     [currentCard, logLearningActivity, rateCard],
   );
 
+  const playInworldTTS = useCallback(async (text: string) => {
+    const content = text.trim();
+    if (!content) return;
+
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch("/api/ai/tts", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          text: content,
+          // voice_id is omitted so the server can choose a language-appropriate voice
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || errorData.error || `TTS failed with status ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      await audio.play();
+      
+      audio.onended = () => URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Inworld TTS error:", error);
+      toast({
+        variant: "destructive",
+        title: "Speech unavailable",
+        description: error instanceof Error ? error.message : "Could not generate audio at this time.",
+      });
+    }
+  }, [session, toast]);
+
+  const handleFlashcardFlip = useCallback(() => {
+    const next = !isFlashcardFlipped;
+    setIsFlashcardFlipped(next);
+
+    if (next && currentCard) {
+      const hanziPattern = /[\u3400-\u9fff]/;
+      const spokenText =
+        (hanziPattern.test(currentCard.s) && currentCard.s) ||
+        (hanziPattern.test(currentCard.t) && currentCard.t) ||
+        "";
+
+      if (spokenText) {
+        void playInworldTTS(spokenText);
+      }
+    }
+  }, [isFlashcardFlipped, currentCard, playInworldTTS]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isFlowActive || activeFlowIndex !== 0) return;
 
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
-        setIsFlashcardFlipped((prev) => !prev);
+        handleFlashcardFlip();
       } else if (isFlashcardFlipped && ["1", "2", "3", "4"].includes(e.key)) {
         handleRate(Number(e.key) as SRSRating);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFlowActive, activeFlowIndex, isFlashcardFlipped, handleRate]);
+  }, [isFlowActive, activeFlowIndex, isFlashcardFlipped, handleRate, handleFlashcardFlip]);
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("theme");
@@ -967,7 +1081,7 @@ export default function LearningHub() {
           </header>
 
           {/* Dashboard Content */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 sm:pb-32">
             <div className="mx-auto max-w-7xl space-y-6 sm:space-y-8">
               <section className="space-y-3 pt-2">
                 <h1 className="text-3xl font-heading tracking-tight sm:text-5xl">
@@ -1023,37 +1137,8 @@ export default function LearningHub() {
                 ))}
               </section>
 
-              <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr,0.8fr]">
-                  <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-heading">Mode balance this week</h2>
-                      <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                        Synced
-                      </span>
-                    </div>
-                    <div className="space-y-4">
-                      {weeklyModeRows.map((item) => (
-                        <div key={item.label} className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="flex items-center gap-2 font-medium leading-none">
-                              <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
-                                <item.icon className="h-3.5 w-3.5 text-primary" />
-                              </span>
-                              {item.label}
-                            </span>
-
-                           <span className="text-muted-foreground">{item.minutes} min</span>
-                          </div>
-                          <div className="h-2 overflow-hidden rounded-full bg-zinc-200/50">
-                            <div
-                              className="h-full rounded-full bg-primary/80"
-                              style={{ width: `${Math.round((item.minutes / maxWeeklyModeMinutes) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                    ))}
-                  </div>
-                </div>
+              <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr,0.6fr]">
+                <ActivityTracker activities={allActivities} />
 
                 <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6">
                   <h2 className="text-xl font-heading">Recent activity</h2>
@@ -1107,7 +1192,7 @@ export default function LearningHub() {
                   return (
                     <div
                       key={item.label}
-                      className="rounded-2xl border bg-card p-4 text-left transition-colors duration-300 hover:border-primary/30"
+                      className="rounded-2xl border bg-card p-4 text-left transition-colors duration-300 hover:border-primary/30 flex flex-col justify-between"
                     >
                       <div className="mb-3 flex items-center justify-between">
                         <div className="-ml-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -1115,18 +1200,14 @@ export default function LearningHub() {
                         </div>
                         <TrendingUp className="h-4 w-4 shrink-0 text-primary" />
                       </div>
-                      <p className="text-2xl font-heading">{item.value}</p>
-                      <p className="text-xs text-muted-foreground">{item.label}</p>
+                      <div>
+                        <p className="text-2xl font-heading">{item.value}</p>
+                        <p className="text-xs text-muted-foreground">{item.label}</p>
+                      </div>
                     </div>
                   );
                 })}
               </section>
-
-              <footer className="border-t pt-5 text-center sm:pt-6">
-                <p className="text-xs text-muted-foreground">
-                  © {new Date().getFullYear()} Polysia · Keep your daily momentum.
-                </p>
-              </footer>
             </div>
           </main>
         </div>
@@ -1162,7 +1243,7 @@ export default function LearningHub() {
                       <div className="absolute inset-0 bg-primary/20 blur-3xl opacity-20 -z-10" />
                       <button
                         type="button"
-                        onClick={() => setIsFlashcardFlipped((prev) => !prev)}
+                        onClick={handleFlashcardFlip}
                         className="relative w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-5 sm:p-10 text-center transition-all duration-500 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 overflow-hidden"
                         aria-label="Flip flashcard"
                         aria-pressed={isFlashcardFlipped}

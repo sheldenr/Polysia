@@ -5,8 +5,8 @@ import express__default from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { z } from "zod";
-import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
 const handleDemo = (req, res) => {
   const response = {
     message: "Hello from Express server"
@@ -28,6 +28,26 @@ const handleProfile = (req, res) => {
     }
   });
 };
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+if (!supabase) {
+  console.warn("⚠️ Supabase environment variables are missing. Auth will fail.");
+}
+async function verifySupabaseToken(token) {
+  if (!supabase) {
+    console.error("Auth failed: Supabase client not initialized.");
+    return null;
+  }
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
+    return user;
+  } catch (err) {
+    console.error("Supabase token verification error:", err);
+    return null;
+  }
+}
 const deepSeekRequestSchema = z.object({
   messages: z.array(
     z.object({
@@ -69,11 +89,31 @@ const handleDeepSeekRoleplay = async (req, res) => {
       error: parsed.error.errors[0]?.message ?? "Invalid request payload"
     });
   }
+  const userId = req.userId;
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     console.error("[DeepSeek Roleplay] Missing DEEPSEEK_API_KEY");
     return res.status(500).json({
       error: "DeepSeek is not configured. Add DEEPSEEK_API_KEY to your environment."
+    });
+  }
+  let knownVocab = [];
+  if (userId && supabase) {
+    const { data: flashcards } = await supabase.from("flashcards").select("simplified").eq("user_id", userId).not("state", "eq", "NEW");
+    if (flashcards) {
+      knownVocab = flashcards.map((f) => f.simplified);
+    }
+  }
+  const vocabList = knownVocab.length > 0 ? knownVocab.join(", ") : "basic HSK 1";
+  const vocabConstraint = knownVocab.length > 0 ? `The user knows these Chinese characters/words: [${vocabList}]. Heavily prioritize using these known words in your responses. You can introduce a very small amount of new vocabulary (1-2 new words per response) if necessary for the context, but keep it mostly within their known set.` : "The user is a beginner. Use only very basic HSK 1 vocabulary.";
+  const messages = [...parsed.data.messages];
+  const systemMessageIdx = messages.findIndex((m) => m.role === "system");
+  if (systemMessageIdx !== -1) {
+    messages[systemMessageIdx].content = `${vocabConstraint} ${messages[systemMessageIdx].content}`;
+  } else {
+    messages.unshift({
+      role: "system",
+      content: vocabConstraint
     });
   }
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
@@ -93,7 +133,7 @@ const handleDeepSeekRoleplay = async (req, res) => {
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        messages: parsed.data.messages,
+        messages,
         temperature: parsed.data.temperature ?? 0.7,
         max_tokens: parsed.data.max_tokens ?? 220
       })
@@ -203,8 +243,9 @@ async function parseDeepSeekUpstreamBody(response) {
     };
   }
 }
-const handleDeepSeekReading = async (_req, res) => {
+const handleDeepSeekReading = async (req, res) => {
   console.log("[DeepSeek Reading] Received request for reading prompt");
+  const userId = req.userId;
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     console.error("[DeepSeek Reading] Missing DEEPSEEK_API_KEY");
@@ -212,6 +253,15 @@ const handleDeepSeekReading = async (_req, res) => {
       error: "DeepSeek is not configured. Add DEEPSEEK_API_KEY to your environment."
     });
   }
+  let hskLevel = "Beginner";
+  if (userId && supabase) {
+    const { data: profile } = await supabase.from("profiles").select("onboarding_hsk_level").eq("id", userId).maybeSingle();
+    if (profile?.onboarding_hsk_level) {
+      hskLevel = profile.onboarding_hsk_level;
+    }
+  }
+  const hskConstraint = hskLevel === "Beginner" ? "The user is at HSK 1 level. Use only HSK 1 vocabulary and basic grammar." : hskLevel === "Intermediate" ? "The user is at HSK 2-3 level. Use vocabulary and grammar structures appropriate for HSK 2 and 3." : "The user is at HSK 3-4 level. Use vocabulary and grammar structures appropriate for HSK 3 and 4.";
+  const vocabConstraint = `${hskConstraint} Ensure the text is natural but accessible for this level.`;
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
   const timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS ?? 25e3);
   const selectedTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
@@ -238,11 +288,11 @@ const handleDeepSeekReading = async (_req, res) => {
         messages: [
           {
             role: "system",
-            content: 'You are a Chinese reading tutor. Return strict JSON only (no markdown): {"titleZh":"...","titleEn":"...","text":"...","quiz":[{"question":"...","answer":true},{"question":"...","answer":false}]}. titleZh should be a concise Chinese topic title (4-12 chars). titleEn should be the natural English translation of that Chinese title. text must be a single Mandarin passage between 180 and 220 Chinese characters. text must contain only Chinese (no English, no pinyin, no bullets). quiz must contain exactly 2 true/false questions that are directly based on details from text. Each question must be in English and each answer must be a boolean.'
+            content: `You are a Chinese reading tutor. ${vocabConstraint} Return strict JSON only (no markdown): {"titleZh":"...","titleEn":"...","text":"...","quiz":[{"question":"...","answer":true},{"question":"...","answer":false}]}. titleZh should be a concise Chinese topic title (4-12 chars). titleEn should be the natural English translation of that Chinese title. text must be a single Mandarin passage between 180 and 220 Chinese characters. text must contain only Chinese (no English, no pinyin, no bullets). quiz must contain exactly 2 true/false questions that are directly based on details from text. Each question must be in English and each answer must be a boolean.`
           },
           {
             role: "user",
-            content: `Create today's reading passage for an intermediate learner. Use a random topic around: ${selectedTopic}.`
+            content: `Create today's reading passage for the user. Use a random topic around: ${selectedTopic}.`
           }
         ]
       })
@@ -301,7 +351,8 @@ const handleDeepSeekReading = async (_req, res) => {
         question: item.question.trim(),
         answer: item.answer
       })),
-      model: upstreamBody.model ?? model
+      model: upstreamBody.model ?? model,
+      hskLevel
     };
     return res.status(200).json(response);
   } catch (error) {
@@ -394,26 +445,6 @@ const handleCreateCheckoutSession = async (req, res) => {
     });
   }
 };
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
-if (!supabase) {
-  console.warn("⚠️ Supabase environment variables are missing. Auth will fail.");
-}
-async function verifySupabaseToken(token) {
-  if (!supabase) {
-    console.error("Auth failed: Supabase client not initialized.");
-    return null;
-  }
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return null;
-    return user;
-  } catch (err) {
-    console.error("Supabase token verification error:", err);
-    return null;
-  }
-}
 async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -443,8 +474,8 @@ function createServer() {
     res.json({ message: ping });
   });
   apiRouter.get("/demo", handleDemo);
-  apiRouter.post("/ai/roleplay", handleDeepSeekRoleplay);
-  apiRouter.get("/ai/reading-prompt", handleDeepSeekReading);
+  apiRouter.post("/ai/roleplay", requireAuth, handleDeepSeekRoleplay);
+  apiRouter.get("/ai/reading-prompt", requireAuth, handleDeepSeekReading);
   apiRouter.post("/billing/checkout", handleCreateCheckoutSession);
   apiRouter.get("/profile", requireAuth, handleProfile);
   app2.use("/api", apiRouter);

@@ -4,10 +4,11 @@ import { useAuth } from "@/lib/auth";
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  allowOnboarding?: boolean;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+export function ProtectedRoute({ children, allowOnboarding = false }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading, onboardingComplete } = useAuth();
 
   if (isLoading) {
     return (
@@ -19,6 +20,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!onboardingComplete && !allowOnboarding) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return <>{children}</>;
