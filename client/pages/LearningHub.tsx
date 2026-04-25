@@ -968,7 +968,6 @@ export default function LearningHub() {
       index: 0,
       objective: `${todayProgress.flashcards}/${modeTargets.flashcards} cards today`,
       progress: Math.min(100, Math.round((todayProgress.flashcards / modeTargets.flashcards) * 100)),
-      eta: `${Math.max(modeTargets.flashcards - todayProgress.flashcards, 0)} left`,
     },
     {
       name: "Tailored Reading",
@@ -977,7 +976,6 @@ export default function LearningHub() {
       index: 1,
       objective: `${todayProgress.reading}/${modeTargets.reading} passage today`,
       progress: Math.min(100, Math.round((todayProgress.reading / modeTargets.reading) * 100)),
-      eta: `${Math.max(modeTargets.reading - todayProgress.reading, 0)} left`,
       restricted: seenCharacters < 100,
     },
     {
@@ -987,7 +985,6 @@ export default function LearningHub() {
       index: 2,
       objective: `${todayProgress.roleplay}/${modeTargets.roleplay} exchanges today`,
       progress: Math.min(100, Math.round((todayProgress.roleplay / modeTargets.roleplay) * 100)),
-      eta: `${Math.max(modeTargets.roleplay - todayProgress.roleplay, 0)} left`,
       restricted: seenCharacters < 100,
     },
   ];
@@ -1106,9 +1103,6 @@ export default function LearningHub() {
 
                         <h3 className="text-2xl font-heading">{mode.name}</h3>
                       </div>
-                      <span className="shrink-0 whitespace-nowrap rounded-full border bg-background px-3 py-1 text-xs font-semibold text-muted-foreground">
-                        {mode.eta}
-                      </span>
                     </div>
                     <p className="mt-3 text-sm text-muted-foreground">{mode.desc}</p>
                     <div className="mt-5 rounded-2xl border bg-background p-4">
