@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useLayoutEffect } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { GithubIcon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Link } from "react-router-dom";
@@ -12,78 +12,6 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { isAuthenticated } = useAuth();
   const [showBetaBanner, setShowBetaBanner] = useState(true);
-
-  useLayoutEffect(() => {
-    const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
-
-    if (isMobileViewport) {
-      return;
-    }
-
-    const supportsObserver = typeof IntersectionObserver !== "undefined";
-    const revealTargets = Array.from(
-      document.querySelectorAll<HTMLElement>("main > *, main section, nav"),
-    );
-    let revealRafId: number | null = null;
-
-    if (revealTargets.length === 0) {
-      return;
-    }
-
-    revealTargets.forEach((target, index) => {
-      target.classList.add("reveal-on-scroll");
-      target.style.setProperty(
-        "--reveal-delay",
-        `${Math.min(index * 55, 330)}ms`,
-      );
-    });
-
-    if (!supportsObserver) {
-      revealRafId = window.requestAnimationFrame(() => {
-        revealTargets.forEach((target) => target.classList.add("is-visible"));
-      });
-
-      return () => {
-        if (revealRafId !== null) {
-          window.cancelAnimationFrame(revealRafId);
-        }
-        revealTargets.forEach((target) => {
-          target.classList.remove("reveal-on-scroll", "is-visible");
-          target.style.removeProperty("--reveal-delay");
-        });
-      };
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      {
-        threshold: 0.12,
-        rootMargin: "0px 0px -8% 0px",
-      },
-    );
-
-    revealRafId = window.requestAnimationFrame(() => {
-      revealTargets.forEach((target) => observer.observe(target));
-    });
-
-    return () => {
-      if (revealRafId !== null) {
-        window.cancelAnimationFrame(revealRafId);
-      }
-      observer.disconnect();
-      revealTargets.forEach((target) => {
-        target.classList.remove("reveal-on-scroll", "is-visible");
-        target.style.removeProperty("--reveal-delay");
-      });
-    };
-  }, []);
 
   useEffect(() => {
     const targets = Array.from(
@@ -123,6 +51,9 @@ export default function Layout({ children }: LayoutProps) {
 
       for (const target of targets) {
         const rect = target.getBoundingClientRect();
+        // Skip sections that are way off-screen to save calculation
+        if (rect.bottom < -100 || rect.top > window.innerHeight + 100) continue;
+
         const elementCenter = (rect.top + rect.bottom) / 2;
         const distance = Math.abs(elementCenter - viewportCenter);
 
@@ -134,10 +65,12 @@ export default function Layout({ children }: LayoutProps) {
 
       const color = nearest
         ? resolveBackgroundColor(nearest)
-        : "rgb(255, 255, 255)";
+        : null;
 
-      document.documentElement.style.backgroundColor = color;
-      document.body.style.backgroundColor = color;
+      if (color) {
+        document.documentElement.style.backgroundColor = color;
+        document.body.style.backgroundColor = color;
+      }
     };
 
     const requestSync = () => {
@@ -164,7 +97,7 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   return (
-    <div className="site-animations flex min-h-screen flex-col bg-background text-foreground transition-colors duration-300">
+    <div className="site-animations flex min-h-screen flex-col bg-background text-foreground transition-colors duration-300 overflow-x-hidden">
       {/* Header: beta banner + nav */}
       <div className="sticky top-0 z-50">
         {/* Top Notification Bar */}
@@ -233,7 +166,7 @@ export default function Layout({ children }: LayoutProps) {
             {/* Right Side - Auth actions */}
             <div className="flex items-center gap-4">
               {isAuthenticated ? (
-                <Button asChild className="rounded-full">
+                <Button asChild className="rounded-full bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90">
                   <Link to="/learning-hub">Learning Hub</Link>
                 </Button>
               ) : (
@@ -245,7 +178,7 @@ export default function Layout({ children }: LayoutProps) {
                   >
                     <Link to="/login">Login</Link>
                   </Button>
-                  <Button asChild className="rounded-full">
+                  <Button asChild className="rounded-full bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90">
                     <Link to="/signup">Sign Up</Link>
                   </Button>
                 </>

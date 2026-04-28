@@ -14,6 +14,7 @@ interface ActivityTrackerProps {
 const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [days, setDays] = useState(140); // Start with a sensible default
+  const [isMobile, setIsMobile] = useState(false);
   const today = startOfToday();
 
   useEffect(() => {
@@ -21,16 +22,21 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
 
     const updateDays = () => {
       const width = containerRef.current?.offsetWidth || 0;
-      const isMobile = window.innerWidth < 640;
+      const isMobileViewport = window.innerWidth < 640;
+      setIsMobile(isMobileViewport);
       
       // Column width = box width + gap
       // Desktop: 12px (h-3) + 4px (gap) = 16px
       // Mobile: 10px (h-2.5) + 2px (gap) = 12px
-      const colWidth = isMobile ? 12 : 16;
+      const colWidth = isMobileViewport ? 12 : 16;
       const numWeeks = Math.floor(width / colWidth);
       
       if (numWeeks > 0) {
-        setDays(numWeeks * 7);
+        const computedDays = numWeeks * 7;
+        const constrainedDays = isMobileViewport
+          ? Math.min(56, Math.max(28, computedDays))
+          : computedDays;
+        setDays(constrainedDays);
       }
     };
 
@@ -99,7 +105,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
     <div className="w-full flex flex-col justify-between space-y-4 rounded-3xl border bg-card p-5 sm:p-6 h-full overflow-hidden">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wider">Activity History</h2>
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+        <div className="hidden items-center gap-1.5 text-[10px] text-muted-foreground sm:flex">
           <span>Less</span>
           <div className="h-2.5 w-2.5 rounded-sm bg-zinc-100 dark:bg-zinc-800/50" />
           <div className="h-2.5 w-2.5 rounded-sm bg-primary/20" />
@@ -112,7 +118,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
 
       <div className="relative" ref={containerRef}>
         {/* Month Labels */}
-        <div className="flex text-[9px] text-muted-foreground mb-1.5 h-3 min-w-max">
+        <div className="mb-1.5 hidden h-3 min-w-max text-[9px] text-muted-foreground sm:flex">
           {weeks.map((_, i) => {
             const monthLabel = monthLabels.find(l => l.index === i);
             return (
@@ -154,9 +160,9 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
         </div>
       </div>
       
-      <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-widest pt-1 border-t border-border/50">
+      <div className="flex justify-between border-t border-border/50 pt-1 text-[10px] text-muted-foreground uppercase tracking-widest">
         <span>{format(startDate, "MMMM yyyy")}</span>
-        <span className="font-medium text-primary/80">Full View</span>
+        <span className="font-medium text-primary/80">{isMobile ? "Compact" : "Full View"}</span>
       </div>
     </div>
   );

@@ -9,22 +9,22 @@ import {
 export default function FeaturesSection() {
   const features = [
     {
-      title: "Roleplay Simulator",
+      title: "Authentic Conversations",
       subtitle: "Practice real dialogue scenarios with adaptive AI prompts.",
       icon: Message01Icon,
     },
     {
-      title: "On-Demand Vocab",
+      title: "HSK Vocabulary",
       subtitle: "Capture and learn words instantly from any lesson.",
       icon: ZapIcon,
     },
     {
-      title: "Tailored Reading",
+      title: "AI-based Assistance",
       subtitle: "Get contextual help without breaking your flow.",
       icon: Book02Icon,
     },
     {
-      title: "Character Flashcards",
+      title: "SRS-based Learning",
       subtitle: "Spaced repetition sessions that keep progress compounding.",
       icon: SparklesIcon,
     },
@@ -50,23 +50,17 @@ export default function FeaturesSection() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {features.map((feature, index) => {
-              const Icon = feature.icon;
               return (
                 <div
                   key={index}
-                  className="group flex flex-col items-center lg:items-start p-5 rounded-2xl border border-border bg-card/50 hover:bg-card hover:border-black/20 hover:shadow-xl hover:shadow-black/5 transition-all duration-300"
+                  className="group flex flex-col justify-between p-6 rounded-3xl border border-border bg-card/50 hover:bg-card hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 min-h-[160px]"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <HugeiconsIcon icon={Icon} className="w-5 h-5" strokeWidth={2.5} />
-                  </div>
-                  <div className="text-center lg:text-left">
-                    <h3 className="text-lg text-foreground mb-1 group-hover:text-black dark:group-hover:text-white transition-colors">
-                      {feature.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {feature.subtitle}
-                    </p>
-                  </div>
+                  <h3 className="text-2xl font-medium text-foreground group-hover:text-black dark:group-hover:text-white transition-colors">
+                    {feature.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {feature.subtitle}
+                  </p>
                 </div>
               );
             })}
@@ -76,10 +70,10 @@ export default function FeaturesSection() {
         <div className="mt-10 flex w-full justify-center sm:mt-12 lg:mt-0 lg:w-2/5">
           <div className="relative w-full max-w-sm">
             {/* Ambient Glow */}
-            <div className="absolute -inset-4 bg-gradient-to-br from-primary/20 to-transparent rounded-[2.5rem] blur-2xl opacity-50" />
+            <div className="absolute -inset-4 bg-gradient-to-br from-primary/20 to-transparent rounded-[3.5rem] blur-2xl opacity-50" />
             
             {/* The Main Card */}
-            <div className="relative w-full rounded-[2rem] bg-card border border-border px-8 pb-8 pt-20 shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-colors duration-300 overflow-hidden">
+            <div className="relative w-full rounded-[3rem] bg-card border border-border px-8 pb-8 pt-20 shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-colors duration-300 overflow-hidden">
               <div className="text-center">
                 <div className="inline-block relative mb-8">
                   <span className="text-8xl text-foreground tracking-tighter">你好</span>

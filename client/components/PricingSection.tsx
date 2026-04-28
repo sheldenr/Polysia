@@ -23,7 +23,7 @@ const plans: Array<{
 }> = [
   {
     id: "pro_monthly",
-    name: "Pro",
+    name: "Monthly",
     price: "$2.99",
     period: "/mo",
     description: "Complete access to all of Polysia.",
@@ -129,26 +129,24 @@ export default function PricingSection() {
         <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-2">
           {plans.map((plan) => (
             <div
-              key={plan.id}
-              className={`relative flex flex-col overflow-hidden rounded-3xl border bg-card p-8 ${
-                plan.popular
-                  ? "border-primary ring-1 ring-primary/30 shadow-2xl shadow-primary/10"
-                  : "border-border"
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute right-0 top-0 rounded-bl-lg bg-primary px-3 py-1 text-[10px] uppercase tracking-widest text-primary-foreground">
-                  Most Popular
-                </div>
-              )}
-
+                key={plan.id}
+                className={`relative flex flex-col overflow-hidden rounded-3xl border p-8 transition-all duration-300 ${
+                  plan.id === "pro_monthly"
+                    ? "bg-black text-white border-black shadow-2xl shadow-black/20 dark:bg-white dark:text-black dark:border-white"
+                    : "bg-zinc-50 dark:bg-zinc-900/50 border-border"
+                }`}
+              >
               <div className="mb-8">
-                <h3 className="mb-2 text-xl text-foreground">{plan.name}</h3>
+                <h3 className={`mb-2 text-xl ${plan.id === "pro_monthly" ? "text-white dark:text-black" : "text-foreground"}`}>
+                  {plan.name}
+                </h3>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl text-primary">{plan.price}</span>
-                  <span className="text-sm font-medium text-muted-foreground">{plan.period}</span>
+                  <span className={`text-4xl ${plan.id === "pro_monthly" ? "text-white dark:text-black" : "text-primary"}`}>{plan.price}</span>
+                  <span className={`text-sm font-medium ${plan.id === "pro_monthly" ? "text-zinc-400 dark:text-zinc-600" : "text-muted-foreground"}`}>
+                    {plan.period}
+                  </span>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                <p className={`mt-4 text-sm leading-relaxed ${plan.id === "pro_monthly" ? "text-zinc-400 dark:text-zinc-600" : "text-muted-foreground"}`}>
                   {plan.description}
                 </p>
               </div>
@@ -157,9 +155,15 @@ export default function PricingSection() {
                 {plan.features.map((feature) => (
                   <div key={feature} className="flex items-start gap-3">
                     <div className="mt-1 shrink-0">
-                      <HugeiconsIcon icon={Tick02Icon} className="h-4 w-4 text-primary" strokeWidth={3} />
+                      <HugeiconsIcon 
+                        icon={Tick02Icon} 
+                        className={`h-4 w-4 ${plan.id === "pro_monthly" ? "text-white dark:text-black" : "text-primary"}`} 
+                        strokeWidth={3} 
+                      />
                     </div>
-                    <span className="text-sm leading-tight text-foreground/80">{feature}</span>
+                    <span className={`text-sm leading-tight ${plan.id === "pro_monthly" ? "text-zinc-300 dark:text-zinc-700" : "text-foreground/80"}`}>
+                      {feature}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -169,10 +173,12 @@ export default function PricingSection() {
                 variant={plan.popular ? "default" : "outline"}
                 disabled={activeCheckoutPlan !== null}
                 onClick={() => void handleCheckout(plan.id)}
-                className={`w-full rounded-xl py-6 text-base ${
-                  plan.popular
-                    ? "shadow-lg shadow-primary/20"
-                    : "border-border text-foreground hover:bg-secondary/50"
+                  className={`w-full rounded-xl py-6 text-base ${
+                    plan.id === "pro_monthly"
+                      ? "bg-white text-black hover:bg-zinc-200 border-none shadow-lg shadow-white/10 dark:bg-black dark:text-white dark:hover:bg-black/90 dark:shadow-black/20"
+                      : activeCheckoutPlan === plan.id
+                        ? "bg-primary text-primary-foreground border-none"
+                        : "border-border text-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground"
                 }`}
               >
                 {activeCheckoutPlan === plan.id ? (

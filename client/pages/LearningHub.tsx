@@ -131,6 +131,8 @@ export default function LearningHub() {
   });
   const sessionFlashcardsRef = useRef(0);
   const sessionExchangesRef = useRef(0);
+  const audioCacheRef = useRef<Record<string, string>>({});
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const [recentActivity, setRecentActivity] = useState<LearningActivity[]>([]);
   const [allActivities, setAllActivities] = useState<LearningActivity[]>([]);
   const [readingQuizAnswers, setReadingQuizAnswers] = useState<Array<boolean | null>>(
@@ -614,34 +616,44 @@ export default function LearningHub() {
     const content = text.trim();
     if (!content) return;
 
+    // Stop any currently playing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+    }
+
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
+      let url = audioCacheRef.current[content];
+
+      if (!url) {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+
+        const response = await fetch("/api/ai/tts", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            text: content,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || `TTS failed with status ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        url = URL.createObjectURL(blob);
+        audioCacheRef.current[content] = url;
       }
 
-      const response = await fetch("/api/ai/tts", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          text: content,
-          // voice_id is omitted so the server can choose a language-appropriate voice
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || errorData.error || `TTS failed with status ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
+      currentAudioRef.current = audio;
       await audio.play();
-      
-      audio.onended = () => URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Inworld TTS error:", error);
       toast({
@@ -669,6 +681,21 @@ export default function LearningHub() {
     }
   }, [isFlashcardFlipped, currentCard, playInworldTTS]);
 
+  // Pre-fetch and play audio as soon as the card is seen
+  useEffect(() => {
+    if (currentCard && isFlowActive && activeFlowIndex === 0) {
+      const hanziPattern = /[\u3400-\u9fff]/;
+      const spokenText =
+        (hanziPattern.test(currentCard.s) && currentCard.s) ||
+        (hanziPattern.test(currentCard.t) && currentCard.t) ||
+        "";
+
+      if (spokenText) {
+        void playInworldTTS(spokenText);
+      }
+    }
+  }, [currentCard, isFlowActive, activeFlowIndex, playInworldTTS]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isFlowActive || activeFlowIndex !== 0) return;
@@ -683,6 +710,16 @@ export default function LearningHub() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isFlowActive, activeFlowIndex, isFlashcardFlipped, handleRate, handleFlashcardFlip]);
+
+  useEffect(() => {
+    return () => {
+      // Clean up audio cache URLs
+      Object.values(audioCacheRef.current).forEach((url) => URL.revokeObjectURL(url));
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("theme");
@@ -1043,7 +1080,7 @@ export default function LearningHub() {
       `}</style>
 
       {!isFlowActive ? (
-        <div className="flex flex-col min-h-screen animate-in fade-in duration-700">
+        <div className="flex flex-col min-h-screen overflow-x-hidden">
           {/* Top Bar */}
           <header className="border-b bg-background/50 backdrop-blur-sm px-6 py-4 sticky top-0 z-40">
             <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -1078,7 +1115,7 @@ export default function LearningHub() {
           </header>
 
           {/* Dashboard Content */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 sm:pb-32">
+          <main className="p-4 sm:p-6 pb-24 sm:pb-32 animate-in fade-in duration-700">
             <div className="mx-auto max-w-7xl space-y-6 sm:space-y-8">
               <section className="space-y-3 pt-2">
                 <h1 className="text-3xl font-heading tracking-tight sm:text-5xl">
@@ -1091,43 +1128,51 @@ export default function LearningHub() {
 
               <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
                 {modeCards.map((mode) => (
-                  <article
+                  <button
                     key={mode.name}
-                    className="group flex h-full flex-col rounded-3xl border bg-card p-5 transition-all duration-300 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10 sm:p-6"
+                    type="button"
+                    onClick={() => enterFlow(mode.index)}
+                    className="group flex h-full flex-col items-center justify-center rounded-3xl border bg-card px-6 py-7 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:py-8"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-                          <mode.icon className="h-5 w-5 text-primary" />
-                        </div>
-
-                        <h3 className="text-2xl font-heading">{mode.name}</h3>
-                      </div>
-                    </div>
-                    <p className="mt-3 text-sm text-muted-foreground">{mode.desc}</p>
-                    <div className="mt-5 rounded-2xl border bg-background p-4">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Objective</p>
-                      <p className="mt-1 text-sm font-medium">{mode.objective}</p>
-                    </div>
-                    <div className="mt-5 space-y-2">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Today&apos;s progress</span>
-                        <span className="font-semibold text-foreground">{mode.progress}%</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-zinc-200/50">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all duration-500"
-                          style={{ width: `${mode.progress}%` }}
+                    <div className="relative mb-5 h-24 w-24">
+                      <svg
+                        className="h-full w-full -rotate-90"
+                        viewBox="0 0 100 100"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="42"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          className="text-zinc-200/80 dark:text-white/10"
                         />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="42"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          className="text-primary transition-all duration-500"
+                          strokeDasharray={263.89}
+                          strokeDashoffset={263.89 * (1 - mode.progress / 100)}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <mode.icon className="h-8 w-8 text-primary" />
                       </div>
                     </div>
-                    <Button 
-                      onClick={() => enterFlow(mode.index)} 
-                      className="mt-6 h-11 w-full rounded-xl bg-primary hover:bg-black text-primary-foreground hover:text-white transition-all duration-300 border-none"
-                    >
-                      Start session
-                    </Button>
-                  </article>
+
+                    <h3 className="text-xl font-heading tracking-tight sm:text-2xl">{mode.name}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{mode.objective}</p>
+                    <p className="mt-1 text-xs font-medium uppercase tracking-wide text-primary">
+                      {mode.progress}% complete
+                    </p>
+                  </button>
                 ))}
               </section>
 
@@ -1207,6 +1252,12 @@ export default function LearningHub() {
         </div>
       ) : (
         <div className="relative h-screen w-screen overflow-hidden bg-background">
+          {/* Fixed Decorative Background */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] bg-primary/[0.07] blur-[120px] rounded-full" />
+            <div className="absolute bottom-[10%] -right-[10%] w-[50%] h-[50%] bg-primary/[0.05] blur-[120px] rounded-full" />
+          </div>
+
           {/* Flow Controls */}
           <div className="fixed top-4 left-4 sm:top-6 sm:left-6 z-50 flex items-center gap-3 sm:gap-4">
             <button
@@ -1218,11 +1269,11 @@ export default function LearningHub() {
             </button>
           </div>
 
-          <div className="flow-shell" ref={flowContainerRef}>
+          <div className="flow-shell relative z-10" ref={flowContainerRef}>
             {/* Slide 1: Character Flashcards */}
             <section
               ref={(el) => (slideRefs.current[0] = el)}
-              className="flow-slide flex flex-col items-center justify-center px-5 pt-12 pb-16 sm:px-8 sm:py-5 bg-gradient-to-b from-background to-secondary/10"
+              className="flow-slide flex flex-col items-center justify-center px-5 pt-12 pb-16 sm:px-8 sm:py-5"
             >
               <div className="w-full max-w-[46rem] animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="mb-4 text-center">
@@ -1375,7 +1426,7 @@ export default function LearningHub() {
             {/* Slide 2: AI Reading */}
             <section 
               ref={el => slideRefs.current[1] = el}
-              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-12 sm:px-8 sm:py-5 bg-gradient-to-b from-secondary/10 to-primary/5"
+              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-12 sm:px-8 sm:py-5"
             >
               <div className="w-full max-w-6xl space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center space-y-3 relative">
@@ -1398,12 +1449,12 @@ export default function LearningHub() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-12 items-start">
-                  <div className="order-1 space-y-8 lg:order-1 lg:col-span-2">
-                    <article className="max-h-[72vh] overflow-y-auto p-6 sm:max-h-none sm:overflow-visible sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card shadow-xl leading-relaxed text-base sm:text-2xl space-y-6 sm:space-y-9">
-                      <h3 className="text-2xl sm:text-4xl mb-4 sm:mb-8 font-heading flex items-center gap-3 flex-wrap">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-10 items-start">
+                  <div className="order-1 space-y-6 lg:order-1 lg:col-span-2">
+                    <article className="max-h-[72vh] overflow-y-auto p-5 sm:max-h-none sm:overflow-visible sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border bg-card shadow-lg leading-relaxed text-sm sm:text-xl space-y-5 sm:space-y-7">
+                      <h3 className="text-xl sm:text-3xl mb-3 sm:mb-6 font-heading flex items-center gap-3 flex-wrap">
                         <ChineseTooltipText text={readingContent.titleZh} />
-                        <span className="text-sm sm:text-lg font-normal text-muted-foreground">
+                        <span className="text-xs sm:text-base font-normal text-muted-foreground">
                           ({readingContent.titleEn})
                         </span>
                       </h3>
@@ -1411,27 +1462,29 @@ export default function LearningHub() {
                         <ChineseTooltipText text={readingContent.text} />
                       </p>
                       {isReadingPromptLoading && (
-                        <p className="text-sm text-muted-foreground">Generating today's prompt...</p>
+                        <p className="text-xs text-muted-foreground">Generating today's prompt...</p>
                       )}
 
-                      <div className="space-y-6 border-t pt-6 sm:hidden">
-                        <div className="space-y-4">
-                          <h3 className="text-lg">Context Quiz</h3>
-                          <div className="p-4 rounded-2xl bg-secondary/50 border space-y-4">
+                      <div className="space-y-5 border-t pt-5 sm:hidden">
+                        <div className="space-y-3">
+                          <h3 className="text-base font-medium">Context Quiz</h3>
+                          <div className="p-4 rounded-xl bg-secondary/30 border space-y-3">
                             {readingContent.quiz.map((quizItem, quizIndex) => (
-                              <div key={`mobile-reading-quiz-${quizIndex}`} className="space-y-2">
-                                <p className="text-sm font-medium leading-relaxed">{quizItem.question}</p>
+                              <div key={`mobile-reading-quiz-${quizIndex}`} className="space-y-1.5">
+                                <p className="text-xs font-medium leading-relaxed">{quizItem.question}</p>
                                 <div className="flex gap-2">
                                   <Button
                                     variant={readingQuizAnswers[quizIndex] === true ? "default" : "outline"}
-                                    className="flex-1 rounded-xl"
+                                    size="sm"
+                                    className="flex-1 rounded-lg h-8 text-xs"
                                     onClick={() => handleReadingQuizChoice(quizIndex, true)}
                                   >
                                     True
                                   </Button>
                                   <Button
                                     variant={readingQuizAnswers[quizIndex] === false ? "default" : "outline"}
-                                    className="flex-1 rounded-xl"
+                                    size="sm"
+                                    className="flex-1 rounded-lg h-8 text-xs"
                                     onClick={() => handleReadingQuizChoice(quizIndex, false)}
                                   >
                                     False
@@ -1441,19 +1494,20 @@ export default function LearningHub() {
                             ))}
                             <Button
                               variant="outline"
-                              className="w-full rounded-xl"
+                              size="sm"
+                              className="w-full rounded-lg h-8 text-xs"
                               disabled={readingQuizAnswers.some((answer) => answer === null)}
                               onClick={handleReadingQuizCheck}
                             >
                               Check answers
                             </Button>
                             {readingQuizStatus === "correct" && (
-                              <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
                                 Correct. Words read were added to your stats.
                               </p>
                             )}
                             {readingQuizStatus === "incorrect" && (
-                              <p className="text-xs text-destructive">Not quite. Try again.</p>
+                              <p className="text-[10px] text-destructive">Not quite. Try again.</p>
                             )}
                           </div>
                         </div>
@@ -1462,25 +1516,27 @@ export default function LearningHub() {
                     </article>
                   </div>
 
-                  <aside className="order-2 hidden space-y-6 sm:block sm:space-y-8 lg:order-2">
-                    <div className="p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border bg-card space-y-4 sm:space-y-6">
-                      <h3 className="text-lg sm:text-xl">Context Quiz</h3>
-                      <div className="space-y-4">
-                        <div className="p-5 rounded-2xl bg-secondary/50 border space-y-4">
+                  <aside className="order-2 hidden space-y-5 sm:block lg:order-2">
+                    <div className="p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border bg-card space-y-4 sm:space-y-5">
+                      <h3 className="text-base sm:text-lg font-medium">Context Quiz</h3>
+                      <div className="space-y-3">
+                        <div className="p-4 rounded-xl bg-secondary/30 border space-y-4">
                           {readingContent.quiz.map((quizItem, quizIndex) => (
-                            <div key={`desktop-reading-quiz-${quizIndex}`} className="space-y-2">
-                              <p className="text-sm font-medium leading-relaxed">{quizItem.question}</p>
+                            <div key={`desktop-reading-quiz-${quizIndex}`} className="space-y-1.5">
+                              <p className="text-xs font-medium leading-relaxed">{quizItem.question}</p>
                               <div className="flex gap-2">
                                 <Button
                                   variant={readingQuizAnswers[quizIndex] === true ? "default" : "outline"}
-                                  className="flex-1 rounded-xl"
+                                  size="sm"
+                                  className="flex-1 rounded-lg h-8 text-xs"
                                   onClick={() => handleReadingQuizChoice(quizIndex, true)}
                                 >
                                   True
                                 </Button>
                                 <Button
                                   variant={readingQuizAnswers[quizIndex] === false ? "default" : "outline"}
-                                  className="flex-1 rounded-xl"
+                                  size="sm"
+                                  className="flex-1 rounded-lg h-8 text-xs"
                                   onClick={() => handleReadingQuizChoice(quizIndex, false)}
                                 >
                                   False
@@ -1490,19 +1546,20 @@ export default function LearningHub() {
                           ))}
                           <Button
                             variant="outline"
-                            className="w-full rounded-xl"
+                            size="sm"
+                            className="w-full rounded-lg h-9 text-xs"
                             disabled={readingQuizAnswers.some((answer) => answer === null)}
                             onClick={handleReadingQuizCheck}
                           >
                             Check answers
                           </Button>
                           {readingQuizStatus === "correct" && (
-                            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
                               Correct. Words read were added to your stats.
                             </p>
                           )}
                           {readingQuizStatus === "incorrect" && (
-                            <p className="text-xs text-destructive">Not quite. Try again.</p>
+                            <p className="text-[10px] text-destructive">Not quite. Try again.</p>
                           )}
                         </div>
                       </div>
@@ -1515,29 +1572,29 @@ export default function LearningHub() {
             {/* Slide 3: Practice Conversations */}
             <section 
               ref={el => slideRefs.current[2] = el}
-              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-12 sm:px-8 sm:py-5 bg-gradient-to-b from-primary/5 to-background"
+              className="flow-slide flex flex-col items-center justify-start sm:justify-center px-5 py-12 sm:px-8 sm:py-5"
             >
-              <div className="w-full max-w-4xl space-y-7 sm:space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <div className="w-full max-w-5xl space-y-8 sm:space-y-14 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center">
-                  <h2 className="text-3xl sm:text-4xl font-heading tracking-tight mb-2">Practice Conversations</h2>
-                  <p className="text-muted-foreground">
+                  <h2 className="text-3xl sm:text-5xl font-heading tracking-tight mb-2">Practice Conversations</h2>
+                  <p className="text-sm sm:text-lg text-muted-foreground">
                     {isTopicSelected ? `Scenario: ${roleplayTopic}` : "Practice speaking naturally in real-life scenarios. Start by selecting a topic."}
                   </p>
                 </div>
 
                 <div 
-                  className={`flex flex-col rounded-[1.5rem] sm:rounded-[3rem] border bg-card overflow-hidden shadow-2xl relative transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                    isTopicSelected ? "h-[65vh] sm:h-[550px]" : "h-[82px] sm:h-[116px]"
+                  className={`flex flex-col rounded-[1.5rem] sm:rounded-[3.5rem] border bg-card overflow-hidden shadow-2xl relative transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                    isTopicSelected ? "h-[70vh] sm:h-[650px]" : "h-[90px] sm:h-[130px]"
                   }`}
                 >
                   <div 
                     className={`overflow-y-auto transition-all duration-700 ${
                       isTopicSelected 
-                        ? "flex-1 p-4 sm:p-10 opacity-100" 
+                        ? "flex-1 p-5 sm:p-12 opacity-100" 
                         : "h-0 p-0 opacity-0 pointer-events-none"
                     }`}
                   >
-                    <div className="space-y-4 sm:space-y-8">
+                    <div className="space-y-6 sm:space-y-10">
                       {roleplayMessages.map((msg, idx) => {
                         const correctionMatch = msg.text.match(/^\[Correction: (.*?)\]\s*([\s\S]*)$/i);
                         const hasCorrection = msg.role === "ai" && correctionMatch;
@@ -1547,18 +1604,18 @@ export default function LearningHub() {
                         return (
                           <div key={idx} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
                             {hasCorrection && (
-                              <div className="mb-2 max-w-[85%] px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50 rounded-xl text-xs sm:text-sm text-amber-800 dark:text-amber-200 animate-in fade-in slide-in-from-bottom-1">
+                              <div className="mb-3 max-w-[85%] px-5 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50 rounded-2xl text-xs sm:text-base text-amber-800 dark:text-amber-200 animate-in fade-in slide-in-from-bottom-1">
                                 <span className="font-bold mr-1">Tip:</span>
                                 {correctionText}
                               </div>
 
                             )}
-                            <div className={`max-w-[88%] sm:max-w-[80%] px-4 sm:px-8 py-3 sm:py-5 rounded-[1.25rem] sm:rounded-[2rem] text-base sm:text-lg ${
+                            <div className={`max-w-[88%] sm:max-w-[82%] px-5 sm:px-10 py-4 sm:py-7 rounded-[1.5rem] sm:rounded-[2.5rem] text-base sm:text-2xl ${
                               msg.role === "user" 
                               ? "bg-primary text-primary-foreground rounded-tr-none shadow-xl shadow-primary/20" 
                               : "bg-secondary text-foreground rounded-tl-none"
                             }`}>
-                              <p className="leading-relaxed">
+                              <p className="leading-relaxed font-medium">
                                 <ChineseTooltipText text={mainText} />
                               </p>
                             </div>
@@ -1568,9 +1625,9 @@ export default function LearningHub() {
                     </div>
                   </div>
 
-                  <div className={`p-3 sm:p-6 bg-secondary/30 transition-all ${isTopicSelected ? "border-t" : "flex-1 flex items-center"}`}>
+                  <div className={`p-4 sm:p-8 bg-secondary/30 transition-all ${isTopicSelected ? "border-t" : "flex-1 flex items-center"}`}>
                     <form
-                      className="flex gap-3 sm:gap-4 w-full"
+                      className="flex gap-4 sm:gap-6 w-full"
                       onSubmit={(event) => {
                         event.preventDefault();
                         if (!isTopicSelected) {
@@ -1589,15 +1646,15 @@ export default function LearningHub() {
                             : `e.g., ${textbookTopics[placeholderIndex]}...`
                         }
                         disabled={isRoleplayLoading}
-                        className="flex-1 bg-card border rounded-2xl px-4 sm:px-8 py-3 sm:py-4 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm disabled:opacity-60"
+                        className="flex-1 bg-card border rounded-2xl sm:rounded-3xl px-6 sm:px-10 py-4 sm:py-6 text-base sm:text-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm disabled:opacity-60"
                       />
                       <Button
                         type="submit"
                         size="icon"
                         disabled={isRoleplayLoading || (isTopicSelected && !roleplayInput.trim())}
-                        className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl shrink-0 shadow-lg bg-black hover:bg-black/90 text-white border-none"
+                        className="h-14 w-14 sm:h-20 sm:w-20 rounded-2xl sm:rounded-3xl shrink-0 shadow-lg bg-black hover:bg-black/90 text-white border-none"
                       >
-                        <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
+                        <ChevronRight className="w-8 h-8 sm:w-12 sm:h-12" />
                       </Button>
                     </form>
                   </div>
