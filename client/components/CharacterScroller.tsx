@@ -1,7 +1,58 @@
+import { useEffect, useRef } from "react";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 
 export default function CharacterScroller() {
   const characters = ["学", "式", "说", "会", "写", "听", "练", "脚", "看", "想", "做", "爱", "心", "好"];
+  const stripRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+
+    let rafId: number | null = null;
+    let loopWidth = 0;
+    const speed = 0.4;
+
+    const measure = () => {
+      loopWidth = strip.scrollWidth / 2;
+    };
+
+    const syncPosition = () => {
+      rafId = null;
+      if (loopWidth <= 0) return;
+      const scrollY = Math.max(window.scrollY, 0);
+      const offset = (scrollY * speed) % loopWidth;
+      strip.style.transform = `translate3d(${-offset}px, 0, 0)`;
+    };
+
+    const requestSync = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(syncPosition);
+    };
+
+    measure();
+    syncPosition();
+
+    const resizeObserver = new ResizeObserver(() => {
+      measure();
+      requestSync();
+    });
+    resizeObserver.observe(strip);
+
+    window.addEventListener("scroll", requestSync, { passive: true });
+    window.addEventListener("resize", requestSync);
+    window.addEventListener("orientationchange", requestSync);
+
+    return () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+      resizeObserver.disconnect();
+      window.removeEventListener("scroll", requestSync);
+      window.removeEventListener("resize", requestSync);
+      window.removeEventListener("orientationchange", requestSync);
+    };
+  }, []);
 
   return (
     <section 
@@ -12,7 +63,10 @@ export default function CharacterScroller() {
       <div className="absolute inset-y-0 right-0 w-12 sm:w-80 bg-gradient-to-l from-background via-background/70 to-transparent z-20 pointer-events-none" />
 
       <div className="py-0">
-        <div className="marquee-horizontal flex items-center gap-6 px-6">
+        <div
+          ref={stripRef}
+          className="flex w-max items-center gap-6 px-6 will-change-transform"
+        >
           {characters.map((character, index) => (
             <div
               key={index}
