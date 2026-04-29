@@ -11,46 +11,69 @@ export default function CharacterScroller() {
 
     let rafId: number | null = null;
     let loopWidth = 0;
-    const speed = 0.4;
+    const scrollSpeed = 0.4;
+    const constantSpeed = 0.03; // Pixels per ms
+    let currentOffset = 0;
+    let lastTime = performance.now();
 
     const measure = () => {
       loopWidth = strip.scrollWidth / 2;
     };
 
-    const syncPosition = () => {
-      rafId = null;
-      if (loopWidth <= 0) return;
-      const scrollY = Math.max(window.scrollY, 0);
-      const offset = (scrollY * speed) % loopWidth;
-      strip.style.transform = `translate3d(${-offset}px, 0, 0)`;
+    const animate = (time: number) => {
+      const isMobile = window.innerWidth < 768;
+      
+      if (isMobile) {
+        const deltaTime = time - lastTime;
+        lastTime = time;
+        currentOffset = (currentOffset + constantSpeed * deltaTime) % loopWidth;
+        strip.style.transform = `translate3d(${-currentOffset}px, 0, 0)`;
+        rafId = window.requestAnimationFrame(animate);
+      } else {
+        const scrollY = Math.max(window.scrollY, 0);
+        const offset = (scrollY * scrollSpeed) % loopWidth;
+        strip.style.transform = `translate3d(${-offset}px, 0, 0)`;
+        rafId = null;
+      }
     };
 
-    const requestSync = () => {
-      if (rafId !== null) return;
-      rafId = window.requestAnimationFrame(syncPosition);
+    const handleUpdate = () => {
+      const isMobile = window.innerWidth < 768;
+      if (isMobile) {
+        if (rafId === null) {
+          lastTime = performance.now();
+          rafId = window.requestAnimationFrame(animate);
+        }
+      } else {
+        if (rafId !== null) {
+          window.cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        animate(performance.now());
+      }
     };
 
     measure();
-    syncPosition();
+    handleUpdate();
 
     const resizeObserver = new ResizeObserver(() => {
       measure();
-      requestSync();
+      handleUpdate();
     });
     resizeObserver.observe(strip);
 
-    window.addEventListener("scroll", requestSync, { passive: true });
-    window.addEventListener("resize", requestSync);
-    window.addEventListener("orientationchange", requestSync);
+    window.addEventListener("scroll", handleUpdate, { passive: true });
+    window.addEventListener("resize", handleUpdate);
+    window.addEventListener("orientationchange", handleUpdate);
 
     return () => {
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId);
       }
       resizeObserver.disconnect();
-      window.removeEventListener("scroll", requestSync);
-      window.removeEventListener("resize", requestSync);
-      window.removeEventListener("orientationchange", requestSync);
+      window.removeEventListener("scroll", handleUpdate);
+      window.removeEventListener("resize", handleUpdate);
+      window.removeEventListener("orientationchange", handleUpdate);
     };
   }, []);
 
