@@ -1,14 +1,54 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { AlertCircle, ArrowRight } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+const phrases = ["Chinese", "中文"];
+
 export default function HeroSection() {
   const { isAuthenticated, supabaseConfigError } = useAuth();
+  const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
+  const [displayText, setDisplayText] = useState(phrases[0]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(false);
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+
+    if (isHighlighted) {
+      // After highlighting, wait a brief moment then delete instantly
+      timeout = setTimeout(() => {
+        setIsHighlighted(false);
+        setDisplayText("");
+        setIsDeleting(true); // This will trigger the next word to start typing
+      }, 500);
+    } else if (isDeleting) {
+      if (displayText.length === 0) {
+        setIsDeleting(false);
+        setCurrentPhraseIndex((prev) => (prev + 1) % phrases.length);
+      }
+    } else {
+      const targetPhrase = phrases[currentPhraseIndex];
+      if (displayText.length < targetPhrase.length) {
+        timeout = setTimeout(() => {
+          setDisplayText(targetPhrase.substring(0, displayText.length + 1));
+        }, 150);
+      } else {
+        // Wait 7 seconds before starting the deletion/highlight sequence
+        timeout = setTimeout(() => {
+          setIsHighlighted(true);
+        }, 7000);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [displayText, isDeleting, isHighlighted, currentPhraseIndex]);
 
   return (
     <section className="dark-gradient-dither relative isolate w-full overflow-hidden bg-background px-6 pb-8 pt-8 sm:px-6 sm:pb-12 sm:pt-16 lg:px-8 lg:pb-16 lg:pt-24">
+      {/* ... (previous alert and decorative divs) ... */}
       {supabaseConfigError && (
         <div className="mx-auto max-w-2xl mb-8">
           <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive-foreground">
@@ -56,7 +96,10 @@ export default function HeroSection() {
         </div>
         {/* Main Heading */}
         <h1 className="text-5xl sm:text-6xl lg:text-8xl font-heading mb-6 leading-[1.1] tracking-tight text-foreground">
-          Study Chinese,
+          Study{" "}
+          <span className={`px-1 rounded-sm transition-all duration-150 ${isHighlighted ? 'bg-primary text-primary-foreground' : 'bg-transparent'}`}>
+            {displayText}
+          </span>,
           <span className="block">reach <span className="italic-serif text-primary">real</span> fluency.</span>
         </h1>
 
