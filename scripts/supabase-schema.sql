@@ -68,6 +68,7 @@ create table if not exists public.flashcards (
   english text not null,
   grammar text not null default '',
   notes text not null default '',
+  example_sentence text not null default '',
   state text not null default 'NEW' check (state in ('NEW', 'LEARNING', 'REVIEW', 'RELEARNING')),
   step_index integer not null default 0,
   hsk_level integer not null default 1,
@@ -86,6 +87,7 @@ alter table public.flashcards add column if not exists step_index integer not nu
 alter table public.flashcards add column if not exists hsk_level integer not null default 1;
 alter table public.flashcards add column if not exists source_id text;
 alter table public.flashcards add column if not exists seen_at timestamptz;
+alter table public.flashcards add column if not exists example_sentence text not null default '';
 
 create index if not exists idx_flashcards_user_due_date on public.flashcards(user_id, due_date);
 create index if not exists idx_flashcards_user_hsk_level on public.flashcards(user_id, hsk_level);

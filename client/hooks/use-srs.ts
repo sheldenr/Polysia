@@ -16,6 +16,12 @@ const EASE_FLOOR = 1.3;
 const INTERVAL_HARD_MULTIPLIER = 1.2;
 const INTERVAL_EASY_BONUS = 1.3;
 const INTERVAL_FUZZ = 0.05;
+const GRADUATING_INTERVAL_DAYS = 1;
+const EASY_GRADUATING_INTERVAL_DAYS = 4;
+const EASY_RELEARNING_INTERVAL_DAYS = 3;
+const HSK_VOCAB_SUFFIX_REGEX = /\(HSK level \d+ vocabulary\)\s*$/i;
+const HSK_VOCAB_LABEL_REGEX = /^HSK level \d+ vocabulary$/i;
+const HANZI_REGEX = /[\u3400-\u9fff]/;
 
 export interface Flashcard {
   id: string; // database id
@@ -25,6 +31,7 @@ export interface Flashcard {
   e: string; // english
   g: string; // grammar
   n: string; // notes
+  exampleSentence: string;
   h: string; // database id (legacy field name used by UI)
   sourceId: string | null; // source dictionary id
   hskLevel: number;
@@ -53,6 +60,7 @@ interface FlashcardRow {
   english: string;
   grammar: string | null;
   notes: string | null;
+  example_sentence: string | null;
   interval: number | null;
   repetition: number | null;
   efactor: number | null;
@@ -106,14 +114,52 @@ function withFuzz(days: number): number {
   return Math.max(2, days * jitter);
 }
 
+function parseExampleFromNotes(notes: string): { sentence: string; translation: string } {
+  const cleanedNotes = notes.replace(HSK_VOCAB_SUFFIX_REGEX, "").trim();
+  if (!cleanedNotes) {
+    return { sentence: "", translation: "" };
+  }
+
+  const parts = cleanedNotes
+    .split("|")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const sentencePart =
+    parts.find((part) => HANZI_REGEX.test(part)) ??
+    parts[0] ??
+    "";
+  const translationPart =
+    parts.find((part) => part !== sentencePart) ??
+    "";
+  const sentence = HSK_VOCAB_LABEL_REGEX.test(sentencePart) ? "" : sentencePart;
+
+  return {
+    sentence,
+    translation: translationPart.replace(HSK_VOCAB_SUFFIX_REGEX, "").trim(),
+  };
+}
+
 function buildLearningUpdate(
   card: Flashcard,
   rating: SRSRating,
   state: "LEARNING" | "RELEARNING",
   steps: readonly number[],
+  options?: {
+    graduationIntervalDays?: number;
+    easyIntervalDays?: number;
+  },
 ): Partial<Flashcard> {
   const now = Date.now();
   const currentStep = Math.max(0, Math.min(card.stepIndex, steps.length - 1));
+  const graduationIntervalDays = Math.max(
+    1,
+    Math.round(options?.graduationIntervalDays ?? GRADUATING_INTERVAL_DAYS),
+  );
+  const easyIntervalDays = Math.max(
+    graduationIntervalDays,
+    Math.round(options?.easyIntervalDays ?? EASY_GRADUATING_INTERVAL_DAYS),
+  );
 
   if (rating === 1) {
     return {
@@ -124,38 +170,46 @@ function buildLearningUpdate(
     };
   }
 
-  // If "Good" or "Easy" in learning mode, graduated to REVIEW immediately
-  if (rating >= 3) {
+  if (rating === 2) {
     return {
-      state: "REVIEW",
-      stepIndex: 0,
-      interval: 1,
-      repetition: Math.max(1, card.repetition + 1),
-      efactor: Math.max(EASE_FLOOR, card.efactor || START_EASE),
+      state,
+      stepIndex: currentStep,
       seenAt: card.seenAt ?? now,
-      dueDate: now + DAY_MS,
+      dueDate: now + steps[currentStep],
     };
   }
 
-  // "Hard" stays in current state, but moves to next step if available
-  const nextStep = currentStep + 1;
-  if (nextStep >= steps.length) {
+  if (rating === 3) {
+    const nextStep = currentStep + 1;
+    if (nextStep >= steps.length) {
+      return {
+        state: "REVIEW",
+        stepIndex: 0,
+        interval: graduationIntervalDays,
+        repetition: Math.max(1, card.repetition + 1),
+        efactor: Math.max(EASE_FLOOR, card.efactor || START_EASE),
+        seenAt: card.seenAt ?? now,
+        dueDate: now + graduationIntervalDays * DAY_MS,
+      };
+    }
+
     return {
-      state: "REVIEW",
-      stepIndex: 0,
-      interval: 1,
-      repetition: Math.max(1, card.repetition + 1),
-      efactor: Math.max(EASE_FLOOR, card.efactor || START_EASE),
+      state,
+      stepIndex: nextStep,
       seenAt: card.seenAt ?? now,
-      dueDate: now + DAY_MS,
+      dueDate: now + steps[nextStep],
     };
   }
 
+  const boostedEase = Math.max(EASE_FLOOR, (card.efactor || START_EASE) + 0.15);
   return {
-    state,
-    stepIndex: nextStep,
+    state: "REVIEW",
+    stepIndex: 0,
+    interval: easyIntervalDays,
+    repetition: Math.max(1, card.repetition + 1),
+    efactor: boostedEase,
     seenAt: card.seenAt ?? now,
-    dueDate: now + steps[nextStep],
+    dueDate: now + easyIntervalDays * DAY_MS,
   };
 }
 
@@ -212,15 +266,30 @@ function buildReviewUpdate(card: Flashcard, rating: SRSRating): Partial<Flashcar
 
 function calculateNextReview(card: Flashcard, rating: SRSRating): Partial<Flashcard> {
   if (card.state === "NEW") {
-    return buildLearningUpdate({ ...card, state: "LEARNING", stepIndex: 0 }, rating, "LEARNING", LEARNING_STEPS_MS);
+    return buildLearningUpdate(
+      { ...card, state: "LEARNING", stepIndex: 0 },
+      rating,
+      "LEARNING",
+      LEARNING_STEPS_MS,
+      {
+        graduationIntervalDays: GRADUATING_INTERVAL_DAYS,
+        easyIntervalDays: EASY_GRADUATING_INTERVAL_DAYS,
+      },
+    );
   }
 
   if (card.state === "LEARNING") {
-    return buildLearningUpdate(card, rating, "LEARNING", LEARNING_STEPS_MS);
+    return buildLearningUpdate(card, rating, "LEARNING", LEARNING_STEPS_MS, {
+      graduationIntervalDays: GRADUATING_INTERVAL_DAYS,
+      easyIntervalDays: EASY_GRADUATING_INTERVAL_DAYS,
+    });
   }
 
   if (card.state === "RELEARNING") {
-    return buildLearningUpdate(card, rating, "RELEARNING", RELEARNING_STEPS_MS);
+    return buildLearningUpdate(card, rating, "RELEARNING", RELEARNING_STEPS_MS, {
+      graduationIntervalDays: GRADUATING_INTERVAL_DAYS,
+      easyIntervalDays: EASY_RELEARNING_INTERVAL_DAYS,
+    });
   }
 
   return buildReviewUpdate(card, rating);
@@ -230,6 +299,12 @@ function mapDbRowToFlashcard(row: FlashcardRow): Flashcard {
   const repetition = row.repetition ?? 0;
   const interval = row.interval ?? 0;
   const state = normalizeState(row.state, repetition, interval);
+  const parsedExample = parseExampleFromNotes(row.notes ?? "");
+  const cleanedExampleSentence = (row.example_sentence ?? "").trim();
+  const exampleSentence =
+    cleanedExampleSentence && !HSK_VOCAB_LABEL_REGEX.test(cleanedExampleSentence)
+      ? cleanedExampleSentence
+      : parsedExample.sentence;
   const inferredLevel =
     row.hsk_level ??
     parseHskLevelFromText(row.source_id) ??
@@ -246,6 +321,7 @@ function mapDbRowToFlashcard(row: FlashcardRow): Flashcard {
     e: row.english,
     g: row.grammar ?? "",
     n: row.notes ?? "",
+    exampleSentence,
     hskLevel: inferredLevel,
     state,
     stepIndex: row.step_index ?? 0,
@@ -334,24 +410,29 @@ export function useSRS() {
           const key = `${item.s}::${item.t}`;
           return !existingSourceIds.has(sourceId) && !existingKeys.has(key);
         })
-        .map((item) => ({
-          user_id: user.id,
-          simplified: item.s,
-          traditional: item.t,
-          pinyin: item.p,
-          english: item.e,
-          grammar: item.g ?? "",
-          notes: item.n ?? "",
-          interval: 0,
-          repetition: 0,
-          efactor: START_EASE,
-          due_date: new Date().toISOString(),
-          state: "NEW",
-          step_index: 0,
-          hsk_level: level,
-          source_id: item.h ?? null,
-          seen_at: null,
-        }));
+        .map((item) => {
+          const exampleSentence = parseExampleFromNotes(item.n ?? "").sentence;
+          
+          return {
+            user_id: user.id,
+            simplified: item.s,
+            traditional: item.t,
+            pinyin: item.p,
+            english: item.e,
+            grammar: item.g ?? "",
+            notes: item.n ?? "",
+            example_sentence: exampleSentence,
+            interval: 0,
+            repetition: 0,
+            efactor: START_EASE,
+            due_date: new Date().toISOString(),
+            state: "NEW",
+            step_index: 0,
+            hsk_level: level,
+            source_id: item.h ?? null,
+            seen_at: null,
+          };
+        });
 
       if (!rowsToInsert.length) return currentDeck;
 
@@ -398,6 +479,93 @@ export function useSRS() {
     [seedHskLevel],
   );
 
+  const refreshCardContent = useCallback(
+    async (currentDeck: Flashcard[]) => {
+      if (!supabase || !user || !currentDeck.length) return currentDeck;
+
+      const dictionary = await loadDictionary();
+      const updatesToMake: {
+        id: string;
+        pinyin: string;
+        english: string;
+        notes: string;
+        hsk_level: number;
+        example_sentence: string;
+      }[] = [];
+      const updatedDeck = [...currentDeck];
+
+      let changed = false;
+      for (let i = 0; i < updatedDeck.length; i++) {
+        const card = updatedDeck[i];
+
+        const entry =
+          (card.sourceId ? dictionary.find((d) => d.h === card.sourceId) : undefined) ||
+          dictionary.find((d) => d.s === card.s) ||
+          dictionary.find((d) => d.t === card.t);
+        
+        if (entry) {
+          const newNotes = entry.n || "";
+          const newExampleSentence = parseExampleFromNotes(newNotes).sentence;
+          const newHskLevel = parseHskLevelFromText(entry.h) || parseHskLevelFromText(entry.n) || 1;
+          
+          if (
+            card.n !== newNotes ||
+            card.p !== entry.p ||
+            card.e !== entry.e ||
+            card.hskLevel !== newHskLevel ||
+            card.exampleSentence !== newExampleSentence
+          ) {
+            updatesToMake.push({
+              id: card.id,
+              pinyin: entry.p,
+              english: entry.e,
+              notes: newNotes,
+              hsk_level: newHskLevel,
+              example_sentence: newExampleSentence,
+            });
+            
+            updatedDeck[i] = {
+              ...card,
+              p: entry.p,
+              e: entry.e,
+              n: newNotes,
+              hskLevel: newHskLevel,
+              exampleSentence: newExampleSentence,
+            };
+            changed = true;
+          }
+        }
+      }
+
+      if (changed && updatesToMake.length > 0) {
+        console.log(`Updating ${updatesToMake.length} cards with new content from vocab.txt`);
+        // Batch update is tricky in Supabase without a RPC or multiple calls
+        // For now, we'll do individual updates or just update local state if it's too many
+        // To be safe and efficient, we can do them in chunks
+        const chunkSize = 50;
+        for (let i = 0; i < updatesToMake.length; i += chunkSize) {
+          const chunk = updatesToMake.slice(i, i + chunkSize);
+          await Promise.all(chunk.map(update => 
+            supabase
+              .from("flashcards")
+              .update({
+                pinyin: update.pinyin,
+                english: update.english,
+                notes: update.notes,
+                hsk_level: update.hsk_level,
+                example_sentence: update.example_sentence,
+              })
+              .eq("id", update.id)
+              .eq("user_id", user.id)
+          ));
+        }
+      }
+
+      return updatedDeck;
+    },
+    [loadDictionary, user],
+  );
+
   // Initialize deck from Supabase
   useEffect(() => {
     async function loadDeck() {
@@ -437,6 +605,9 @@ export function useSRS() {
           for (let l = 1; l <= targetLevel; l++) {
             mappedDeck = await seedHskLevel(l, mappedDeck);
           }
+        } else {
+          // Sync existing cards with new dictionary content (vocab.txt)
+          mappedDeck = await refreshCardContent(mappedDeck);
         }
 
         mappedDeck = await unlockNextLevelIfNeeded(mappedDeck);
@@ -449,37 +620,36 @@ export function useSRS() {
     }
 
     void loadDeck();
-  }, [seedHskLevel, unlockNextLevelIfNeeded, user]);
+  }, [seedHskLevel, unlockNextLevelIfNeeded, refreshCardContent, user]);
 
   const getDueCards = useCallback(() => {
     const now = Date.now();
-    // Use a slightly more lenient "now" for daily reviews (e.g., 4 hours early) 
-    // to allow users to study at different times of the day without missing reviews.
-    const lenientNow = now + (4 * 60 * 60 * 1000); 
+    const due = deck.filter((card) => card.dueDate <= now);
 
-    return deck
-      .filter((card) => {
-        if (card.state === "NEW") return card.dueDate <= now;
-        return card.dueDate <= lenientNow;
-      })
-      .sort((a, b) => {
-        // Priority 1: State (Relearning > Learning > Review > New)
-        const statePriority: Record<SRSState, number> = {
-          RELEARNING: 0,
-          LEARNING: 1,
-          REVIEW: 2,
-          NEW: 3,
-        };
-        if (statePriority[a.state] !== statePriority[b.state]) {
-          return statePriority[a.state] - statePriority[b.state];
-        }
+    return [...due].sort((a, b) => {
+      // 1. State Priority: RELEARNING > LEARNING > REVIEW > NEW
+      const statePriority = {
+        RELEARNING: 0,
+        LEARNING: 1,
+        REVIEW: 2,
+        NEW: 3,
+      };
 
-        // Priority 2: Due date (overdue first)
-        if (a.dueDate !== b.dueDate) return a.dueDate - b.dueDate;
+      if (statePriority[a.state] !== statePriority[b.state]) {
+        return statePriority[a.state] - statePriority[b.state];
+      }
 
-        // Priority 3: HSK Level
-        return a.hskLevel - b.hskLevel;
-      });
+      // 2. Within same state, prioritize by overdueness
+      const aOverdue = now - a.dueDate;
+      const bOverdue = now - b.dueDate;
+      
+      // For NEW cards, dueDate is just a seed timestamp, so just shuffle or sort by ID
+      if (a.state === "NEW") {
+        return a.id.localeCompare(b.id);
+      }
+
+      return bOverdue - aOverdue;
+    });
   }, [deck]);
 
   const hskProgress: HskProgress = (() => {
