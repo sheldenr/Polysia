@@ -19,6 +19,7 @@ create table if not exists public.profiles (
   onboarding_reason text,
   onboarding_age integer,
   onboarding_daily_minutes integer,
+  onboarding_referral text,
   onboarded_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -30,6 +31,7 @@ alter table public.profiles add column if not exists onboarding_goal text;
 alter table public.profiles add column if not exists onboarding_reason text;
 alter table public.profiles add column if not exists onboarding_age integer;
 alter table public.profiles add column if not exists onboarding_daily_minutes integer;
+alter table public.profiles add column if not exists onboarding_referral text;
 alter table public.profiles add column if not exists onboarded_at timestamptz;
 
 drop trigger if exists trg_profiles_updated_at on public.profiles;

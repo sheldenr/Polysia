@@ -102,7 +102,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
   }, [weeks]);
 
   return (
-    <div className="w-full flex flex-col justify-between space-y-4 rounded-3xl border bg-card p-5 sm:p-6 h-full overflow-hidden">
+    <div className="w-full flex flex-col justify-between space-y-4 rounded-3xl border bg-card p-5 sm:p-6 h-full overflow-hidden transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wider">Activity History</h2>
         <div className="hidden items-center gap-1.5 text-[10px] text-muted-foreground sm:flex">

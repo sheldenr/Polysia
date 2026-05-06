@@ -253,14 +253,27 @@ const handleDeepSeekReading = async (req, res) => {
       error: "DeepSeek is not configured. Add DEEPSEEK_API_KEY to your environment."
     });
   }
-  let hskLevel = "Beginner";
+  let hskLevel = "HSK 1";
   if (userId && supabase) {
     const { data: profile } = await supabase.from("profiles").select("onboarding_hsk_level").eq("id", userId).maybeSingle();
     if (profile?.onboarding_hsk_level) {
       hskLevel = profile.onboarding_hsk_level;
     }
   }
-  const hskConstraint = hskLevel === "Beginner" ? "The user is at HSK 1 level. Use only HSK 1 vocabulary and basic grammar." : hskLevel === "Intermediate" ? "The user is at HSK 2-3 level. Use vocabulary and grammar structures appropriate for HSK 2 and 3." : "The user is at HSK 3-4 level. Use vocabulary and grammar structures appropriate for HSK 3 and 4.";
+  const hskMatch = hskLevel.match(/HSK (\d+)/i);
+  const hskNum = hskMatch ? parseInt(hskMatch[1], 10) : 1;
+  let hskConstraint = "";
+  if (hskNum <= 1) {
+    hskConstraint = "The user is at HSK 1 level. Use only HSK 1 vocabulary and basic grammar.";
+  } else if (hskNum === 2) {
+    hskConstraint = "The user is at HSK 2 level. Use vocabulary and grammar structures appropriate for HSK 2.";
+  } else if (hskNum === 3) {
+    hskConstraint = "The user is at HSK 3 level. Use vocabulary and grammar structures appropriate for HSK 3.";
+  } else if (hskNum <= 6) {
+    hskConstraint = `The user is at HSK ${hskNum} level. Use vocabulary and grammar structures appropriate for HSK ${hskNum}.`;
+  } else {
+    hskConstraint = `The user is at an Advanced level (HSK ${hskNum}). Use natural, complex vocabulary and grammar.`;
+  }
   const vocabConstraint = `${hskConstraint} Ensure the text is natural but accessible for this level.`;
   const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
   const timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS ?? 25e3);

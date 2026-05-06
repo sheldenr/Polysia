@@ -74,7 +74,7 @@ interface LearningActivity {
   created_at: string;
 }
 
-const modeTargets: Record<LearningMode, number> = {
+const defaultModeTargets: Record<LearningMode, number> = {
   flashcards: 10,
   reading: 1,
   roleplay: 5,
@@ -133,6 +133,7 @@ export default function LearningHub() {
   const [isFlowActive, setIsFlowActive] = useState(false);
   const [activeFlowIndex, setActiveFlowIndex] = useState(0);
   const [isRoleplayLoading, setIsRoleplayLoading] = useState(false);
+  const [dailyCommitment, setDailyCommitment] = useState<number>(20); // Default 20 mins
   const [readingContent, setReadingContent] = useState<{
     titleZh: string;
     titleEn: string;
@@ -143,6 +144,16 @@ export default function LearningHub() {
   const [isReadingPromptLoading, setIsReadingPromptLoading] = useState(false);
   const [isReadingTTSLoading, setIsReadingTTSLoading] = useState(false);
   const [streakDays, setStreakDays] = useState(0);
+
+  const modeTargets = useMemo(() => {
+    // Scale targets based on daily commitment (base is 20 minutes)
+    const scale = dailyCommitment / 20;
+    return {
+      flashcards: Math.max(5, Math.round(defaultModeTargets.flashcards * scale)),
+      reading: Math.max(1, Math.round(defaultModeTargets.reading * scale)),
+      roleplay: Math.max(2, Math.round(defaultModeTargets.roleplay * scale)),
+    };
+  }, [dailyCommitment]);
   const [stats, setStats] = useState({
     flashcards: 0,
     perfected: 0,
@@ -561,6 +572,10 @@ export default function LearningHub() {
         
         setStreakDays(isAlive ? (data.streak_days || 0) : 0);
         
+        if (data.onboarding_daily_minutes) {
+          setDailyCommitment(data.onboarding_daily_minutes);
+        }
+        
         if (!data.onboarding_complete) {
           navigate("/onboarding", { replace: true });
           return;
@@ -756,6 +771,36 @@ export default function LearningHub() {
     [currentCard, logLearningActivity, rateCard],
   );
 
+  const prefetchTTS = useCallback(async (text: string) => {
+    const content = text.trim();
+    if (!content || audioCacheRef.current[content]) return;
+
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch("/api/ai/tts", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          text: content,
+        }),
+      });
+
+      if (!response.ok) return;
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      audioCacheRef.current[content] = url;
+    } catch (error) {
+      console.error("TTS prefetch error:", error);
+    }
+  }, [session]);
+
   const playInworldTTS = useCallback(async (text: string) => {
     const content = text.trim();
     if (!content) return;
@@ -808,6 +853,12 @@ export default function LearningHub() {
     }
   }, [session, toast]);
 
+  useEffect(() => {
+    if (readingContent.text) {
+      void prefetchTTS(readingContent.text);
+    }
+  }, [readingContent.text, prefetchTTS]);
+
   const handleReadingTTS = useCallback(async () => {
     setIsReadingTTSLoading(true);
     try {
@@ -833,21 +884,6 @@ export default function LearningHub() {
       }
     }
   }, [isFlashcardFlipped, currentCard, playInworldTTS]);
-
-  // Pre-fetch and play audio as soon as the card is seen
-  useEffect(() => {
-    if (currentCard && isFlowActive && activeFlowIndex === 0) {
-      const hanziPattern = /[\u3400-\u9fff]/;
-      const spokenText =
-        (hanziPattern.test(currentCard.s) && currentCard.s) ||
-        (hanziPattern.test(currentCard.t) && currentCard.t) ||
-        "";
-
-      if (spokenText) {
-        void playInworldTTS(spokenText);
-      }
-    }
-  }, [currentCard, isFlowActive, activeFlowIndex, playInworldTTS]);
 
   // Tick every second while in flashcard flow so learning-step cards reappear automatically
   useEffect(() => {
@@ -1292,46 +1328,63 @@ export default function LearningHub() {
                     key={mode.name}
                     type="button"
                     onClick={() => enterFlow(mode.index)}
-                    className="group flex h-full flex-col items-center justify-center rounded-3xl border bg-card px-6 py-7 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:py-8"
+                    className="group flex h-full flex-col overflow-hidden rounded-3xl border bg-card transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-xl hover:shadow-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   >
-                    <div className="relative mb-5 h-24 w-24">
-                      <svg
-                        className="h-full w-full -rotate-90"
-                        viewBox="0 0 100 100"
-                        aria-hidden="true"
-                      >
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="42"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          className="text-zinc-200/80 dark:text-white/10"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="42"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          strokeLinecap="round"
-                          className="text-primary transition-all duration-500"
-                          strokeDasharray={263.89}
-                          strokeDashoffset={263.89 * (1 - mode.progress / 100)}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <mode.icon className="h-8 w-8 text-primary" />
+                    {/* Top Section: Icon and Background */}
+                    <div className="flex aspect-[16/9] w-full items-center justify-center bg-background transition-colors group-hover:bg-primary/5">
+                      <div className="relative h-16 w-16">
+                        <svg
+                          className="h-full w-full -rotate-90"
+                          viewBox="0 0 100 100"
+                          aria-hidden="true"
+                        >
+                          <circle
+                            cx="50"
+                            cy="50"
+                            r="42"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="6"
+                            className="text-zinc-100 dark:text-white/5"
+                          />
+                          <circle
+                            cx="50"
+                            cy="50"
+                            r="42"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="6"
+                            strokeLinecap="round"
+                            className="text-primary transition-all duration-500"
+                            strokeDasharray={263.89}
+                            strokeDashoffset={263.89 * (1 - mode.progress / 100)}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <mode.icon className="h-6 w-6 text-primary" />
+                        </div>
                       </div>
                     </div>
 
-                    <h3 className="text-xl font-heading tracking-tight sm:text-2xl">{mode.name}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">{mode.objective}</p>
-                    <p className="mt-1 text-xs font-medium uppercase tracking-wide text-primary">
-                      {mode.progress}% complete
-                    </p>
+                    {/* Bottom Section: Details */}
+                    <div className="flex flex-1 flex-col p-6 text-left bg-zinc-50/50 dark:bg-transparent transition-colors border-t border-border/50">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-heading tracking-tight sm:text-2xl">{mode.name}</h3>
+                        <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                          {mode.desc}
+                        </p>
+                        <div className="mt-4 flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">
+                            {mode.objective}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-primary">
+                        Choose Mode
+                        <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </div>
+                    </div>
                   </button>
                 ))}
               </section>
@@ -1339,7 +1392,7 @@ export default function LearningHub() {
               <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr,0.6fr]">
                 <ActivityTracker activities={allActivities} />
 
-                <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6">
+                <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6 transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5">
                   <h2 className="text-xl font-heading">Recent activity</h2>
                   <div className="space-y-3">
                     {recentActivity.length > 0 ? (
@@ -1391,7 +1444,7 @@ export default function LearningHub() {
                   return (
                     <div
                       key={item.label}
-                      className="rounded-2xl border bg-card p-4 text-left transition-colors duration-300 hover:border-primary/30 flex flex-col justify-between"
+                      className="rounded-2xl border bg-card p-4 text-left transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5 flex flex-col justify-between"
                     >
                       <div className="mb-3 flex items-center justify-between">
                         <div className="-ml-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -1455,7 +1508,7 @@ export default function LearningHub() {
                         <button
                           type="button"
                           onClick={handleFlashcardFlip}
-                          className="relative w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-5 sm:p-10 text-center transition-all duration-500 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 overflow-hidden"
+                          className="relative w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-5 sm:p-10 text-center transition-all duration-500 hover:border-zinc-400 dark:hover:border-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 overflow-hidden"
                           aria-label="Flip flashcard"
                           aria-pressed={isFlashcardFlipped}
                         >
@@ -1544,7 +1597,7 @@ export default function LearningHub() {
                                 e.stopPropagation();
                                 handleRate(item.rating as SRSRating);
                               }}
-                              className="flex flex-col items-center gap-1 p-3 sm:p-4 rounded-2xl border bg-card hover:border-primary/30 hover:bg-secondary transition-all"
+                              className="flex flex-col items-center gap-1 p-3 sm:p-4 rounded-2xl border bg-card hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-secondary transition-all"
                             >
                               <span className="text-xs text-muted-foreground uppercase tracking-widest leading-none mb-1">
                                 {idx + 1}

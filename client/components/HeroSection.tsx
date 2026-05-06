@@ -97,7 +97,7 @@ export default function HeroSection() {
         {/* Main Heading */}
         <h1 className="text-5xl sm:text-6xl lg:text-8xl font-heading mb-6 leading-[1.1] tracking-tight text-foreground">
           Study{" "}
-          <span className={`px-1 rounded-sm transition-all duration-150 ${isHighlighted ? 'bg-primary text-primary-foreground' : 'bg-transparent'}`}>
+          <span className={`px-1 rounded-sm transition-all duration-500 ${isHighlighted ? 'bg-primary text-primary-foreground' : 'bg-transparent'}`}>
             {displayText}
           </span>,
           <span className="block">reach <span className="italic-serif text-primary">real</span> fluency.</span>

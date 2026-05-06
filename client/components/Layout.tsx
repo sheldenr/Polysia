@@ -11,7 +11,6 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { isAuthenticated } = useAuth();
-  const [showBetaBanner, setShowBetaBanner] = useState(true);
 
   useEffect(() => {
     const targets = Array.from(
@@ -98,53 +97,8 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="site-animations flex min-h-screen flex-col bg-background text-foreground transition-colors duration-300 overflow-x-hidden">
-      {/* Header: beta banner + nav */}
+      {/* Header: nav */}
       <div className="sticky top-0 z-50">
-        {/* Top Notification Bar */}
-        {showBetaBanner && (
-          <div className="w-full bg-black dark:bg-primary border-b border-white/10 px-6 py-2 text-sm sm:px-4">
-            <div className="mx-auto flex max-w-7xl items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="marquee-viewport sm:hidden">
-                  <div className="marquee-strip flex w-max items-center gap-10 pr-10 whitespace-nowrap">
-                    <p className="m-0 inline-flex items-center text-white/90">
-                      <span>Note: </span>
-                      <span className="ml-1">
-                          Polysia is currently in beta. This is a
-                          solo-development project, thanks for helping the project improve.
-                      </span>
-                    </p>
-                    <p
-                      className="m-0 inline-flex items-center text-white/90"
-                      aria-hidden="true"
-                    >
-                      <span>Note: </span>
-                      <span className="ml-1">
-                        Polysia is currently in beta. This is a
-                        solo-development project, thanks for helping the project improve.
-                      </span>
-                    </p>
-                  </div>
-                </div>
-                <p className="hidden w-full text-center sm:block text-white/90">
-                  <span>Note: </span>
-                  Polysia is currently in beta. This is a solo-development
-                  project, thanks for helping the project improve.
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => setShowBetaBanner(false)}
-                className="text-white hover:bg-white/20"
-                aria-label="Dismiss beta banner"
-              >
-                <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Navigation Bar */}
         <nav className="w-full bg-background/80 backdrop-blur-md border-b transition-colors duration-300">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-6 lg:px-8">
@@ -193,7 +147,7 @@ export default function Layout({ children }: LayoutProps) {
       <main className="flex-1 w-full">{children}</main>
 
       {/* Footer */}
-      <footer className="w-full bg-card border-t mt-12 transition-colors duration-300">
+      <footer className="w-full bg-background border-t mt-12 transition-colors duration-300">
         <div className="mx-auto max-w-7xl px-6 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             {/* Logo on Left */}

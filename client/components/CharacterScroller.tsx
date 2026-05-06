@@ -11,8 +11,7 @@ export default function CharacterScroller() {
 
     let rafId: number | null = null;
     let loopWidth = 0;
-    const scrollSpeed = 0.4;
-    const constantSpeed = 0.03; // Pixels per ms
+    const constantSpeed = 0.02; // Pixels per ms (very slow)
     let currentOffset = 0;
     let lastTime = performance.now();
 
@@ -21,59 +20,30 @@ export default function CharacterScroller() {
     };
 
     const animate = (time: number) => {
-      const isMobile = window.innerWidth < 768;
+      const deltaTime = time - lastTime;
+      lastTime = time;
       
-      if (isMobile) {
-        const deltaTime = time - lastTime;
-        lastTime = time;
-        currentOffset = (currentOffset + constantSpeed * deltaTime) % loopWidth;
-        strip.style.transform = `translate3d(${-currentOffset}px, 0, 0)`;
-        rafId = window.requestAnimationFrame(animate);
-      } else {
-        const scrollY = Math.max(window.scrollY, 0);
-        const offset = (scrollY * scrollSpeed) % loopWidth;
-        strip.style.transform = `translate3d(${-offset}px, 0, 0)`;
-        rafId = null;
-      }
-    };
-
-    const handleUpdate = () => {
-      const isMobile = window.innerWidth < 768;
-      if (isMobile) {
-        if (rafId === null) {
-          lastTime = performance.now();
-          rafId = window.requestAnimationFrame(animate);
-        }
-      } else {
-        if (rafId !== null) {
-          window.cancelAnimationFrame(rafId);
-          rafId = null;
-        }
-        animate(performance.now());
-      }
+      currentOffset = (currentOffset + constantSpeed * deltaTime) % loopWidth;
+      strip.style.transform = `translate3d(${-currentOffset}px, 0, 0)`;
+      rafId = window.requestAnimationFrame(animate);
     };
 
     measure();
-    handleUpdate();
+    rafId = window.requestAnimationFrame(animate);
 
     const resizeObserver = new ResizeObserver(() => {
       measure();
-      handleUpdate();
     });
     resizeObserver.observe(strip);
 
-    window.addEventListener("scroll", handleUpdate, { passive: true });
-    window.addEventListener("resize", handleUpdate);
-    window.addEventListener("orientationchange", handleUpdate);
+    window.addEventListener("resize", measure);
 
     return () => {
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId);
       }
       resizeObserver.disconnect();
-      window.removeEventListener("scroll", handleUpdate);
-      window.removeEventListener("resize", handleUpdate);
-      window.removeEventListener("orientationchange", handleUpdate);
+      window.removeEventListener("resize", measure);
     };
   }, []);
 

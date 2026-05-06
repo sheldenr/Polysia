@@ -133,7 +133,7 @@ function MultiModeDemo() {
   };
 
   return (
-    <div className="relative w-screen left-[50%] right-[50%] ml-[-50vw] mr-[-50vw] border-y border-border/50 bg-zinc-50 dark:bg-zinc-900/30 py-10 sm:py-24 mb-0 overflow-hidden">
+    <div className="relative w-full border-y border-border/50 bg-zinc-50 dark:bg-zinc-900/30 py-10 sm:py-24 mb-0 overflow-hidden">
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6">
         <div className="space-y-6 sm:space-y-8">
           <div className="text-center animate-in fade-in duration-500" key={`header-${mode}`}>

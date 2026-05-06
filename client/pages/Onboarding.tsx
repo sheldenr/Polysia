@@ -1,30 +1,23 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const proficiencyLevels = [
-  "HSK 1",
-  "HSK 2",
-  "HSK 3",
-  "HSK 4",
-  "HSK 5",
-  "HSK 6",
-  "HSK 7",
-  "HSK 8",
-  "HSK 9",
+  { label: "HSK 1", description: "Easy" },
+  { label: "HSK 2", description: "Easy" },
+  { label: "HSK 3", description: "Easy" },
+  { label: "HSK 4", description: "Intermediate" },
+  { label: "HSK 5", description: "Intermediate" },
+  { label: "HSK 6", description: "Intermediate" },
+  { label: "HSK 7", description: "Advanced" },
+  { label: "HSK 8", description: "Advanced" },
+  { label: "HSK 9", description: "Advanced" },
 ];
 const learningGoals = [
   "Travel conversations",
@@ -38,7 +31,7 @@ const learningReasons = [
   "Work opportunities",
   "School or university",
   "Travel confidence",
-  "Personal interest in Chinese culture",
+  "Personal interest",
 ];
 const ageOptions = [
   { label: "Under 18", value: 16 },
@@ -49,8 +42,67 @@ const ageOptions = [
   { label: "55+", value: 60 },
 ];
 const dailyTimeOptions = [10, 20, 30, 45, 60, 90];
+const referralOptions = [
+  "Social Media",
+  "Friend / Family",
+  "Search Engine",
+  "Blog or Article",
+  "Advertisement",
+  "Other",
+];
 
-type OnboardingStep = "level" | "goal" | "reason" | "age" | "time";
+type OnboardingStep = "level" | "goal" | "reason" | "age" | "time" | "referral";
+
+function ExpandingCircles() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+      {[...Array(5)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute border border-primary/30 rounded-full"
+          initial={{ width: "0%", height: "0%", opacity: 0 }}
+          animate={{
+            width: ["0%", "300%"],
+            height: ["0%", "300%"],
+            opacity: [0, 0.4, 0],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            delay: i * 1.6,
+            ease: "easeOut",
+          }}
+          style={{
+            filter: "blur(12px)", // Stronger motion blur feel
+            borderWidth: "1px",
+          }}
+        />
+      ))}
+      {[...Array(3)].map((_, i) => (
+        <motion.div
+          key={`thin-${i}`}
+          className="absolute border border-primary/20 rounded-full"
+          initial={{ width: "0%", height: "0%", opacity: 0 }}
+          animate={{
+            width: ["0%", "200%"],
+            height: ["0%", "200%"],
+            opacity: [0, 0.3, 0],
+          }}
+          transition={{
+            duration: 5,
+            repeat: Infinity,
+            delay: i * 2,
+            ease: "linear",
+          }}
+          style={{
+            filter: "blur(2px)",
+            borderWidth: "0.5px",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function Onboarding() {
   const { user, refreshProfile } = useAuth();
@@ -68,6 +120,7 @@ export default function Onboarding() {
   const [reason, setReason] = useState("");
   const [age, setAge] = useState<number | null>(null);
   const [dailyMinutes, setDailyMinutes] = useState<number | null>(null);
+  const [referral, setReferral] = useState("");
 
   const steps: Array<{ key: OnboardingStep; title: string; description: string }> = useMemo(
     () => [
@@ -96,6 +149,11 @@ export default function Onboarding() {
         title: "How much time per day can you spend?",
         description: "We'll shape your pace around your daily availability.",
       },
+      {
+        key: "referral",
+        title: "How'd you hear about us?",
+        description: "Knowing how you found Polysia helps us grow our community.",
+      },
     ],
     [],
   );
@@ -114,10 +172,12 @@ export default function Onboarding() {
         return age !== null;
       case "time":
         return dailyMinutes !== null;
+      case "referral":
+        return !!referral;
       default:
         return false;
     }
-  }, [age, currentStep.key, dailyMinutes, goal, proficiencyLevel, reason]);
+  }, [age, currentStep.key, dailyMinutes, goal, proficiencyLevel, reason, referral]);
 
   useEffect(() => {
     if (!supabase || !user || isPreview) {
@@ -180,7 +240,6 @@ export default function Onboarding() {
 
     setIsSubmitting(true);
 
-    // 1. Save profile
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: user.id,
@@ -190,6 +249,7 @@ export default function Onboarding() {
         onboarding_reason: reason,
         onboarding_age: age,
         onboarding_daily_minutes: dailyMinutes,
+        onboarding_referral: referral,
         onboarded_at: new Date().toISOString(),
       },
       { onConflict: "id" },
@@ -205,7 +265,6 @@ export default function Onboarding() {
       return;
     }
 
-    // 2. Seed initial flashcards based on level
     try {
       const response = await fetch("/chinese-dictionary-custom.json");
       const dictionary = await response.json();
@@ -216,9 +275,6 @@ export default function Onboarding() {
         hskTarget = parseInt(hskMatch[1], 10);
       }
 
-      // We'll seed all cards up to the target level.
-      // Cards below the target level will be marked as "REVIEW" (mastered).
-      // Cards at the target level will be marked as "NEW".
       const seedCards = dictionary.filter((card: any) => {
         const match = card.h?.match(/hsk-L(\d+)/i) ?? card.n?.match(/HSK level (\d+)/i);
         const level = match ? parseInt(match[1], 10) : 1;
@@ -232,6 +288,12 @@ export default function Onboarding() {
           
           const isBelowTarget = level < hskTarget;
           
+          // Extract example sentence from notes if it follows "Sentence | Translation" pattern
+          let exampleSentence = "";
+          if (card.n && card.n.includes("|")) {
+            exampleSentence = card.n.split("|")[0].trim();
+          }
+          
           return {
             user_id: user.id,
             simplified: card.s,
@@ -240,10 +302,11 @@ export default function Onboarding() {
             english: card.e,
             grammar: card.g || "",
             notes: card.n || "",
+            example_sentence: exampleSentence,
             hsk_level: level,
             state: isBelowTarget ? "REVIEW" : "NEW",
-            repetition: isBelowTarget ? 5 : 0, // 5+ reps marks it as perfected/mastered
-            interval: isBelowTarget ? 30 : 0,  // 30 days interval for mastered cards
+            repetition: isBelowTarget ? 5 : 0,
+            interval: isBelowTarget ? 30 : 0,
             efactor: 2.5,
             due_date: isBelowTarget 
               ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() 
@@ -253,7 +316,6 @@ export default function Onboarding() {
           };
         });
 
-        // Insert in chunks
         const chunkSize = 100;
         for (let i = 0; i < flashcardsToInsert.length; i += chunkSize) {
           const chunk = flashcardsToInsert.slice(i, i + chunkSize);
@@ -262,7 +324,6 @@ export default function Onboarding() {
       }
     } catch (e) {
       console.error("Failed to seed flashcards:", e);
-      // Non-critical, continue to hub
     }
 
     await refreshProfile();
@@ -275,13 +336,13 @@ export default function Onboarding() {
 
   if (isFinishing) {
     return (
-      <section className="min-h-screen bg-background px-6 py-16">
-        <div className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center text-center">
+      <section className="min-h-screen bg-zinc-100 flex items-center justify-center px-6">
+        <div className="flex flex-col items-center text-center">
           <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-          <h1 className="text-3xl font-heading">Building your learning plan...</h1>
-          <p className="mt-3 text-muted-foreground">
+          <h1 className="text-3xl font-heading text-zinc-900">Building your learning plan...</h1>
+          <p className="mt-3 text-zinc-500">
             Setting up your daily path based on your goals and level.
           </p>
         </div>
@@ -290,156 +351,240 @@ export default function Onboarding() {
   }
 
   return (
-    <section className="min-h-screen bg-background px-4 py-10 sm:px-6">
-      <div className="mx-auto flex min-h-[80vh] w-full max-w-2xl flex-col items-center justify-center">
-        <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <img src="/logo only.svg" alt="Polysia" className="h-12 w-12" />
-          <h1 className="text-3xl font-heading text-foreground">Onboarding</h1>
-          <p className="text-sm text-muted-foreground">Question {activeStep + 1} of {steps.length}</p>
-        </div>
+    <div className="min-h-screen bg-zinc-100 flex overflow-hidden font-sans">
+      {/* Left Side (25%) */}
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="relative w-[25%] hidden lg:flex flex-col justify-between p-12 z-10 overflow-hidden"
+      >
+        <ExpandingCircles />
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+          className="relative z-20 flex items-center gap-3"
+        >
+          <img src="/logo only.svg" alt="Polysia" className="h-10 w-10" />
+          <span className="font-heading text-2xl tracking-tight text-zinc-900">Polysia</span>
+        </motion.div>
 
-        <form onSubmit={handleSubmit} className="w-full">
-          <Card className="rounded-3xl border-primary bg-card/95 shadow-xl shadow-primary/20">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl">{currentStep.title}</CardTitle>
-              <CardDescription className="mx-auto max-w-xl">{currentStep.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5 text-center">
-              {currentStep.key === "level" && (
-                <div className="flex flex-col items-center justify-center gap-6">
-                  <div className="w-full max-w-[280px] space-y-4">
-                    <Select
-                      value={proficiencyLevel.startsWith("HSK") ? proficiencyLevel : ""}
-                      onValueChange={(value) => setProficiencyLevel(value)}
-                    >
-                      <SelectTrigger className="w-full h-12 rounded-2xl text-lg border-primary/30">
-                        <SelectValue placeholder="Select HSK Level" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-2xl">
-                        <SelectGroup>
-                          {proficiencyLevels.map((level) => (
-                            <SelectItem 
-                              key={level} 
-                              value={level}
-                              className="text-lg py-3"
-                            >
-                              {level}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.8 }}
+          className="relative z-20"
+        >
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Logged in as</span>
+            <span className="text-sm font-medium text-zinc-600 truncate max-w-full">
+              {user?.email || "Guest"}
+            </span>
+          </div>
+        </motion.div>
+      </motion.div>
 
-                    <button
-                      type="button"
-                      onClick={() => setProficiencyLevel("I don't know")}
-                      className="text-sm font-medium text-primary hover:opacity-80 transition-opacity"
-                    >
-                      I don't know my level
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {currentStep.key === "goal" && (
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  {learningGoals.map((item) => (
-                    <Button
-                      key={item}
-                      type="button"
-                      variant={goal === item ? "default" : "outline"}
-                      className="min-w-[200px] rounded-xl border-primary text-center"
-                      onClick={() => setGoal(item)}
-                    >
-                      {item}
-                    </Button>
-                  ))}
-                </div>
-              )}
-
-              {currentStep.key === "reason" && (
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  {learningReasons.map((item) => (
-                    <Button
-                      key={item}
-                      type="button"
-                      variant={reason === item ? "default" : "outline"}
-                      className="min-w-[220px] rounded-xl border-primary text-center"
-                      onClick={() => setReason(item)}
-                    >
-                      {item}
-                    </Button>
-                  ))}
-                </div>
-              )}
-
-              {currentStep.key === "age" && (
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  {ageOptions.map((option) => (
-                    <Button
-                      key={option.label}
-                      type="button"
-                      variant={age === option.value ? "default" : "outline"}
-                      className="min-w-[130px] rounded-xl border-primary text-center"
-                      onClick={() => setAge(option.value)}
-                    >
-                      {option.label}
-                    </Button>
-                  ))}
-                </div>
-              )}
-
-              {currentStep.key === "time" && (
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  {dailyTimeOptions.map((minutes) => (
-                    <Button
-                      key={minutes}
-                      type="button"
-                      variant={dailyMinutes === minutes ? "default" : "outline"}
-                      className="min-w-[130px] rounded-xl border-primary text-center"
-                      onClick={() => setDailyMinutes(minutes)}
-                    >
-                      {minutes} min/day
-                    </Button>
-                  ))}
-                </div>
-              )}
-
-              <div className="pt-2">
-                <div className="mb-4 h-2 overflow-hidden rounded-full bg-zinc-200/50">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all"
-                    style={{ width: `${((activeStep + 1) / steps.length) * 100}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-center gap-3">
-                  <Button type="button" variant="ghost" onClick={handleBack} disabled={activeStep === 0}>
-                    Back
-                  </Button>
-                  {activeStep < steps.length - 1 ? (
-                    <Button
-                      type="button"
-                      onClick={handleContinue}
-                      disabled={!canContinue}
-                      className="rounded-full px-6 shadow-lg shadow-primary/20"
-                    >
-                      Continue
-                    </Button>
-                  ) : (
-                    <Button
-                      type="submit"
-                      disabled={!canContinue || isSubmitting}
-                      className="rounded-full px-6 shadow-lg shadow-primary/20"
-                    >
-                      {isSubmitting ? "Saving..." : "Finish setup"}
-                    </Button>
-                  )}
-                </div>
+      {/* Right Side (75%) */}
+      <div className="w-full lg:w-[75%] h-screen flex items-center justify-center p-2 lg:p-3">
+        <motion.div 
+          initial={{ x: 80, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="h-full w-full bg-white rounded-2xl lg:rounded-3xl border border-zinc-200 overflow-hidden flex flex-col relative"
+        >
+          <div className="flex-1 flex flex-col p-8 sm:p-14 lg:p-20 overflow-y-auto">
+            <div className="mx-auto w-full max-w-3xl flex flex-col h-full">
+              {/* Inner Card Logo */}
+              <div className="mb-14">
+                <img src="/logo only.svg" alt="Polysia" className="h-12 w-12" />
               </div>
-            </CardContent>
-          </Card>
-        </form>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentStep.key}
+                  initial={{ y: 15, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -15, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-10"
+                >
+                  <div className="space-y-3">
+                    <h1 className="text-3xl sm:text-4xl font-heading tracking-tight text-zinc-900 leading-tight">
+                      {currentStep.title}
+                    </h1>
+                    <p className="text-lg text-zinc-500 max-w-2xl leading-relaxed">
+                      {currentStep.description}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-12">
+                    {currentStep.key === "level" && proficiencyLevels.map((level) => (
+                      <SelectionCard
+                        key={level.label}
+                        label={level.label}
+                        description={level.description}
+                        isSelected={proficiencyLevel === level.label}
+                        onClick={() => setProficiencyLevel(level.label)}
+                      />
+                    ))}
+                    {currentStep.key === "level" && (
+                      <div className="sm:col-span-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setProficiencyLevel("I don't know")}
+                          className={cn(
+                            "w-full p-4 rounded-xl border transition-all text-center font-medium text-sm",
+                            proficiencyLevel === "I don't know" 
+                              ? "bg-zinc-900 text-white border-zinc-900" 
+                              : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-300"
+                          )}
+                        >
+                          I don't know my level
+                        </button>
+                      </div>
+                    )}
+
+                    {currentStep.key === "goal" && learningGoals.map((item) => (
+                      <SelectionCard
+                        key={item}
+                        label={item}
+                        isSelected={goal === item}
+                        onClick={() => setGoal(item)}
+                      />
+                    ))}
+
+                    {currentStep.key === "reason" && learningReasons.map((item) => (
+                      <SelectionCard
+                        key={item}
+                        label={item}
+                        isSelected={reason === item}
+                        onClick={() => setReason(item)}
+                      />
+                    ))}
+
+                    {currentStep.key === "age" && ageOptions.map((option) => (
+                      <SelectionCard
+                        key={option.label}
+                        label={option.label}
+                        isSelected={age === option.value}
+                        onClick={() => setAge(option.value)}
+                      />
+                    ))}
+
+                    {currentStep.key === "time" && dailyTimeOptions.map((minutes) => (
+                      <SelectionCard
+                        key={minutes}
+                        label={`${minutes} min / day`}
+                        isSelected={dailyMinutes === minutes}
+                        onClick={() => setDailyMinutes(minutes)}
+                      />
+                    ))}
+
+                    {currentStep.key === "referral" && referralOptions.map((item) => (
+                      <SelectionCard
+                        key={item}
+                        label={item}
+                        isSelected={referral === item}
+                        onClick={() => setReferral(item)}
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Footer Navigation */}
+          <div className="p-8 sm:px-14 lg:px-20 border-t border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
+            <div className="mx-auto w-full max-w-3xl flex items-center justify-between">
+              <button
+                onClick={handleBack}
+                disabled={activeStep === 0}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-400 hover:text-zinc-600 disabled:opacity-0 transition-all"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Go back
+              </button>
+
+              <div className="flex items-center gap-8">
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest hidden sm:block">
+                  Step {activeStep + 1} of {steps.length}
+                </span>
+                
+                {activeStep < steps.length - 1 ? (
+                  <Button
+                    onClick={handleContinue}
+                    disabled={!canContinue}
+                    className="rounded-full px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90 transition-all border-none"
+                  >
+                    Continue
+                    <ChevronRight className="ml-1.5 w-4 h-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!canContinue || isSubmitting}
+                    className="rounded-full px-10 h-12 text-base font-semibold shadow-lg shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90 transition-all border-none"
+                  >
+                    {isSubmitting ? "Finalizing..." : "Start Learning"}
+                    {!isSubmitting && <ChevronRight className="ml-1.5 w-4 h-4" />}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
-    </section>
+    </div>
+  );
+}
+
+function SelectionCard({ 
+  label, 
+  description, 
+  isSelected, 
+  onClick 
+}: { 
+  label: string; 
+  description?: string;
+  isSelected: boolean; 
+  onClick: () => void 
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "p-6 rounded-xl border-2 transition-all text-left flex items-center justify-between group",
+        isSelected 
+          ? "border-primary bg-primary/5 shadow-sm" 
+          : "border-zinc-100 bg-white hover:border-zinc-200"
+      )}
+    >
+      <div className="flex flex-col gap-0.5">
+        <span className={cn(
+          "font-medium text-base",
+          isSelected ? "text-primary" : "text-zinc-600 group-hover:text-zinc-900"
+        )}>
+          {label}
+        </span>
+        {description && (
+          <span className={cn(
+            "text-xs font-medium uppercase tracking-wider",
+            isSelected ? "text-primary/70" : "text-zinc-400"
+          )}>
+            {description}
+          </span>
+        )}
+      </div>
+      <div className={cn(
+        "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+        isSelected ? "border-primary bg-primary" : "border-zinc-200"
+      )}>
+        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+      </div>
+    </button>
   );
 }
