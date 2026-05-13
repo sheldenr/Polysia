@@ -9,29 +9,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const proficiencyLevels = [
-  { label: "HSK 1", description: "Easy" },
-  { label: "HSK 2", description: "Easy" },
-  { label: "HSK 3", description: "Easy" },
-  { label: "HSK 4", description: "Intermediate" },
-  { label: "HSK 5", description: "Intermediate" },
-  { label: "HSK 6", description: "Intermediate" },
-  { label: "HSK 7", description: "Advanced" },
-  { label: "HSK 8", description: "Advanced" },
-  { label: "HSK 9", description: "Advanced" },
+  { label: "Total Beginner", description: "Starting from scratch", hsk: 1, icon: "🌱" },
+  { label: "Elementary", description: "I know basic phrases", hsk: 2, icon: "🚲" },
+  { label: "Intermediate", description: "I can have basic conversations", hsk: 4, icon: "🚗" },
+  { label: "Advanced", description: "I'm quite fluent", hsk: 7, icon: "✈️" },
 ];
 const learningGoals = [
-  "Travel conversations",
-  "Career growth",
-  "Academic study",
-  "Daily fluency",
-  "Exam preparation",
+  { label: "Travel & Culture", icon: "✈️" },
+  { label: "Career Growth", icon: "💼" },
+  { label: "Academic Study", icon: "🎓" },
+  { label: "Daily Fluency", icon: "🗣️" },
+  { label: "Exam Preparation", icon: "📝" },
 ];
 const learningReasons = [
-  "Family and relationships",
-  "Work opportunities",
-  "School or university",
-  "Travel confidence",
-  "Personal interest",
+  { label: "Family & Friends", icon: "❤️" },
+  { label: "Work Opportunities", icon: "📈" },
+  { label: "School or University", icon: "🏫" },
+  { label: "Travel Confidence", icon: "🗺️" },
+  { label: "Personal Interest", icon: "🌟" },
 ];
 const ageOptions = [
   { label: "Under 18", value: 16 },
@@ -41,7 +36,13 @@ const ageOptions = [
   { label: "45-54", value: 49 },
   { label: "55+", value: 60 },
 ];
-const dailyTimeOptions = [10, 20, 30, 45, 60, 90];
+const dailyTimeOptions = [
+  { label: "10 min / day", value: 10, description: "Just a quick dip" },
+  { label: "20 min / day", value: 20, description: "Consistent progress" },
+  { label: "30 min / day", value: 30, description: "Serious learner" },
+  { label: "45 min / day", value: 45, description: "Intensive study" },
+  { label: "60 min / day", value: 60, description: "Full immersion" },
+];
 const referralOptions = [
   "Social Media",
   "Friend / Family",
@@ -258,7 +259,7 @@ export default function Onboarding() {
     if (profileError) {
       setIsSubmitting(false);
       toast({
-        variant: "destructive",
+        variant: "blackDisclaimer",
         title: "Could not save onboarding",
         description: profileError.message,
       });
@@ -270,9 +271,14 @@ export default function Onboarding() {
       const dictionary = await response.json();
       
       let hskTarget = 1;
-      const hskMatch = proficiencyLevel.match(/HSK (\d+)/);
-      if (hskMatch) {
-        hskTarget = parseInt(hskMatch[1], 10);
+      const levelObj = proficiencyLevels.find(l => l.label === proficiencyLevel);
+      if (levelObj) {
+        hskTarget = levelObj.hsk;
+      } else {
+        const hskMatch = proficiencyLevel.match(/HSK (\d+)/);
+        if (hskMatch) {
+          hskTarget = parseInt(hskMatch[1], 10);
+        }
       }
 
       const seedCards = dictionary.filter((card: any) => {
@@ -424,6 +430,7 @@ export default function Onboarding() {
                       <SelectionCard
                         key={level.label}
                         label={level.label}
+                        icon={level.icon}
                         description={level.description}
                         isSelected={proficiencyLevel === level.label}
                         onClick={() => setProficiencyLevel(level.label)}
@@ -448,19 +455,21 @@ export default function Onboarding() {
 
                     {currentStep.key === "goal" && learningGoals.map((item) => (
                       <SelectionCard
-                        key={item}
-                        label={item}
-                        isSelected={goal === item}
-                        onClick={() => setGoal(item)}
+                        key={item.label}
+                        label={item.label}
+                        icon={item.icon}
+                        isSelected={goal === item.label}
+                        onClick={() => setGoal(item.label)}
                       />
                     ))}
 
                     {currentStep.key === "reason" && learningReasons.map((item) => (
                       <SelectionCard
-                        key={item}
-                        label={item}
-                        isSelected={reason === item}
-                        onClick={() => setReason(item)}
+                        key={item.label}
+                        label={item.label}
+                        icon={item.icon}
+                        isSelected={reason === item.label}
+                        onClick={() => setReason(item.label)}
                       />
                     ))}
 
@@ -473,12 +482,13 @@ export default function Onboarding() {
                       />
                     ))}
 
-                    {currentStep.key === "time" && dailyTimeOptions.map((minutes) => (
+                    {currentStep.key === "time" && dailyTimeOptions.map((option) => (
                       <SelectionCard
-                        key={minutes}
-                        label={`${minutes} min / day`}
-                        isSelected={dailyMinutes === minutes}
-                        onClick={() => setDailyMinutes(minutes)}
+                        key={option.value}
+                        label={option.label}
+                        description={option.description}
+                        isSelected={dailyMinutes === option.value}
+                        onClick={() => setDailyMinutes(option.value)}
                       />
                     ))}
 
@@ -544,11 +554,13 @@ export default function Onboarding() {
 function SelectionCard({ 
   label, 
   description, 
+  icon,
   isSelected, 
   onClick 
 }: { 
   label: string; 
   description?: string;
+  icon?: string;
   isSelected: boolean; 
   onClick: () => void 
 }) {
@@ -557,30 +569,40 @@ function SelectionCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "p-6 rounded-xl border-2 transition-all text-left flex items-center justify-between group",
+        "p-5 rounded-xl border-2 transition-all text-left flex items-center justify-between group",
         isSelected 
           ? "border-primary bg-primary/5 shadow-sm" 
           : "border-zinc-100 bg-white hover:border-zinc-200"
       )}
     >
-      <div className="flex flex-col gap-0.5">
-        <span className={cn(
-          "font-medium text-base",
-          isSelected ? "text-primary" : "text-zinc-600 group-hover:text-zinc-900"
-        )}>
-          {label}
-        </span>
-        {description && (
-          <span className={cn(
-            "text-xs font-medium uppercase tracking-wider",
-            isSelected ? "text-primary/70" : "text-zinc-400"
+      <div className="flex items-center gap-4">
+        {icon && (
+          <div className={cn(
+            "w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-zinc-50 border border-zinc-100 transition-colors group-hover:bg-white",
+            isSelected && "bg-primary/10 border-primary/20"
           )}>
-            {description}
-          </span>
+            {icon}
+          </div>
         )}
+        <div className="flex flex-col gap-0.5">
+          <span className={cn(
+            "font-semibold text-base",
+            isSelected ? "text-primary" : "text-zinc-700 group-hover:text-zinc-900"
+          )}>
+            {label}
+          </span>
+          {description && (
+            <span className={cn(
+              "text-xs font-medium uppercase tracking-wider",
+              isSelected ? "text-primary/70" : "text-zinc-400"
+            )}>
+              {description}
+            </span>
+          )}
+        </div>
       </div>
       <div className={cn(
-        "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+        "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0",
         isSelected ? "border-primary bg-primary" : "border-zinc-200"
       )}>
         {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}

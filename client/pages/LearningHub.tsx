@@ -285,7 +285,7 @@ export default function LearningHub() {
       setRoleplayInput("");
     } catch (error) {
       toast({
-        variant: "destructive",
+        variant: "blackDisclaimer",
         title: "Could not start conversation",
         description: error instanceof Error ? error.message : "AI tutor is unavailable.",
       });
@@ -890,7 +890,7 @@ export default function LearningHub() {
     } catch (error) {
       console.error("Inworld TTS error:", error);
       toast({
-        variant: "destructive",
+        variant: "blackDisclaimer",
         title: "Speech unavailable",
         description: error instanceof Error ? error.message : "Could not generate audio at this time.",
       });
@@ -1046,7 +1046,7 @@ export default function LearningHub() {
       window.localStorage.setItem(promptTimestampStorageKey, String(Date.now()));
     } catch (error) {
       toast({
-        variant: "destructive",
+        variant: "blackDisclaimer",
         title: "Tailored reading unavailable",
         description: error instanceof Error ? error.message : "Could not load today's reading prompt.",
       });
@@ -1229,7 +1229,7 @@ export default function LearningHub() {
       }));
     } catch (error) {
       toast({
-        variant: "destructive",
+        variant: "blackDisclaimer",
         title: "Practice conversations unavailable",
         description:
           error instanceof Error

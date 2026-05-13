@@ -30,7 +30,7 @@ export default function SignUp() {
 
     if (password !== confirmPassword) {
       toast({
-        variant: "destructive",
+        variant: "blackDisclaimer",
         title: "Passwords do not match",
         description: "Please make sure both password fields are the same.",
       });
@@ -58,7 +58,7 @@ export default function SignUp() {
         navigate("/onboarding");
       } else {
         toast({
-          variant: "destructive",
+          variant: "blackDisclaimer",
           title: "Sign up failed",
           description: result.error || "Could not create account",
         });
@@ -73,7 +73,7 @@ export default function SignUp() {
       await signInWithGoogle();
     } catch (error) {
       toast({
-        variant: "destructive",
+        variant: "blackDisclaimer",
         title: "Sign up failed",
         description: "Could not sign up with Google",
       });

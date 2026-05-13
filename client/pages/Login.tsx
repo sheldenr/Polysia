@@ -43,7 +43,7 @@ export default function Login() {
         }
       } else {
         toast({
-          variant: "destructive",
+          variant: "blackDisclaimer",
           title: "Login failed",
           description: result.error || "Invalid credentials",
         });
@@ -58,7 +58,7 @@ export default function Login() {
       await signInWithGoogle();
     } catch (error) {
       toast({
-        variant: "destructive",
+        variant: "blackDisclaimer",
         title: "Login failed",
         description: "Could not sign in with Google",
       });

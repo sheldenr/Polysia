@@ -11,7 +11,7 @@ export default function AuthCallback() {
     const completeGoogleSignIn = async () => {
       if (!supabase) {
         toast({
-          variant: "destructive",
+          variant: "blackDisclaimer",
           title: "Google sign-in unavailable",
           description: supabaseConfigError ?? "Supabase is not configured",
         });
@@ -24,7 +24,7 @@ export default function AuthCallback() {
 
       if (providerError) {
         toast({
-          variant: "destructive",
+          variant: "blackDisclaimer",
           title: "Google sign-in failed",
           description: providerError,
         });
@@ -43,7 +43,7 @@ export default function AuthCallback() {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           toast({
-            variant: "destructive",
+            variant: "blackDisclaimer",
             title: "Google sign-in failed",
             description: error.message,
           });
@@ -55,7 +55,7 @@ export default function AuthCallback() {
       const { data, error } = await supabase.auth.getSession();
       if (error || !data.session) {
         toast({
-          variant: "destructive",
+          variant: "blackDisclaimer",
           title: "Google sign-in failed",
           description: error?.message ?? "No active session was created",
         });
