@@ -33,10 +33,11 @@ import { useAuth } from "@/lib/auth";
 import { parseJsonResponse } from "@/lib/http";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { useSRS, type SRSRating, getProjectedIntervals } from "@/hooks/use-srs";
+import { useSRS, type SRSRating, getProjectedIntervals, type Flashcard } from "@/hooks/use-srs";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, List as TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   DeepSeekMessage,
   DeepSeekReadingPromptResponse,
@@ -44,6 +45,15 @@ import type {
 } from "@shared/api";
 
 import ActivityTracker from "@/components/ActivityTracker";
+import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type View = "dashboard" | "flashcards" | "reading" | "roleplay";
 const readingPromptTTL = 24 * 60 * 60 * 1000;
@@ -75,16 +85,21 @@ interface LearningActivity {
 }
 
 const defaultModeTargets: Record<LearningMode, number> = {
-  flashcards: 10,
+  flashcards: 50,
   reading: 1,
   roleplay: 5,
 };
 
 const statEventActions = {
   flashcardSuccess: "stat:flashcard-success",
+  flashcardFailure: "stat:flashcard-failure",
   dialogueResponse: "stat:dialogue-response",
   wordsRead: "stat:words-read",
 } as const;
+const flashcardStatActions = [
+  statEventActions.flashcardSuccess,
+  statEventActions.flashcardFailure,
+];
 
 const textbookTopics = [
   "Ordering a coffee at a cafe",
@@ -130,6 +145,7 @@ export default function LearningHub() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [hasReadStoredTheme, setHasReadStoredTheme] = useState(false);
   const [isFlowActive, setIsFlowActive] = useState(false);
   const [activeFlowIndex, setActiveFlowIndex] = useState(0);
   const [isRoleplayLoading, setIsRoleplayLoading] = useState(false);
@@ -143,7 +159,11 @@ export default function LearningHub() {
   }>(defaultReadingContent);
   const [isReadingPromptLoading, setIsReadingPromptLoading] = useState(false);
   const [isReadingTTSLoading, setIsReadingTTSLoading] = useState(false);
+  const [readingSpeed, setReadingSpeed] = useState(1.0);
+  const [showReadingPinyin, setShowReadingPinyin] = useState(true);
   const [streakDays, setStreakDays] = useState(0);
+  const [retentionRate, setRetentionRate] = useState(0);
+  const [showHsk1Intro, setShowHsk1Intro] = useState(false);
 
   const modeTargets = useMemo(() => {
     // Scale targets based on daily commitment (base is 20 minutes)
@@ -275,7 +295,7 @@ export default function LearningHub() {
     }
   }, [session, toast]);
 
-  const seenCharacters = deck.filter((card) => card.state !== "NEW").length;
+  const seenCharactersCount = deck.filter((card) => card.state !== "NEW").length;
 
   const formatRelativeTime = useCallback((isoTimestamp: string) => {
     const timestamp = new Date(isoTimestamp).getTime();
@@ -333,13 +353,13 @@ export default function LearningHub() {
       return;
     }
 
-    const [flashcardSuccessResult, dialoguesResult, perfectedResult, wordsReadResult, newCardsTodayResult] =
+    const [flashcardSuccessResult, dialoguesResult, perfectedResult, wordsReadResult, flashcardsTodayResult] =
       await Promise.all([
         supabase
           .from("learning_activity")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id)
-          .eq("action", statEventActions.flashcardSuccess),
+          .in("action", flashcardStatActions),
         supabase
           .from("learning_activity")
           .select("id", { count: "exact", head: true })
@@ -356,11 +376,11 @@ export default function LearningHub() {
           .eq("user_id", user.id)
           .eq("action", statEventActions.wordsRead),
         supabase
-          .from("flashcards")
+          .from("learning_activity")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id)
-          .not("seen_at", "is", null)
-          .gte("seen_at", dayStart.toISOString()),
+          .in("action", flashcardStatActions)
+          .gte("created_at", dayStart.toISOString()),
       ]);
 
     if (
@@ -368,14 +388,14 @@ export default function LearningHub() {
       dialoguesResult.error ||
       perfectedResult.error ||
       wordsReadResult.error ||
-      newCardsTodayResult.error
+      flashcardsTodayResult.error
     ) {
       console.error("Failed to load learning stats", {
         flashcards: flashcardSuccessResult.error,
         dialogues: dialoguesResult.error,
         perfected: perfectedResult.error,
         wordsRead: wordsReadResult.error,
-        newCardsToday: newCardsTodayResult.error,
+        flashcardsToday: flashcardsTodayResult.error,
       });
     }
 
@@ -419,7 +439,7 @@ export default function LearningHub() {
       }
     }
 
-    nextTodayProgress.flashcards = newCardsTodayResult.count ?? 0;
+    nextTodayProgress.flashcards = flashcardsTodayResult.count ?? 0;
     setWeeklyModeMinutes(nextWeeklyModeMinutes);
     setTodayProgress(nextTodayProgress);
     setRecentActivity(
@@ -492,6 +512,11 @@ export default function LearningHub() {
     // Use the maximum of calculated and stored streak to be safe and accurate, but only if alive
     const finalStreak = isAlive ? Math.max(calculatedStreak, profileData?.streak_days || 0) : 0;
     setStreakDays(finalStreak);
+
+    // Calculate Retention Rate (Successes / Total attempts)
+    const totalAttempts = rows.filter(r => r.action.startsWith("stat:flashcard")).length;
+    const successes = rows.filter(r => r.action === statEventActions.flashcardSuccess).length;
+    setRetentionRate(totalAttempts > 0 ? Math.round((successes / totalAttempts) * 100) : 0);
   }, [user]);
 
 
@@ -575,15 +600,29 @@ export default function LearningHub() {
         if (data.onboarding_daily_minutes) {
           setDailyCommitment(data.onboarding_daily_minutes);
         }
-        
+
         if (!data.onboarding_complete) {
           navigate("/onboarding", { replace: true });
           return;
+        }
+
+        if (data.onboarding_hsk_level === "HSK 1") {
+          const storageKey = `polysia.hsk1IntroSeen.${user.id}`;
+          if (typeof window !== "undefined" && !window.localStorage.getItem(storageKey)) {
+            setShowHsk1Intro(true);
+          }
         }
       }
     }
     loadProfile();
   }, [navigate, user]);
+
+  const dismissHsk1Intro = useCallback(() => {
+    if (typeof window !== "undefined" && user) {
+      window.localStorage.setItem(`polysia.hsk1IntroSeen.${user.id}`, "1");
+    }
+    setShowHsk1Intro(false);
+  }, [user]);
 
   // Keep perfected count responsive while cards are being rated.
   useEffect(() => {
@@ -661,16 +700,16 @@ export default function LearningHub() {
 
   const statItems = [
     {
-      label: "Character Flashcards",
-      value: stats.flashcards.toLocaleString(),
+      label: "Retention Rate",
+      value: `${retentionRate}%`,
       icon: Layers,
       color: "text-primary",
     },
     {
-      label: "Characters Mastered",
-      value: stats.perfected.toLocaleString(),
-      icon: CheckCircle2,
-      color: "text-emerald-500",
+      label: "Streak",
+      value: `${streakDays} days`,
+      icon: Flame,
+      color: "text-orange-500",
     },
     {
       label: "Dialogues",
@@ -697,17 +736,19 @@ export default function LearningHub() {
   }, [deck, sessionTick]);
 
   const dueCards = useMemo(() => {
-    // Separate cards into active (learning/review) and new
-    const activeCards = allDueCards.filter(c => c.state !== "NEW");
-    const newCards = allDueCards.filter(c => c.state === "NEW");
+    // Total cards allowed today across both new and reviews
+    const remainingTotalToday = Math.max(0, modeTargets.flashcards - todayProgress.flashcards);
+    
+    // If we have already reached the target, we don't show any more cards
+    // unless they are already in learning/relearning state and due now
+    if (remainingTotalToday <= 0) {
+      return allDueCards.filter(c => c.state === "LEARNING" || c.state === "RELEARNING");
+    }
 
-    // We only cap the NEW cards for the daily target
-    const remainingNewToday = Math.max(0, modeTargets.flashcards - todayProgress.flashcards);
-    const limitedNewCards = newCards.slice(0, remainingNewToday);
-
-    // Active cards (Learning/Review) should always be shown if they are due
-    return [...activeCards, ...limitedNewCards];
-  }, [allDueCards, todayProgress.flashcards]);
+    // We take all due cards up to the remaining limit
+    // getDueCards already sorts them by priority: RELEARNING > LEARNING > REVIEW > NEW
+    return allDueCards.slice(0, remainingTotalToday);
+  }, [allDueCards, todayProgress.flashcards, modeTargets.flashcards]);
 
   const currentCard = dueCards[0];
 
@@ -751,19 +792,21 @@ export default function LearningHub() {
       rateCard(currentCard.h, rating);
       
       sessionFlashcardsRef.current += 1;
-      if (wasNewCard) {
-        setTodayProgress((prev) => ({
-          ...prev,
-          flashcards: Math.min(modeTargets.flashcards, prev.flashcards + 1),
-        }));
-      }
+      setTodayProgress((prev) => ({
+        ...prev,
+        flashcards: Math.min(modeTargets.flashcards, prev.flashcards + 1),
+      }));
 
       // Increment stats and log activity for ALL ratings to track daily progress correctly
       setStats((prev) => ({
         ...prev,
         flashcards: prev.flashcards + 1,
       }));
-      void logLearningActivity("flashcards", statEventActions.flashcardSuccess, 0);
+      const ratingAction =
+        rating === 1
+          ? statEventActions.flashcardFailure
+          : statEventActions.flashcardSuccess;
+      void logLearningActivity("flashcards", ratingAction, 0);
 
       setIsFlashcardFlipped(false);
       setTimeout(() => setSkipTransition(false), 50);
@@ -801,7 +844,7 @@ export default function LearningHub() {
     }
   }, [session]);
 
-  const playInworldTTS = useCallback(async (text: string) => {
+  const playInworldTTS = useCallback(async (text: string, speed = 1.0) => {
     const content = text.trim();
     if (!content) return;
 
@@ -841,6 +884,7 @@ export default function LearningHub() {
       }
 
       const audio = new Audio(url);
+      audio.playbackRate = speed;
       currentAudioRef.current = audio;
       await audio.play();
     } catch (error) {
@@ -862,11 +906,11 @@ export default function LearningHub() {
   const handleReadingTTS = useCallback(async () => {
     setIsReadingTTSLoading(true);
     try {
-      await playInworldTTS(readingContent.text);
+      await playInworldTTS(readingContent.text, readingSpeed);
     } finally {
       setIsReadingTTSLoading(false);
     }
-  }, [playInworldTTS, readingContent.text]);
+  }, [playInworldTTS, readingContent.text, readingSpeed]);
 
   const handleFlashcardFlip = useCallback(() => {
     const next = !isFlashcardFlipped;
@@ -919,14 +963,18 @@ export default function LearningHub() {
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("theme");
-    const shouldUseDark = savedTheme ? savedTheme === "dark" : false;
+    const shouldUseDark = savedTheme
+      ? savedTheme === "dark"
+      : document.documentElement.classList.contains("dark");
     setIsDarkMode(shouldUseDark);
+    setHasReadStoredTheme(true);
   }, []);
 
   useEffect(() => {
+    if (!hasReadStoredTheme) return;
     document.documentElement.classList.toggle("dark", isDarkMode);
     window.localStorage.setItem("theme", isDarkMode ? "dark" : "light");
-  }, [isDarkMode]);
+  }, [isDarkMode, hasReadStoredTheme]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -1209,7 +1257,7 @@ export default function LearningHub() {
       index: 1,
       objective: `${todayProgress.reading}/${modeTargets.reading} passage today`,
       progress: Math.min(100, Math.round((todayProgress.reading / modeTargets.reading) * 100)),
-      restricted: seenCharacters < 100,
+      restricted: seenCharactersCount < 100,
     },
     {
       name: "Practice Conversations",
@@ -1218,7 +1266,7 @@ export default function LearningHub() {
       index: 2,
       objective: `${todayProgress.roleplay}/${modeTargets.roleplay} exchanges today`,
       progress: Math.min(100, Math.round((todayProgress.roleplay / modeTargets.roleplay) * 100)),
-      restricted: seenCharacters < 100,
+      restricted: seenCharactersCount < 100,
     },
   ];
 
@@ -1230,8 +1278,155 @@ export default function LearningHub() {
 
   const maxWeeklyModeMinutes = Math.max(...weeklyModeRows.map((item) => item.minutes), 1);
 
+  const MasteryBoard = ({ cards }: { cards: Flashcard[] }) => {
+    const [filter, setFilter] = useState<"all" | "mastered" | "learning">("all");
+    
+    const filteredCards = useMemo(() => {
+      let base = cards.filter(c => c.state !== "NEW");
+      switch (filter) {
+        case "mastered": base = base.filter(c => c.repetition >= 5); break;
+        case "learning": base = base.filter(c => c.repetition < 5); break;
+      }
+      return base.sort((a, b) => b.repetition - a.repetition);
+    }, [cards, filter]);
+
+    return (
+      <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6 transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-heading">Vocabulary mastery board</h2>
+          <div className="flex p-1 bg-secondary/30 rounded-xl self-start sm:self-center border border-border/50">
+            {(["all", "mastered", "learning"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setFilter(t)}
+                className={cn(
+                  "px-3 py-1 text-xs font-medium rounded-lg transition-all capitalize border",
+                  filter === t 
+                    ? "bg-card text-foreground shadow-sm border-border/50" 
+                    : "text-muted-foreground hover:text-foreground border-transparent"
+                )}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-6 xl:grid-cols-8 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+          {filteredCards.length > 0 ? (
+            filteredCards.map((card) => {
+              const mastery = Math.min(5, card.repetition);
+              const dotColor =
+                mastery >= 5 ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" :
+                mastery >= 3 ? "bg-sky-500" :
+                mastery >= 1 ? "bg-amber-500" :
+                "bg-rose-400";
+
+              return (
+                <Tooltip key={card.id}>
+                  <TooltipTrigger asChild>
+                    <div className="aspect-square flex flex-col items-center justify-center p-1 rounded-xl border border-border/50 hover:border-primary/30 transition-all hover:bg-secondary/10 group cursor-default relative">
+                      <span className={cn(
+                        "leading-none font-medium text-foreground transition-transform group-hover:scale-110 mb-1",
+                        card.s.length > 2 ? "text-sm sm:text-base" : "text-lg"
+                      )}>
+                        {card.s.slice(0, 3)}
+                      </span>
+                      <div className={cn("w-1.5 h-1.5 rounded-full", dotColor)} />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs font-semibold">{card.p}</p>
+                    <p className="text-[10px] text-muted-foreground">{card.e}</p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })
+          ) : (
+            <div className="col-span-full py-12 text-center bg-secondary/5 rounded-2xl border border-dashed">
+              <p className="text-sm text-muted-foreground">No vocabulary in this category yet.</p>
+            </div>
+          )}
+        </div>
+
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      <Dialog open={showHsk1Intro} onOpenChange={(open) => { if (!open) dismissHsk1Intro(); }}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Before you begin
+            </div>
+            <DialogTitle className="text-2xl font-heading leading-tight">
+              Welcome! A quick primer for HSK 1.
+            </DialogTitle>
+            <DialogDescription>
+              You picked HSK 1, so you're starting from the beginning. Spend a few minutes with these foundations — they'll make every flashcard, story, and dialogue click much faster.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 text-sm">
+            <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
+              <h3 className="font-heading text-base mb-2">1. The four tones (+ neutral)</h3>
+              <p className="text-muted-foreground mb-3">
+                Mandarin is tonal — the pitch of a syllable changes the word. Practice these out loud:
+              </p>
+              <ul className="space-y-1.5 text-foreground">
+                <li><span className="font-mono text-emerald-600 dark:text-emerald-400">mā</span> — 1st tone, high &amp; flat (妈 "mom")</li>
+                <li><span className="font-mono text-blue-600 dark:text-blue-400">má</span> — 2nd tone, rising (麻 "hemp")</li>
+                <li><span className="font-mono text-amber-600 dark:text-amber-400">mǎ</span> — 3rd tone, dip down then up (马 "horse")</li>
+                <li><span className="font-mono text-rose-600 dark:text-rose-400">mà</span> — 4th tone, sharp falling (骂 "scold")</li>
+                <li><span className="font-mono text-muted-foreground">ma</span> — neutral, light &amp; unstressed (吗 question particle)</li>
+              </ul>
+            </section>
+
+            <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
+              <h3 className="font-heading text-base mb-2">2. Pinyin — your training wheels</h3>
+              <p className="text-muted-foreground">
+                Pinyin spells out Chinese sounds using Latin letters, with marks (¯ ´ ˇ `) showing the tone. A few sounds aren't intuitive:
+              </p>
+              <ul className="mt-2 space-y-1 text-foreground">
+                <li><span className="font-mono">q</span> ≈ "ch" (light, tongue forward)</li>
+                <li><span className="font-mono">x</span> ≈ "sh" (light, tongue forward)</li>
+                <li><span className="font-mono">zh / ch / sh</span> — pulled back, retroflex</li>
+                <li><span className="font-mono">c</span> ≈ "ts" in "cats"</li>
+                <li><span className="font-mono">ü</span> — say "ee" with rounded lips</li>
+              </ul>
+            </section>
+
+            <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
+              <h3 className="font-heading text-base mb-2">3. Characters vs words</h3>
+              <p className="text-muted-foreground">
+                Each character (汉字) is one syllable with its own meaning. Many words are pairs — e.g. 你好 (nǐ hǎo, "hello") = 你 "you" + 好 "good". Don't panic about memorizing strokes; recognition comes first.
+              </p>
+            </section>
+
+            <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
+              <h3 className="font-heading text-base mb-2">4. How to use Polysia</h3>
+              <ul className="space-y-1 text-muted-foreground">
+                <li>• <span className="text-foreground">Flashcards</span> — daily reviews; tap a character to hear it.</li>
+                <li>• <span className="text-foreground">Reading</span> — short stories with pinyin support and audio.</li>
+                <li>• <span className="text-foreground">Roleplay</span> — try simple conversations once you know ~30 words.</li>
+              </ul>
+            </section>
+
+            <p className="text-xs text-muted-foreground">
+              Tip: keep YouTube tabs open for tone drills (search "Mandarin tones practice"). 10 minutes a day is plenty to start.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button className="rounded-xl" onClick={dismissHsk1Intro}>
+              Got it — let's start
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Configuration Error Overlay */}
       {supabaseConfigError && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/95 backdrop-blur-md p-4">
@@ -1272,6 +1467,19 @@ export default function LearningHub() {
           height: 100vh;
           scroll-snap-align: start;
           scroll-snap-stop: always;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(var(--primary-rgb), 0.1);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(var(--primary-rgb), 0.2);
         }
       `}</style>
 
@@ -1331,8 +1539,8 @@ export default function LearningHub() {
                     className="group flex h-full flex-col overflow-hidden rounded-3xl border bg-card transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-xl hover:shadow-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   >
                     {/* Top Section: Icon and Background */}
-                    <div className="flex aspect-[16/9] w-full items-center justify-center bg-background transition-colors group-hover:bg-primary/5">
-                      <div className="relative h-16 w-16">
+                    <div className="flex aspect-[21/9] w-full items-center justify-center bg-background transition-colors group-hover:bg-primary/5">
+                      <div className="relative h-12 w-12">
                         <svg
                           className="h-full w-full -rotate-90"
                           viewBox="0 0 100 100"
@@ -1389,12 +1597,31 @@ export default function LearningHub() {
                 ))}
               </section>
 
-              <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr,0.6fr]">
-                <ActivityTracker activities={allActivities} />
+              <section className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+                {statItems.map((item) => {
+                  return (
+                    <div
+                      key={item.label}
+                      className="rounded-3xl border bg-card p-6 text-center transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5 flex flex-col justify-center items-center gap-1"
+                    >
+                      <p className="text-3xl font-heading tracking-tight">{item.value}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">{item.label}</p>
+                    </div>
+                  );
+                })}
+              </section>
 
-                <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6 transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5">
-                  <h2 className="text-xl font-heading">Recent activity</h2>
-                  <div className="space-y-3">
+              <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr,0.8fr] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
+                <div className="space-y-6">
+                  <MasteryBoard cards={deck} />
+                </div>
+
+                <div className="space-y-6 flex flex-col">
+                  <ActivityTracker activities={allActivities} variant="compact" />
+                  
+                  <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6 transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5 flex-1 flex flex-col">
+                    <h2 className="text-xl font-heading">Recent activity</h2>
+                  <div className="space-y-3 flex-1">
                     {recentActivity.length > 0 ? (
                       recentActivity.map((activity) => {
                         const ActivityIcon =
@@ -1407,7 +1634,7 @@ export default function LearningHub() {
                         return (
                           <div
                             key={activity.id}
-                            className="flex items-center gap-3 rounded-2xl border bg-background p-3"
+                            className="flex items-center gap-3 rounded-2xl border bg-secondary/30 p-3"
                           >
                             <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                               <ActivityIcon className="h-4 w-4 text-primary" />
@@ -1436,30 +1663,8 @@ export default function LearningHub() {
                     )}
                   </div>
                 </div>
-              </section>
-
-              <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {statItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={item.label}
-                      className="rounded-2xl border bg-card p-4 text-left transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5 flex flex-col justify-between"
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="-ml-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                          <Icon className="h-5 w-5 text-primary" />
-                        </div>
-                        <TrendingUp className="h-4 w-4 shrink-0 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-2xl font-heading">{item.value}</p>
-                        <p className="text-xs text-muted-foreground">{item.label}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </section>
+              </div>
+            </section>
             </div>
           </main>
         </div>
@@ -1486,7 +1691,7 @@ export default function LearningHub() {
             {/* Slide 1: Character Flashcards */}
             <section
               ref={(el) => (slideRefs.current[0] = el)}
-              className="flow-slide flex flex-col items-center justify-center px-5 pt-12 pb-16 sm:px-8 sm:py-5"
+              className="flow-slide flex flex-col items-center justify-center px-5 py-10 sm:px-8"
             >
               <div className="w-full max-w-[46rem] animate-in fade-in slide-in-from-bottom-8 duration-700">
                 {srsLoading ? (
@@ -1497,9 +1702,13 @@ export default function LearningHub() {
                 ) : dueCards.length > 0 ? (
                   <>
                     <div className="mb-8 text-center">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-secondary/40 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-3">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        HSK {hskProgress.currentLevel}
+                      </div>
                       <h2 className="text-2xl sm:text-3xl font-heading tracking-tight mb-1">Character Flashcards</h2>
-                      <p className="text-sm text-muted-foreground">
-                        Current HSK Level: {hskProgress.currentLevel}
+                      <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                        Review characters with spaced repetition — cards you struggle with come back sooner, cards you know push further out.
                       </p>
                     </div>
                     <div className="space-y-8 sm:space-y-12">
@@ -1707,8 +1916,8 @@ export default function LearningHub() {
               <div className="w-full max-w-6xl space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center space-y-3 relative">
                   <h2 className="text-3xl sm:text-4xl font-heading tracking-tight">Tailored Reading</h2>
-                  <p className="text-muted-foreground">
-                    Practice authentic reading at your {readingContent.hskLevel || "Beginner"} level.
+                  <p className="text-muted-foreground max-w-xl mx-auto">
+                    Read short passages generated for your level, then check comprehension with a quick quiz. Tap any character for pinyin and meaning.
                   </p>
                   
                   <div className="flex justify-center mt-2">
@@ -1727,31 +1936,49 @@ export default function LearningHub() {
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-10 items-start">
                   <div className="order-1 space-y-6 lg:order-1 lg:col-span-2">
-                    <article className="max-h-[72vh] overflow-y-auto p-5 sm:max-h-none sm:overflow-visible sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border bg-card shadow-lg leading-relaxed text-sm sm:text-xl space-y-5 sm:space-y-7">
-                      <h3 className="text-xl sm:text-3xl mb-3 sm:mb-6 font-heading flex items-center gap-3 flex-wrap">
-                        <ChineseTooltipText text={readingContent.titleZh} />
-                        <span className="text-xs sm:text-base font-normal text-muted-foreground">
-                          ({readingContent.titleEn})
-                        </span>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => void handleReadingTTS()}
-                              disabled={isReadingTTSLoading || isReadingPromptLoading || !readingContent.text}
-                              className="h-8 w-8 rounded-full ml-auto lg:ml-0"
-                            >
-                              <Volume2 className={`h-4 w-4 ${isReadingTTSLoading ? "animate-pulse" : ""}`} />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Listen to AI voice</p>
-                          </TooltipContent>
-                        </Tooltip>
+                    <article className="max-h-[72vh] overflow-y-auto p-5 sm:max-h-none sm:overflow-visible sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border bg-card shadow-lg leading-[2.5] text-base sm:text-2xl space-y-3 sm:space-y-4">
+                      <h3 className="text-xl sm:text-3xl mb-1 sm:mb-2 font-heading flex items-center gap-3 flex-wrap">
+                        {readingContent.titleEn}
+                        <div className="flex items-center gap-2 ml-auto lg:ml-0">
+                          <TooltipProvider>
+                            <div className="flex items-center gap-2 px-2 py-1 bg-secondary/50 rounded-full">
+                              <span className="text-[10px] font-mono w-8 text-center">{readingSpeed}x</span>
+                              <input 
+                                type="range" 
+                                min="0.5" 
+                                max="2.0" 
+                                step="0.1" 
+                                value={readingSpeed}
+                                onChange={(e) => setReadingSpeed(parseFloat(e.target.value))}
+                                className="w-16 h-1 accent-primary"
+                              />
+                            </div>
+
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => void handleReadingTTS()}
+                                  disabled={isReadingTTSLoading || isReadingPromptLoading || !readingContent.text}
+                                  className="h-8 w-8 rounded-full"
+                                >
+                                  <Volume2 className={`h-4 w-4 ${isReadingTTSLoading ? "animate-pulse" : ""}`} />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Listen at {readingSpeed}x</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </h3>
                       <p>
-                        <ChineseTooltipText text={readingContent.text} />
+                        <ChineseTooltipText 
+                          text={readingContent.text} 
+                          variant="reading" 
+                          showPinyin={showReadingPinyin}
+                        />
                       </p>
                       {isReadingPromptLoading && (
                         <p className="text-xs text-muted-foreground">Generating today's prompt...</p>

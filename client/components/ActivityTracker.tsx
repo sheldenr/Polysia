@@ -1,19 +1,22 @@
+import { startOfToday, eachDayOfInterval, subDays, format } from "date-fns";
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { format, subDays, startOfToday, eachDayOfInterval } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 interface Activity {
   created_at: string;
   minutes_spent: number;
+  action: string;
 }
 
 interface ActivityTrackerProps {
   activities: Activity[];
+  variant?: "default" | "compact";
 }
 
-const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
+const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities, variant = "default" }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [days, setDays] = useState(140); // Start with a sensible default
+  const [days, setDays] = useState(variant === "compact" ? 42 : 70); 
   const [isMobile, setIsMobile] = useState(false);
   const today = startOfToday();
 
@@ -25,16 +28,14 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
       const isMobileViewport = window.innerWidth < 640;
       setIsMobile(isMobileViewport);
       
-      // Column width = box width + gap
-      // Desktop: 12px (h-3) + 4px (gap) = 16px
-      // Mobile: 10px (h-2.5) + 2px (gap) = 12px
       const colWidth = isMobileViewport ? 12 : 16;
       const numWeeks = Math.floor(width / colWidth);
       
       if (numWeeks > 0) {
         const computedDays = numWeeks * 7;
+        
         const constrainedDays = isMobileViewport
-          ? Math.min(56, Math.max(28, computedDays))
+          ? Math.max(28, computedDays)
           : computedDays;
         setDays(constrainedDays);
       }
@@ -45,7 +46,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
     updateDays(); // Initial calculation
 
     return () => observer.disconnect();
-  }, []);
+  }, [variant]);
 
   const startDate = useMemo(() => subDays(today, days - 1), [today, days]);
 
@@ -56,18 +57,27 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
   const activityMap = useMemo(() => {
     const map: Record<string, number> = {};
     activities.forEach((activity) => {
-      const dateKey = format(new Date(activity.created_at), "yyyy-MM-dd");
-      map[dateKey] = (map[dateKey] || 0) + 1;
+      // Only count character mastery/success events for the "characters studied" heatmap
+      if (activity.action.includes("flashcard-success") || activity.action.includes("Studied")) {
+        const dateKey = format(new Date(activity.created_at), "yyyy-MM-dd");
+        
+        // If it's a "Studied X cards" action, extract X
+        const studiedMatch = activity.action.match(/Studied (\d+) cards/);
+        const count = studiedMatch ? parseInt(studiedMatch[1], 10) : 1;
+        
+        map[dateKey] = (map[dateKey] || 0) + count;
+      }
     });
     return map;
   }, [activities]);
 
   const getColorClass = (count: number) => {
-    if (count === 0) return "bg-zinc-100 dark:bg-zinc-800/50";
-    if (count < 2) return "bg-primary/20";
-    if (count < 4) return "bg-primary/40";
-    if (count < 6) return "bg-primary/70";
-    return "bg-primary";
+    if (count === 0) return "bg-zinc-200 dark:bg-zinc-800";
+    if (count < 10) return "bg-sky-200 dark:bg-sky-900";
+    if (count < 25) return "bg-sky-300 dark:bg-sky-700";
+    if (count < 50) return "bg-sky-400 dark:bg-sky-500";
+    if (count < 100) return "bg-sky-500 dark:bg-sky-400";
+    return "bg-sky-400 dark:bg-sky-300 shadow-[0_0_8px_rgba(56,189,248,0.6)] brightness-110";
   };
 
   const weeks: Date[][] = useMemo(() => {
@@ -102,27 +112,31 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
   }, [weeks]);
 
   return (
-    <div className="w-full flex flex-col justify-between space-y-4 rounded-3xl border bg-card p-5 sm:p-6 h-full overflow-hidden transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5">
+    <div className={cn(
+      "w-full flex flex-col justify-between rounded-3xl border bg-card transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5",
+      "p-5 sm:p-6 space-y-4"
+    )}>
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-heading text-muted-foreground uppercase tracking-wider">Activity History</h2>
-        <div className="hidden items-center gap-1.5 text-[10px] text-muted-foreground sm:flex">
-          <span>Less</span>
-          <div className="h-2.5 w-2.5 rounded-sm bg-zinc-100 dark:bg-zinc-800/50" />
-          <div className="h-2.5 w-2.5 rounded-sm bg-primary/20" />
-          <div className="h-2.5 w-2.5 rounded-sm bg-primary/40" />
-          <div className="h-2.5 w-2.5 rounded-sm bg-primary/70" />
-          <div className="h-2.5 w-2.5 rounded-sm bg-primary" />
-          <span>More</span>
+        <h2 className="text-xl font-heading">Characters Mastered</h2>
+        <div className={cn("hidden items-center text-muted-foreground sm:flex", variant === "compact" ? "gap-1 text-[8px]" : "gap-1.5 text-[10px]")}>
+          <span>0</span>
+          <div className={cn("rounded-sm bg-zinc-200 dark:bg-zinc-800", variant === "compact" ? "h-2 w-2" : "h-2.5 w-2.5")} />
+          <div className={cn("rounded-sm bg-sky-200 dark:bg-sky-900", variant === "compact" ? "h-2 w-2" : "h-2.5 w-2.5")} />
+          <div className={cn("rounded-sm bg-sky-300 dark:bg-sky-700", variant === "compact" ? "h-2 w-2" : "h-2.5 w-2.5")} />
+          <div className={cn("rounded-sm bg-sky-400 dark:bg-sky-500", variant === "compact" ? "h-2 w-2" : "h-2.5 w-2.5")} />
+          <div className={cn("rounded-sm bg-sky-500 dark:bg-sky-400", variant === "compact" ? "h-2 w-2" : "h-2.5 w-2.5")} />
+          <div className={cn("rounded-sm bg-sky-400 dark:bg-sky-300 brightness-110", variant === "compact" ? "h-2 w-2" : "h-2.5 w-2.5")} />
+          <span>100+</span>
         </div>
       </div>
 
-      <div className="relative" ref={containerRef}>
+      <div className="relative py-4 sm:py-6" ref={containerRef}>
         {/* Month Labels */}
-        <div className="mb-1.5 hidden h-3 min-w-max text-[9px] text-muted-foreground sm:flex">
+        <div className={cn("mb-1.5 hidden min-w-max text-muted-foreground sm:flex", variant === "compact" ? "h-2.5 text-[8px]" : "h-3 text-[9px]")}>
           {weeks.map((_, i) => {
             const monthLabel = monthLabels.find(l => l.index === i);
             return (
-              <div key={i} className="flex-none w-[12px] sm:w-[16px] relative">
+              <div key={i} className={cn("flex-none relative", variant === "compact" ? "w-[12px] sm:w-[14px]" : "w-[12px] sm:w-[16px]")}>
                 {monthLabel && <span className="absolute left-0 whitespace-nowrap">{monthLabel.label}</span>}
               </div>
             );
@@ -130,10 +144,10 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
         </div>
 
         <div className="flex justify-start">
-          <div className="flex gap-[2px] sm:gap-[4px]">
+          <div className={cn("flex w-full justify-between", variant === "compact" ? "gap-[2px]" : "gap-[2px] sm:gap-[4px]")}>
             <TooltipProvider delayDuration={0}>
               {weeks.map((week, weekIdx) => (
-                <div key={weekIdx} className="flex flex-col gap-[2px] sm:gap-[4px]">
+                <div key={weekIdx} className={cn("flex flex-col justify-between", variant === "compact" ? "gap-[2px]" : "gap-[2px] sm:gap-[4px]")}>
                   {week.map((day) => {
                     const dateKey = format(day, "yyyy-MM-dd");
                     const count = activityMap[dateKey] || 0;
@@ -141,12 +155,16 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
                       <Tooltip key={dateKey}>
                         <TooltipTrigger asChild>
                           <div
-                            className={`h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-[1px] sm:rounded-[2px] transition-colors ${getColorClass(count)}`}
+                            className={cn(
+                              "rounded-[1px] sm:rounded-[2px] transition-colors",
+                              variant === "compact" ? "h-2 w-2 sm:h-2.5 sm:w-2.5" : "h-2.5 w-2.5 sm:h-3 sm:w-3",
+                              getColorClass(count)
+                            )}
                           />
                         </TooltipTrigger>
                         <TooltipContent side="top" className="text-[10px] p-2">
                           <p className="font-medium">
-                            {count} {count === 1 ? "activity" : "activities"}
+                            {count} {count === 1 ? "character" : "characters"} mastered
                           </p>
                           <p className="opacity-70">{format(day, "MMM do, yyyy")}</p>
                         </TooltipContent>
@@ -162,7 +180,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
       
       <div className="flex justify-between border-t border-border/50 pt-1 text-[10px] text-muted-foreground uppercase tracking-widest">
         <span>{format(startDate, "MMMM yyyy")}</span>
-        <span className="font-medium text-primary/80">{isMobile ? "Compact" : "Full View"}</span>
+        {variant !== "compact" && <span className="font-medium text-primary/80">Character Mastery Heatmap</span>}
       </div>
     </div>
   );

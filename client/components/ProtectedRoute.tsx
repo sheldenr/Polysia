@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { PaymentGate } from "@/components/PaymentGate";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -26,5 +27,5 @@ export function ProtectedRoute({ children, allowOnboarding = false }: ProtectedR
     return <Navigate to="/onboarding" replace />;
   }
 
-  return <>{children}</>;
+  return <PaymentGate>{children}</PaymentGate>;
 }

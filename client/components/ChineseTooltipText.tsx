@@ -39,6 +39,7 @@ type ChineseTooltipTextProps = {
   characterClassName?: string;
   enableTooltip?: boolean;
   highlightText?: string;
+  variant?: "default" | "reading";
 };
 
 function loadDictionaryCollection(): Promise<DictionaryCollection> {
@@ -91,6 +92,7 @@ export default function ChineseTooltipText({
   characterClassName,
   enableTooltip = true,
   highlightText,
+  variant = "default",
 }: ChineseTooltipTextProps) {
   const [dictionaries, setDictionaries] = useState<DictionaryCollection | null>(null);
   const [loadError, setLoadError] = useState<Error | null>(null);
@@ -214,10 +216,21 @@ export default function ChineseTooltipText({
   }, [dictionaries, text]);
 
   return (
-    <span className={className}>
+    <span className={cn(
+      "inline-flex flex-wrap items-baseline", 
+      variant === "reading" ? "gap-x-0.5" : "gap-0",
+      className
+    )}>
       {tokensWithDefinitions.map(({ token, isHanzi, definition }, index) => {
         if (!isHanzi) {
-          return <span key={`${token}-${index}`}>{token}</span>;
+          return (
+            <span 
+              key={`${token}-${index}`} 
+              className={cn(variant === "reading" && "opacity-40")}
+            >
+              {token}
+            </span>
+          );
         }
 
         if (!enableTooltip || (!dictionaries && !loadError)) {
@@ -232,7 +245,6 @@ export default function ChineseTooltipText({
           ? "Dictionary unavailable."
           : definition?.english || "No dictionary entry found.";
         const pinyin = loadError ? "" : definition?.pinyin;
-        const isHighlighted = highlightText && token.includes(highlightText);
         const tokenKey = `${token}-${index}`;
 
         return (
@@ -249,8 +261,9 @@ export default function ChineseTooltipText({
             <TooltipTrigger asChild>
               <span
                 className={cn(
-                  "inline-block px-[1px] -mx-[1px]",
-                  isTouchDevice ? "cursor-pointer" : "cursor-help",
+                  "inline-flex items-baseline cursor-help relative",
+                  isTouchDevice && "cursor-pointer",
+                  variant === "reading" && token.length > 1 && "after:content-[''] after:absolute after:-bottom-[2px] after:left-0 after:right-0 after:h-[3px] after:bg-primary after:rounded-full",
                   characterClassName,
                 )}
                 onClick={(event) => {
@@ -267,12 +280,15 @@ export default function ChineseTooltipText({
             </TooltipTrigger>
             <TooltipContent
               sideOffset={8}
-              className="pointer-events-none rounded-2xl border border-border/80 !bg-card !text-foreground shadow-2xl [&>svg]:hidden"
+              className={cn(
+                "pointer-events-none border border-border/80 !bg-card !text-foreground shadow-xl [&>svg]:hidden",
+                variant === "reading" ? "rounded-xl max-w-xs" : "rounded-2xl shadow-2xl"
+              )}
             >
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-semibold">{token}</span>
                 {pinyin ? <span className="text-[11px] text-muted-foreground">{pinyin}</span> : null}
-                <span className="text-xs text-muted-foreground">{english}</span>
+                <span className="text-xs text-muted-foreground leading-relaxed">{english}</span>
               </div>
             </TooltipContent>
           </Tooltip>
