@@ -67,24 +67,50 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
     });
   }
 
-  // Fetch user's known characters/words from flashcards
+  // Fetch user's HSK level and known characters/words from flashcards
   let knownVocab: string[] = [];
+  let hskNum = 1;
   if (userId && supabaseAdmin) {
     const { data: flashcards } = await supabaseAdmin
       .from("flashcards")
-      .select("simplified")
+      .select("simplified, hsk_level")
       .eq("user_id", userId)
-      .not("state", "eq", "NEW");
+      .neq("state", "NEW");
 
     if (flashcards) {
       knownVocab = flashcards.map(f => f.simplified);
+      hskNum = Math.max(1, ...flashcards.map(f => f.hsk_level || 1));
+    } else {
+      // Fallback to profile
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("onboarding_hsk_level")
+        .eq("id", userId)
+        .maybeSingle();
+      
+      const onboardingLevel = profile?.onboarding_hsk_level || "HSK 1";
+      const hskMatch = onboardingLevel.match(/HSK (\d+)/i);
+      if (hskMatch) {
+        hskNum = parseInt(hskMatch[1], 10);
+      } else {
+        const mapping: Record<string, number> = {
+          "Total Beginner": 1,
+          "Beginner": 1,
+          "Elementary": 2,
+          "Intermediate": 4,
+          "Advanced": 7,
+        };
+        hskNum = mapping[onboardingLevel] || 1;
+      }
     }
   }
 
   const vocabList = knownVocab.length > 0 ? knownVocab.join(", ") : "basic HSK 1";
+  const hskConstraint = hskNum <= 1 ? "HSK 1" : hskNum >= 7 ? "Advanced" : `HSK ${hskNum}`;
+  
   const vocabConstraint = knownVocab.length > 0 
-    ? `The user knows these Chinese characters/words: [${vocabList}]. Heavily prioritize using these known words in your responses. You can introduce a very small amount of new vocabulary (1-2 new words per response) if necessary for the context, but keep it mostly within their known set.`
-    : "The user is a beginner. Use only very basic HSK 1 vocabulary.";
+    ? `The user is at ${hskConstraint} level and knows these Chinese characters/words: [${vocabList}]. Heavily prioritize using these known words in your responses. You can introduce a very small amount of new vocabulary (1-2 new words per response) if necessary for the context, but keep it mostly within their level and known set.`
+    : `The user is a beginner at ${hskConstraint} level. Use only very basic vocabulary appropriate for this level.`;
 
   // Prepend vocabulary constraint to the system message if it exists
   const messages = [...parsed.data.messages];

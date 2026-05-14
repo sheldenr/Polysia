@@ -19,6 +19,9 @@ create table if not exists public.profiles (
   onboarding_reason text,
   onboarding_age integer,
   onboarding_daily_minutes integer,
+  daily_new_limit integer not null default 10,
+  daily_review_limit integer not null default 50,
+  current_word_index integer not null default 1,
   onboarding_referral text,
   onboarded_at timestamptz,
   created_at timestamptz not null default now(),
@@ -31,6 +34,8 @@ alter table public.profiles add column if not exists onboarding_goal text;
 alter table public.profiles add column if not exists onboarding_reason text;
 alter table public.profiles add column if not exists onboarding_age integer;
 alter table public.profiles add column if not exists onboarding_daily_minutes integer;
+alter table public.profiles add column if not exists daily_new_limit integer not null default 10;
+alter table public.profiles add column if not exists daily_review_limit integer not null default 50;
 alter table public.profiles add column if not exists onboarding_referral text;
 alter table public.profiles add column if not exists onboarded_at timestamptz;
 alter table public.profiles add column if not exists subscription_status text;

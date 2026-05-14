@@ -89,10 +89,15 @@ const defaultModeTargets: Record<LearningMode, number> = {
   reading: 1,
   roleplay: 5,
 };
+const DAILY_NEW_CARD_LIMIT = 10;
+const SRS_DAY_ROLLOVER_HOUR = 4;
 
 const statEventActions = {
+  flashcardNew: "stat:flashcard-new",
   flashcardSuccess: "stat:flashcard-success",
   flashcardFailure: "stat:flashcard-failure",
+  flashcardReview: "stat:flashcard-review",
+  flashcardLearning: "stat:flashcard-learning",
   dialogueResponse: "stat:dialogue-response",
   wordsRead: "stat:words-read",
 } as const;
@@ -115,6 +120,8 @@ const HSK_VOCAB_SUFFIX_REGEX = /\(HSK level \d+ vocabulary\)\s*$/i;
 const HSK_VOCAB_LABEL_REGEX = /^HSK level \d+ vocabulary$/i;
 const HANZI_REGEX = /[\u3400-\u9fff]/;
 
+const BRACKETED_ANNOTATION_REGEX = /^\(.*\)$/;
+
 function parseExampleFromNotes(notes: string): { sentence: string; translation: string } {
   const cleanedNotes = notes.replace(HSK_VOCAB_SUFFIX_REGEX, "").trim();
   if (!cleanedNotes) {
@@ -125,14 +132,18 @@ function parseExampleFromNotes(notes: string): { sentence: string; translation: 
     .split("|")
     .map((part) => part.trim())
     .filter(Boolean);
+
+  // Filter out parts that are just bracketed annotations
+  const contentParts = parts.filter(p => !BRACKETED_ANNOTATION_REGEX.test(p));
+
   const sentencePart =
-    parts.find((part) => HANZI_REGEX.test(part)) ??
-    parts[0] ??
+    contentParts.find((part) => HANZI_REGEX.test(part)) ??
+    contentParts[0] ??
     "";
   const translationPart =
-    parts.find((part) => part !== sentencePart) ??
+    contentParts.find((part) => part !== sentencePart) ??
     "";
-  const sentence = HSK_VOCAB_LABEL_REGEX.test(sentencePart) ? "" : sentencePart;
+  const sentence = (HSK_VOCAB_LABEL_REGEX.test(sentencePart) || BRACKETED_ANNOTATION_REGEX.test(sentencePart)) ? "" : sentencePart;
 
   return {
     sentence,
@@ -140,7 +151,16 @@ function parseExampleFromNotes(notes: string): { sentence: string; translation: 
   };
 }
 
-export default function LearningHub() {
+function getSrsDayStart(date: Date): Date {
+  const dayStart = new Date(date);
+  dayStart.setHours(SRS_DAY_ROLLOVER_HOUR, 0, 0, 0);
+  if (date.getTime() < dayStart.getTime()) {
+    dayStart.setDate(dayStart.getDate() - 1);
+  }
+  return dayStart;
+}
+
+export function LearningHub() {
   const { user, session, supabaseConfigError } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -167,6 +187,8 @@ export default function LearningHub() {
   }, [searchParams, setSearchParams, toast]);
   const [isRoleplayLoading, setIsRoleplayLoading] = useState(false);
   const [dailyCommitment, setDailyCommitment] = useState<number>(20); // Default 20 mins
+  const [dailyReviewLimit, setDailyReviewLimit] = useState<number>(50);
+  const [dailyNewCardLimit, setDailyNewCardLimit] = useState<number>(DAILY_NEW_CARD_LIMIT);
   const [readingContent, setReadingContent] = useState<{
     titleZh: string;
     titleEn: string;
@@ -186,11 +208,11 @@ export default function LearningHub() {
     // Scale targets based on daily commitment (base is 20 minutes)
     const scale = dailyCommitment / 20;
     return {
-      flashcards: Math.max(5, Math.round(defaultModeTargets.flashcards * scale)),
+      flashcards: dailyReviewLimit,
       reading: Math.max(1, Math.round(defaultModeTargets.reading * scale)),
       roleplay: Math.max(2, Math.round(defaultModeTargets.roleplay * scale)),
     };
-  }, [dailyCommitment]);
+  }, [dailyCommitment, dailyReviewLimit]);
   const [stats, setStats] = useState({
     flashcards: 0,
     perfected: 0,
@@ -207,6 +229,9 @@ export default function LearningHub() {
     reading: 0,
     roleplay: 0,
   });
+  const [todayNewFlashcards, setTodayNewFlashcards] = useState(0);
+  const [todayReviewedReviewCards, setTodayReviewedReviewCards] = useState(0);
+  const [seenCharactersCount, setSeenCharactersCount] = useState(0);
   const sessionFlashcardsRef = useRef(0);
   const sessionExchangesRef = useRef(0);
   const audioCacheRef = useRef<Record<string, string>>({});
@@ -235,7 +260,6 @@ export default function LearningHub() {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isFlashcardFlipped, setIsFlashcardFlipped] = useState(false);
   const [skipTransition, setSkipTransition] = useState(false);
-  const [sessionTick, setSessionTick] = useState(0);
 
   // Stop audio when moving between slides or exiting flow
   useEffect(() => {
@@ -247,7 +271,7 @@ export default function LearningHub() {
     };
   }, [activeFlowIndex, isFlowActive]);
 
-  const { loading: srsLoading, getDueCards, rateCard, deck, hskProgress } = useSRS();
+  const { loading: srsLoading, getDueCards, rateCard, deck, hskProgress, refresh } = useSRS();
 
   useEffect(() => {
     if (isTopicSelected || !isFlowActive || activeFlowIndex !== 2) return;
@@ -312,8 +336,6 @@ export default function LearningHub() {
     }
   }, [session, toast]);
 
-  const seenCharactersCount = deck.filter((card) => card.state !== "NEW").length;
-
   const formatRelativeTime = useCallback((isoTimestamp: string) => {
     const timestamp = new Date(isoTimestamp).getTime();
     const diffMs = Date.now() - timestamp;
@@ -352,11 +374,10 @@ export default function LearningHub() {
     const trackerStart = new Date();
     trackerStart.setDate(trackerStart.getDate() - 365);
 
-    const weekStart = new Date();
+    const now = new Date();
+    const dayStart = getSrsDayStart(now);
+    const weekStart = new Date(dayStart);
     weekStart.setDate(weekStart.getDate() - 7);
-
-    const dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
 
     const { data, error } = await supabase
       .from("learning_activity")
@@ -370,7 +391,7 @@ export default function LearningHub() {
       return;
     }
 
-    const [flashcardSuccessResult, dialoguesResult, perfectedResult, wordsReadResult, flashcardsTodayResult] =
+    const [flashcardSuccessResult, dialoguesResult, perfectedResult, wordsReadResult, totalSeenResult] =
       await Promise.all([
         supabase
           .from("learning_activity")
@@ -393,11 +414,10 @@ export default function LearningHub() {
           .eq("user_id", user.id)
           .eq("action", statEventActions.wordsRead),
         supabase
-          .from("learning_activity")
+          .from("flashcards")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id)
-          .in("action", flashcardStatActions)
-          .gte("created_at", dayStart.toISOString()),
+          .neq("state", "NEW"),
       ]);
 
     if (
@@ -405,16 +425,18 @@ export default function LearningHub() {
       dialoguesResult.error ||
       perfectedResult.error ||
       wordsReadResult.error ||
-      flashcardsTodayResult.error
+      totalSeenResult.error
     ) {
       console.error("Failed to load learning stats", {
         flashcards: flashcardSuccessResult.error,
         dialogues: dialoguesResult.error,
         perfected: perfectedResult.error,
         wordsRead: wordsReadResult.error,
-        flashcardsToday: flashcardsTodayResult.error,
+        seen: totalSeenResult.error,
       });
     }
+
+    setSeenCharactersCount(totalSeenResult.count ?? 0);
 
     const rows = (data ?? []) as LearningActivity[];
     setAllActivities(rows);
@@ -429,6 +451,8 @@ export default function LearningHub() {
       reading: 0,
       roleplay: 0,
     };
+    let nextTodayNewFlashcards = 0;
+    let nextTodayReviewFlashcards = 0;
 
     for (const row of rows) {
       if (!(row.mode in nextWeeklyModeMinutes)) {
@@ -446,6 +470,12 @@ export default function LearningHub() {
             nextTodayProgress.roleplay += 1;
           } else if (row.action === statEventActions.wordsRead) {
             nextTodayProgress.reading += 1;
+          } else if (row.action === statEventActions.flashcardNew) {
+            nextTodayNewFlashcards += 1;
+          } else if (row.action === statEventActions.flashcardReview) {
+            nextTodayReviewFlashcards += 1;
+          } else if ((flashcardStatActions as readonly string[]).includes(row.action)) {
+            nextTodayProgress.flashcards += 1;
           }
         }
         continue;
@@ -456,7 +486,8 @@ export default function LearningHub() {
       }
     }
 
-    nextTodayProgress.flashcards = flashcardsTodayResult.count ?? 0;
+    setTodayNewFlashcards(nextTodayNewFlashcards);
+    setTodayReviewedReviewCards(nextTodayReviewFlashcards);
     setWeeklyModeMinutes(nextWeeklyModeMinutes);
     setTodayProgress(nextTodayProgress);
     setRecentActivity(
@@ -535,7 +566,6 @@ export default function LearningHub() {
     const successes = rows.filter(r => r.action === statEventActions.flashcardSuccess).length;
     setRetentionRate(totalAttempts > 0 ? Math.round((successes / totalAttempts) * 100) : 0);
   }, [user]);
-
 
   const logLearningActivity = useCallback(
     async (mode: LearningMode, action: string, minutesSpent: number) => {
@@ -617,8 +647,19 @@ export default function LearningHub() {
         if (data.onboarding_daily_minutes) {
           setDailyCommitment(data.onboarding_daily_minutes);
         }
+        if (Number.isFinite(data.daily_review_limit) && data.daily_review_limit > 0) {
+          setDailyReviewLimit(data.daily_review_limit);
+        }
+        if (Number.isFinite(data.daily_new_limit) && data.daily_new_limit > 0) {
+          setDailyNewCardLimit(data.daily_new_limit);
+        }
 
-        if (data.onboarding_hsk_level === "HSK 1") {
+        if (data.onboarding_hsk_level) {
+          // Auto-generate or load correct level reading prompt
+          void fetchReadingPrompt(false, data.onboarding_hsk_level);
+        }
+
+        if (data.onboarding_hsk_level === "HSK 1" || data.onboarding_hsk_level === "Total Beginner") {
           const storageKey = `polysia.hsk1IntroSeen.${user.id}`;
           if (typeof window !== "undefined" && !window.localStorage.getItem(storageKey)) {
             setShowHsk1Intro(true);
@@ -734,96 +775,33 @@ export default function LearningHub() {
 
   // sessionTick forces getDueCards to re-evaluate Date.now() every second in flashcard flow
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const allDueCards = useMemo(() => getDueCards(), [getDueCards, sessionTick]);
-
-  // Time until the soonest pending learning/relearning card becomes due (null if none pending)
-  const pendingNextMs = useMemo(() => {
-    const now = Date.now();
-    const pending = deck.filter(
-      (c) => (c.state === "LEARNING" || c.state === "RELEARNING") && c.dueDate > now,
-    );
-    if (!pending.length) return null;
-    return Math.min(...pending.map((c) => c.dueDate)) - now;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deck, sessionTick]);
+  const allDueCards = useMemo(() => getDueCards(), [getDueCards]);
 
   const dueCards = useMemo(() => {
-    // Total cards allowed today across both new and reviews
-    const remainingTotalToday = Math.max(0, modeTargets.flashcards - todayProgress.flashcards);
-    
-    // If we have already reached the target, we don't show any more cards
-    // unless they are already in learning/relearning state and due now
-    if (remainingTotalToday <= 0) {
-      return allDueCards.filter(c => c.state === "LEARNING" || c.state === "RELEARNING");
-    }
-
-    // We take all due cards up to the remaining limit
-    // getDueCards already sorts them by priority: RELEARNING > LEARNING > REVIEW > NEW
-    return allDueCards.slice(0, remainingTotalToday);
-  }, [allDueCards, todayProgress.flashcards, modeTargets.flashcards]);
+    return allDueCards;
+  }, [allDueCards]);
 
   const currentCard = dueCards[0];
 
-  const cardCounts = useMemo(() => {
-    const now = Date.now();
-    const remainingNewToday = Math.max(0, modeTargets.flashcards - todayProgress.flashcards);
-    const dueCounts = { new: 0, learning: 0, review: 0 };
-    let pendingLearning = 0;
-
-    for (const card of dueCards) {
-      if (card.state === "NEW") {
-        dueCounts.new += 1;
-      } else if (card.state === "LEARNING" || card.state === "RELEARNING") {
-        dueCounts.learning += 1;
-      } else if (card.state === "REVIEW") {
-        dueCounts.review += 1;
-      }
-    }
-
-    for (const card of deck) {
-      if (
-        (card.state === "LEARNING" || card.state === "RELEARNING") &&
-        card.dueDate > now
-      ) {
-        pendingLearning += 1;
-      }
-    }
-
-    return {
-      new: Math.min(dueCounts.new, remainingNewToday),
-      learning: dueCounts.learning + pendingLearning,
-      review: dueCounts.review,
-    };
-  }, [deck, dueCards, todayProgress.flashcards]);
-
   const handleRate = useCallback(
-    (rating: SRSRating) => {
+    async (rating: SRSRating) => {
       if (!currentCard) return;
-      const wasNewCard = currentCard.state === "NEW";
-      setSkipTransition(true);
-      rateCard(currentCard.h, rating);
       
-      sessionFlashcardsRef.current += 1;
-      setTodayProgress((prev) => ({
-        ...prev,
-        flashcards: Math.min(modeTargets.flashcards, prev.flashcards + 1),
-      }));
+      setIsFlashcardFlipped(false);
+      setSkipTransition(true);
 
-      // Increment stats and log activity for ALL ratings to track daily progress correctly
+      rateCard(currentCard.id, rating);
+
+      sessionFlashcardsRef.current += 1;
+
       setStats((prev) => ({
         ...prev,
         flashcards: prev.flashcards + 1,
       }));
-      const ratingAction =
-        rating === 1
-          ? statEventActions.flashcardFailure
-          : statEventActions.flashcardSuccess;
-      void logLearningActivity("flashcards", ratingAction, 0);
 
-      setIsFlashcardFlipped(false);
       setTimeout(() => setSkipTransition(false), 50);
     },
-    [currentCard, logLearningActivity, rateCard],
+    [currentCard, rateCard],
   );
 
   const prefetchTTS = useCallback(async (text: string) => {
@@ -939,24 +917,24 @@ export default function LearningHub() {
         void playInworldTTS(spokenText);
       }
     }
-  }, [isFlashcardFlipped, currentCard, playInworldTTS]);
+    }, [isFlashcardFlipped, currentCard, playInworldTTS]);
 
-  // Tick every second while in flashcard flow so learning-step cards reappear automatically
-  useEffect(() => {
-    if (!isFlowActive || activeFlowIndex !== 0) return;
-    const id = setInterval(() => setSessionTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, [isFlowActive, activeFlowIndex]);
-
-  useEffect(() => {
+    useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+
       if (!isFlowActive || activeFlowIndex !== 0) return;
 
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
         handleFlashcardFlip();
       } else if (isFlashcardFlipped && ["1", "2", "3", "4"].includes(e.key)) {
-        handleRate(Number(e.key) as SRSRating);
+        const ratings: Record<string, SRSRating> = {
+          "1": "AGAIN",
+          "2": "HARD",
+          "3": "GOOD",
+          "4": "EASY"
+        };
+        handleRate(ratings[e.key]);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -998,7 +976,7 @@ export default function LearningHub() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isFlowActive]);
 
-  const fetchReadingPrompt = useCallback(async (ignoreCache = false) => {
+  const fetchReadingPrompt = useCallback(async (ignoreCache = false, targetHskLevel?: string) => {
     setIsReadingPromptLoading(true);
 
     const userKey = user?.id ?? "anonymous";
@@ -1014,7 +992,11 @@ export default function LearningHub() {
       if (isFresh && lastPromptRaw) {
         try {
           const cached = JSON.parse(lastPromptRaw) as DeepSeekReadingPromptResponse;
-          if (cached.titleZh && cached.titleEn && cached.text && Array.isArray(cached.quiz) && cached.quiz.length === 2) {
+          
+          // If a target level is provided, ensure the cached prompt matches it
+          const levelMatches = !targetHskLevel || cached.hskLevel === targetHskLevel;
+
+          if (levelMatches && cached.titleZh && cached.titleEn && cached.text && Array.isArray(cached.quiz) && cached.quiz.length === 2) {
             setReadingContent({
               titleZh: cached.titleZh,
               titleEn: cached.titleEn,
@@ -1066,10 +1048,6 @@ export default function LearningHub() {
       setIsReadingPromptLoading(false);
     }
   }, [session, toast, user?.id]);
-
-  useEffect(() => {
-    void fetchReadingPrompt();
-  }, [fetchReadingPrompt]);
 
   useEffect(() => {
     if (!isFlowActive) {
@@ -1179,6 +1157,38 @@ export default function LearningHub() {
     }
   }, [activeFlowIndex, isFlowActive, trackModeTime]);
 
+  const handleSimulateNextDay = useCallback(async () => {
+    if (!session?.access_token) return;
+
+    try {
+      const res = await fetch("/api/flashcards/simulate-next-day", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`
+        }
+      });
+
+      if (res.ok) {
+        toast({
+          title: "Time shifted!",
+          description: "Simulated the next day. Refreshing your deck...",
+        });
+        // Refresh flashcards
+        refresh();
+        // Refresh profile and stats
+        void refreshLearningMetrics();
+      } else {
+        throw new Error("Failed to simulate next day");
+      }
+    } catch (error) {
+      toast({
+        variant: "blackDisclaimer",
+        title: "Simulation failed",
+        description: error instanceof Error ? error.message : "Could not simulate next day.",
+      });
+    }
+  }, [session, toast, refresh, refreshLearningMetrics]);
+
   const handleRoleplaySubmit = async () => {
     if (!roleplayInput.trim() || isRoleplayLoading) {
       return;
@@ -1259,8 +1269,8 @@ export default function LearningHub() {
       desc: "Strengthen recall with active spaced repetition.",
       icon: Zap,
       index: 0,
-      objective: `${todayProgress.flashcards}/${modeTargets.flashcards} new · ${allDueCards.filter(c => c.state === "REVIEW" || c.state === "RELEARNING").length} reviews due`,
-      progress: Math.min(100, Math.round((todayProgress.flashcards / modeTargets.flashcards) * 100)),
+      objective: `${todayReviewedReviewCards}/${modeTargets.flashcards} reviews today · ${todayNewFlashcards}/${dailyNewCardLimit} new`,
+      progress: Math.min(100, Math.round((todayReviewedReviewCards / modeTargets.flashcards) * 100)),
     },
     {
       name: "Tailored Reading",
@@ -1520,6 +1530,13 @@ export default function LearningHub() {
                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
                 <button
+                  aria-label="Simulate next day"
+                  className="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground"
+                  onClick={handleSimulateNextDay}
+                >
+                  <Calendar className="w-5 h-5" />
+                </button>
+                <button
                   aria-label="Open settings"
                   className="p-2 hover:bg-secondary rounded-full transition-colors"
                   onClick={() => navigate("/settings")}
@@ -1714,13 +1731,12 @@ export default function LearningHub() {
                 ) : dueCards.length > 0 ? (
                   <>
                     <div className="mb-8 text-center">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-secondary/40 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-3">
-                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      <p className="mb-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
                         HSK {hskProgress.currentLevel}
-                      </div>
+                      </p>
                       <h2 className="text-2xl sm:text-3xl font-heading tracking-tight mb-1">Character Flashcards</h2>
                       <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                        Review characters with spaced repetition — cards you struggle with come back sooner, cards you know push further out.
+                        Review characters with spaced repetition. Cards you struggle with come back sooner, cards you know push further out.
                       </p>
                     </div>
                     <div className="space-y-8 sm:space-y-12">
@@ -1784,39 +1800,35 @@ export default function LearningHub() {
                         </button>
                       </div>
 
-                      <div className="flex items-center justify-center gap-6 text-sm font-medium">
+                      <div className="flex items-center justify-center gap-10 text-sm font-medium">
                         <div className="flex flex-col items-center gap-1">
-                          <span className="text-emerald-500 text-lg">{cardCounts.new}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">New</span>
+                          <span className="text-primary text-lg">{sessionFlashcardsRef.current + 1}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Cards Seen</span>
                         </div>
                         <div className="flex flex-col items-center gap-1">
-                          <span className="text-red-500 text-lg">{cardCounts.learning}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Learning</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-blue-500 text-lg">{cardCounts.review}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Review</span>
+                          <span className="text-zinc-400 text-lg">{dueCards.length}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Remaining</span>
                         </div>
                       </div>
 
                       <div
-                        className={`hidden grid-cols-4 gap-4 transition-all duration-300 sm:grid ${
+                        className={`hidden grid-cols-4 gap-3 transition-all duration-300 sm:grid ${
                           isFlashcardFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
                         }`}
                       >
                         {(() => {
-                          const intervals = currentCard ? getProjectedIntervals(currentCard) : null;
+                          const intervals = getProjectedIntervals();
                           return [
-                            { label: "Again", rating: 1 },
-                            { label: "Hard", rating: 2 },
-                            { label: "Good", rating: 3 },
-                            { label: "Easy", rating: 4 },
+                            { label: "Again", rating: "AGAIN" as const },
+                            { label: "Hard", rating: "HARD" as const },
+                            { label: "Good", rating: "GOOD" as const },
+                            { label: "Easy", rating: "EASY" as const },
                           ].map((item, idx) => (
                             <button
                               key={item.label}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleRate(item.rating as SRSRating);
+                                handleRate(item.rating);
                               }}
                               className="flex flex-col items-center gap-1 p-3 sm:p-4 rounded-2xl border bg-card hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-secondary transition-all"
                             >
@@ -1825,7 +1837,7 @@ export default function LearningHub() {
                               </span>
                               <span className="font-medium">{item.label}</span>
                               <span className="text-[10px] sm:text-xs text-muted-foreground font-mono">
-                                {intervals?.[item.rating as SRSRating] ?? "--"}
+                                {intervals[item.rating]}
                               </span>
                             </button>
                           ));
@@ -1833,48 +1845,28 @@ export default function LearningHub() {
                       </div>
                     </div>
                   </>
-                ) : pendingNextMs !== null ? (
-                  <div className="flex flex-col items-center justify-center space-y-6">
-                    <div className="h-20 w-20 rounded-full bg-amber-500/10 flex items-center justify-center">
-                      <Clock className="h-10 w-10 text-amber-500" />
-                    </div>
-                    <div className="text-center space-y-2">
-                      <h3 className="text-2xl font-heading">Cards on their way...</h3>
-                      <p className="text-muted-foreground text-sm">
-                        Next card due in{" "}
-                        <span className="font-mono font-semibold text-foreground tabular-nums">
-                          {(() => {
-                            const s = Math.ceil(pendingNextMs / 1000);
-                            return s <= 0 ? "now" : s < 60 ? `${s}s` : `${Math.ceil(s / 60)}m`;
-                          })()}
-                        </span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        These cards are in their short review steps and will reappear automatically.
-                      </p>
-                    </div>
-                    <Button onClick={() => setActiveFlowIndex(1)} variant="outline" className="rounded-full">
-                      Continue to Tailored Reading <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center space-y-6">
                     <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
                       <CheckCircle2 className="h-10 w-10 text-primary" />
                     </div>
                     <div className="text-center">
-                      <h3 className="text-2xl mb-2">You're all caught up!</h3>
-                      <p className="text-muted-foreground">
-                        {todayProgress.flashcards >= modeTargets.flashcards
-                          ? `You've reached your daily limit of ${modeTargets.flashcards} cards. Great job!`
-                          : "Come back later for your next reviews."}
+                      <h3 className="text-2xl mb-2">Daily Goal Reached!</h3>
+                      <p className="text-muted-foreground max-w-sm mx-auto">
+                        You've finished your cards for today. Want to learn more? Increase your daily limits in Settings.
                       </p>
                     </div>
-                    <Button onClick={() => setActiveFlowIndex(1)} variant="outline" className="rounded-full">
-                      Continue to Tailored Reading <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button onClick={() => navigate("/settings")} className="rounded-full shadow-lg">
+                        Adjust Daily Limits <Settings className="ml-2 h-4 w-4" />
+                      </Button>
+                      <Button onClick={exitFlow} variant="outline" className="rounded-full">
+                        Return to Dashboard
+                      </Button>
+                    </div>
                   </div>
                 )}
+
               </div>
 
               {/* Mobile controls inside the slide when cards are present */}
@@ -1888,18 +1880,18 @@ export default function LearningHub() {
                 >
                   <div className="mx-auto grid max-w-md grid-cols-4 gap-2">
                     {(() => {
-                      const intervals = currentCard ? getProjectedIntervals(currentCard) : null;
+                      const intervals = getProjectedIntervals();
                       return [
-                        { label: "Again", rating: 1 },
-                        { label: "Hard", rating: 2 },
-                        { label: "Good", rating: 3 },
-                        { label: "Easy", rating: 4 },
+                        { label: "Again", rating: "AGAIN" as const },
+                        { label: "Hard", rating: "HARD" as const },
+                        { label: "Good", rating: "GOOD" as const },
+                        { label: "Easy", rating: "EASY" as const },
                       ].map((item, idx) => (
                         <button
                           key={`mobile-${item.label}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRate(item.rating as SRSRating);
+                            handleRate(item.rating);
                           }}
                           className="flex flex-col items-center gap-0.5 rounded-xl border bg-card px-2 py-2 hover:bg-secondary transition-all"
                         >
@@ -1909,7 +1901,7 @@ export default function LearningHub() {
                           <span className="text-xs font-medium whitespace-nowrap">
                             {item.label}{" "}
                             <span className="text-[9px] text-muted-foreground font-mono font-normal">
-                              ({intervals?.[item.rating as SRSRating] ?? "--"})
+                              ({intervals[item.rating]})
                             </span>
                           </span>
                         </button>
@@ -1948,7 +1940,7 @@ export default function LearningHub() {
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-10 items-start">
                   <div className="order-1 space-y-6 lg:order-1 lg:col-span-2">
-                    <article className="max-h-[72vh] overflow-y-auto p-5 sm:max-h-none sm:overflow-visible sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border bg-card shadow-lg leading-[2.5] text-base sm:text-2xl space-y-3 sm:space-y-4">
+                    <article className="p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border bg-card shadow-lg leading-[2.5] text-base sm:text-2xl space-y-3 sm:space-y-4">
                       <h3 className="text-xl sm:text-3xl mb-1 sm:mb-2 font-heading flex items-center gap-3 flex-wrap">
                         {readingContent.titleEn}
                         <div className="flex items-center gap-2 ml-auto lg:ml-0">
@@ -1995,56 +1987,56 @@ export default function LearningHub() {
                       {isReadingPromptLoading && (
                         <p className="text-xs text-muted-foreground">Generating today's prompt...</p>
                       )}
-
-                      <div className="space-y-5 border-t pt-5 sm:hidden">
-                        <div className="space-y-3">
-                          <h3 className="text-base font-medium">Context Quiz</h3>
-                          <div className="p-4 rounded-xl bg-secondary/30 border space-y-3">
-                            {readingContent.quiz.map((quizItem, quizIndex) => (
-                              <div key={`mobile-reading-quiz-${quizIndex}`} className="space-y-1.5">
-                                <p className="text-xs font-medium leading-relaxed">{quizItem.question}</p>
-                                <div className="flex gap-2">
-                                  <Button
-                                    variant={readingQuizAnswers[quizIndex] === true ? "default" : "outline"}
-                                    size="sm"
-                                    className="flex-1 rounded-lg h-8 text-xs"
-                                    onClick={() => handleReadingQuizChoice(quizIndex, true)}
-                                  >
-                                    True
-                                  </Button>
-                                  <Button
-                                    variant={readingQuizAnswers[quizIndex] === false ? "default" : "outline"}
-                                    size="sm"
-                                    className="flex-1 rounded-lg h-8 text-xs"
-                                    onClick={() => handleReadingQuizChoice(quizIndex, false)}
-                                  >
-                                    False
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full rounded-lg h-8 text-xs"
-                              disabled={readingQuizAnswers.some((answer) => answer === null)}
-                              onClick={handleReadingQuizCheck}
-                            >
-                              Check answers
-                            </Button>
-                            {readingQuizStatus === "correct" && (
-                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                                Correct. Words read were added to your stats.
-                              </p>
-                            )}
-                            {readingQuizStatus === "incorrect" && (
-                              <p className="text-[10px] text-destructive">Not quite. Try again.</p>
-                            )}
-                          </div>
-                        </div>
-
-                      </div>
                     </article>
+
+                    {/* Mobile Quiz Section */}
+                    <div id="reading-quiz" className="space-y-5 border-t pt-5 sm:hidden scroll-mt-24">
+                      <div className="space-y-3">
+                        <h3 className="text-base font-medium">Context Quiz</h3>
+                        <div className="p-4 rounded-xl bg-secondary/30 border space-y-3 shadow-sm">
+                          {readingContent.quiz.map((quizItem, quizIndex) => (
+                            <div key={`mobile-reading-quiz-${quizIndex}`} className="space-y-1.5">
+                              <p className="text-xs font-medium leading-relaxed">{quizItem.question}</p>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant={readingQuizAnswers[quizIndex] === true ? "default" : "outline"}
+                                  size="sm"
+                                  className="flex-1 rounded-lg h-9 text-xs"
+                                  onClick={() => handleReadingQuizChoice(quizIndex, true)}
+                                >
+                                  True
+                                </Button>
+                                <Button
+                                  variant={readingQuizAnswers[quizIndex] === false ? "default" : "outline"}
+                                  size="sm"
+                                  className="flex-1 rounded-lg h-9 text-xs"
+                                  onClick={() => handleReadingQuizChoice(quizIndex, false)}
+                                >
+                                  False
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="w-full rounded-lg h-10 text-xs mt-2"
+                            disabled={readingQuizAnswers.some((answer) => answer === null)}
+                            onClick={handleReadingQuizCheck}
+                          >
+                            Check answers
+                          </Button>
+                          {readingQuizStatus === "correct" && (
+                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 text-center font-medium">
+                              Correct! Your stats have been updated.
+                            </p>
+                          )}
+                          {readingQuizStatus === "incorrect" && (
+                            <p className="text-[10px] text-destructive text-center font-medium">Not quite. Try again!</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <aside className="order-2 hidden space-y-5 sm:block lg:order-2">
@@ -2115,7 +2107,7 @@ export default function LearningHub() {
 
                 <div
                   className={`flex flex-col rounded-3xl border bg-card overflow-hidden shadow-xl relative transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                    isTopicSelected ? "h-[65vh] sm:h-[550px]" : "h-[70px] sm:h-[90px]"
+                    isTopicSelected ? "h-[80vh] sm:h-[550px]" : "h-[75px] sm:h-[90px]"
                   }`}
                 >
                   <div
@@ -2135,12 +2127,12 @@ export default function LearningHub() {
                         return (
                           <div key={idx} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
                             {hasCorrection && (
-                              <div className="mb-2 max-w-[85%] px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50 rounded-xl text-xs text-amber-800 dark:text-amber-200 animate-in fade-in slide-in-from-bottom-1">
+                              <div className="mb-2 max-w-[90%] sm:max-w-[85%] px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50 rounded-xl text-xs text-amber-800 dark:text-amber-200 animate-in fade-in slide-in-from-bottom-1">
                                 <span className="font-bold mr-1">Tip:</span>
                                 {correctionText}
                               </div>
                             )}
-                            <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm sm:text-base ${
+                            <div className={`max-w-[90%] sm:max-w-[85%] px-4 py-2.5 rounded-2xl text-sm sm:text-base ${
                               msg.role === "user"
                               ? "bg-primary text-primary-foreground rounded-tr-none"
                               : "bg-secondary text-foreground rounded-tl-none"
@@ -2157,7 +2149,7 @@ export default function LearningHub() {
 
                   <div className={`p-3 sm:p-4 bg-secondary/10 transition-all ${isTopicSelected ? "border-t" : "flex-1 flex items-center"}`}>
                     <form
-                      className="flex gap-3 w-full"
+                      className="flex gap-2 sm:gap-3 w-full"
                       onSubmit={(event) => {
                         event.preventDefault();
                         if (!isTopicSelected) {
@@ -2176,16 +2168,16 @@ export default function LearningHub() {
                             : `Try: ${textbookTopics[placeholderIndex]}`
                         }
                         disabled={isRoleplayLoading}
-                        className="flex-1 bg-card border rounded-xl px-4 py-2.5 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-60"
+                        className="flex-1 bg-card border rounded-xl px-3 sm:px-4 py-2.5 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-60"
                       />
                       <Button
                         type="submit"
                         size="sm"
                         disabled={isRoleplayLoading || (isTopicSelected && !roleplayInput.trim())}
-                        className="h-10 px-4 rounded-xl shrink-0 shadow-sm"
+                        className="h-10 px-3 sm:px-4 rounded-xl shrink-0 shadow-sm"
                       >
                         {isTopicSelected ? "Send" : "Start"}
-                        <ChevronRight className="ml-1 w-4 h-4" />
+                        <ChevronRight className="ml-0.5 sm:ml-1 w-4 h-4" />
                       </Button>
                     </form>
                   </div>
@@ -2198,3 +2190,5 @@ export default function LearningHub() {
     </div>
   );
 }
+
+export default LearningHub;

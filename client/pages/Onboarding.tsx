@@ -286,6 +286,27 @@ export default function Onboarding() {
   const saveProfileAndSeed = async (): Promise<boolean> => {
     if (!supabase || !user || dailyMinutes === null) return false;
 
+    let startIndex = 1;
+    const mapping: Record<string, number> = {
+      "Total Beginner": 1,
+      "Beginner": 1,
+      "Elementary": 1, // mapping to HSK 1 for now if not specified
+      "Intermediate": 1201, // HSK 4
+      "Advanced": 5601, // HSK 7
+    };
+
+    if (proficiencyLevel in mapping) {
+      startIndex = mapping[proficiencyLevel];
+    } else {
+      const hskMatch = proficiencyLevel.match(/HSK (\d+)/i);
+      if (hskMatch) {
+        const hskLevel = parseInt(hskMatch[1], 10);
+        if (hskLevel >= 7) startIndex = 5601;
+        else if (hskLevel >= 4) startIndex = 1201;
+        else startIndex = 1;
+      }
+    }
+
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: user.id,
@@ -310,67 +331,27 @@ export default function Onboarding() {
     }
 
     try {
-      const response = await fetch("/chinese-dictionary-custom.json");
-      const dictionary = await response.json();
-
-      let hskTarget = 1;
-      const levelObj = proficiencyLevels.find((l) => l.label === proficiencyLevel);
-      if (levelObj) {
-        hskTarget = levelObj.hsk;
-      } else {
-        const hskMatch = proficiencyLevel.match(/HSK (\d+)/);
-        if (hskMatch) {
-          hskTarget = parseInt(hskMatch[1], 10);
-        }
-      }
-
-      const seedCards = dictionary.filter((card: any) => {
-        const match = card.h?.match(/hsk-L(\d+)/i) ?? card.n?.match(/HSK level (\d+)/i);
-        const level = match ? parseInt(match[1], 10) : 1;
-        return level <= hskTarget;
-      });
-
-      if (seedCards.length > 0) {
-        const flashcardsToInsert = seedCards.map((card: any) => {
-          const match = card.h?.match(/hsk-L(\d+)/i) ?? card.n?.match(/HSK level (\d+)/i);
-          const level = match ? parseInt(match[1], 10) : 1;
-          const isBelowTarget = level < hskTarget;
-
-          let exampleSentence = "";
-          if (card.n && card.n.includes("|")) {
-            exampleSentence = card.n.split("|")[0].trim();
-          }
-
-          return {
-            user_id: user!.id,
-            simplified: card.s,
-            traditional: card.t,
-            pinyin: card.p,
-            english: card.e,
-            grammar: card.g || "",
-            notes: card.n || "",
-            example_sentence: exampleSentence,
-            hsk_level: level,
-            state: isBelowTarget ? "REVIEW" : "NEW",
-            repetition: isBelowTarget ? 5 : 0,
-            interval: isBelowTarget ? 30 : 0,
-            efactor: 2.5,
-            due_date: isBelowTarget
-              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-              : new Date().toISOString(),
-            source_id: card.h || null,
-            seen_at: isBelowTarget ? new Date().toISOString() : null,
-          };
+      // Wipe any existing flashcards
+      const { error: wipeError } = await supabase
+        .from("flashcards")
+        .delete()
+        .eq("user_id", user.id);
+      
+      if (wipeError) {
+        toast({
+          variant: "blackDisclaimer",
+          title: "Could not reset your flashcards",
+          description: wipeError.message,
         });
-
-        const chunkSize = 100;
-        for (let i = 0; i < flashcardsToInsert.length; i += chunkSize) {
-          const chunk = flashcardsToInsert.slice(i, i + chunkSize);
-          await supabase.from("flashcards").insert(chunk);
-        }
+        return false;
       }
+
+      // We no longer seed thousands of cards here. 
+      // The useSRS hook will fetch the first batch based on proficiencyLevel.
+      
     } catch (e) {
-      console.error("Failed to seed flashcards:", e);
+      console.error("Failed to reset cards:", e);
+      return false;
     }
 
     await refreshProfile();

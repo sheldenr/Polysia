@@ -2,7 +2,7 @@ import { writeFile } from "node:fs/promises";
 
 const sourceUrl =
   "https://raw.githubusercontent.com/alexamies/chinesenotes.com/4f2b9eb520d3e3c737bed9842384071828d5bc0c/data/cnotes_zh_en_dict.tsv";
-const outFile = new URL("../public/chinese-dictionary.json", import.meta.url);
+const outFile = new URL("../public/chinese-dictionary-custom.json", import.meta.url);
 const hanziRegex = /\p{Script=Han}/u;
 
 function sanitize(value) {
@@ -48,34 +48,45 @@ for (const line of tsv.split("\n")) {
   const headwordId = sanitize(fields[15]) || sanitize(fields[0]);
   const traditional = traditionalRaw || simplified;
 
-  const candidates = new Set([simplified, traditional]);
-  for (const candidate of candidates) {
-    if (!isSingleHanzi(candidate)) {
-      continue;
-    }
+  // Extract HSK level from notes if present
+  // Pattern examples: (HSK '欢迎' 1), (HSK '世界'), (HSK '藏' 1)
+  const hskMatch = notes.match(/\(HSK\s+'[^']+'\s*(\d+)?\)/i);
+  const hskLevel = hskMatch ? (hskMatch[1] ? parseInt(hskMatch[1], 10) : 1) : null;
 
-    const existing = entriesByChar.get(candidate);
-    if (!existing) {
-      entriesByChar.set(candidate, {
-        s: candidate,
-        t: candidate,
-        p: pinyin,
-        e: english || "No English definition available",
-        g: grammar || "unknown",
-        n: notes,
-        h: headwordId,
-      });
-      continue;
-    }
+  if (hskLevel || hanziRegex.test(simplified)) {
+    const entry = {
+      s: simplified,
+      t: traditional,
+      p: pinyin,
+      e: english || "No English definition available",
+      g: grammar || "unknown",
+      n: notes,
+      h: hskLevel ? `hsk-L${hskLevel}-${headwordId}` : headwordId,
+    };
 
-    existing.p = existing.p || pinyin;
-    existing.e = pickLonger(existing.e, english);
-    existing.g = existing.g === "unknown" && grammar ? grammar : existing.g;
-    existing.n = pickLonger(existing.n, notes);
+    // If it's a multi-character word, just add it.
+    // If it's a single character, we might want to merge definitions as before.
+    if (simplified.length > 1) {
+       entriesByChar.set(simplified, entry);
+    } else {
+      const existing = entriesByChar.get(simplified);
+      if (!existing) {
+        entriesByChar.set(simplified, entry);
+      } else {
+        existing.p = existing.p || pinyin;
+        existing.e = pickLonger(existing.e, english);
+        existing.g = existing.g === "unknown" && grammar ? grammar : existing.g;
+        existing.n = pickLonger(existing.n, notes);
+        // Keep the HSK headword ID if available
+        if (hskLevel && !existing.h.startsWith("hsk-")) {
+          existing.h = entry.h;
+        }
+      }
+    }
   }
 }
 
 const dictionary = [...entriesByChar.values()].sort((a, b) => a.s.localeCompare(b.s, "zh-Hans"));
-console.log(`Writing ${dictionary.length} single-character entries to ${outFile.pathname}`);
+console.log(`Writing ${dictionary.length} entries to ${outFile.pathname}`);
 await writeFile(outFile, `${JSON.stringify(dictionary)}\n`, "utf8");
 console.log("Dictionary generation complete.");

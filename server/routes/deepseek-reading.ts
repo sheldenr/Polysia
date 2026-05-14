@@ -95,23 +95,49 @@ export const handleDeepSeekReading: RequestHandler = async (req, res) => {
     });
   }
 
-  // Fetch user's HSK level from profile
+  // Fetch user's HSK level from flashcards progress
+  let hskNum = 1;
   let hskLevel = "HSK 1";
+  
   if (userId && supabaseAdmin) {
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("onboarding_hsk_level")
-      .eq("id", userId)
+    // Determine HSK level by finding the highest HSK level where they have non-NEW cards
+    const { data: levelData } = await supabaseAdmin
+      .from("flashcards")
+      .select("hsk_level")
+      .eq("user_id", userId)
+      .neq("state", "NEW")
+      .order("hsk_level", { ascending: false })
+      .limit(1)
       .maybeSingle();
-    
-    if (profile?.onboarding_hsk_level) {
-      hskLevel = profile.onboarding_hsk_level;
+
+    if (levelData?.hsk_level) {
+      hskNum = levelData.hsk_level;
+      hskLevel = `HSK ${hskNum}`;
+    } else {
+      // Fallback to profile level
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("onboarding_hsk_level")
+        .eq("id", userId)
+        .maybeSingle();
+      
+      const onboardingLevel = profile?.onboarding_hsk_level || "HSK 1";
+      const hskMatch = onboardingLevel.match(/HSK (\d+)/i);
+      if (hskMatch) {
+        hskNum = parseInt(hskMatch[1], 10);
+      } else {
+        const mapping: Record<string, number> = {
+          "Total Beginner": 1,
+          "Beginner": 1,
+          "Elementary": 2,
+          "Intermediate": 4,
+          "Advanced": 7,
+        };
+        hskNum = mapping[onboardingLevel] || 1;
+      }
+      hskLevel = `HSK ${hskNum}`;
     }
   }
-
-  // Extract level number from string like "HSK 1"
-  const hskMatch = hskLevel.match(/HSK (\d+)/i);
-  const hskNum = hskMatch ? parseInt(hskMatch[1], 10) : 1;
 
   let hskConstraint = "";
   if (hskNum <= 1) {

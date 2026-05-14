@@ -67,7 +67,7 @@ export default function CharacterScroller() {
             >
               <ChineseTooltipText
                 text={character}
-                className="text-4xl sm:text-6xl font-heading font-light text-foreground/40 transition-colors duration-300 group-hover:text-primary-foreground antialiased"
+                className="text-4xl sm:text-6xl font-heading font-normal text-foreground/40 transition-colors duration-300 group-hover:text-primary-foreground antialiased"
                 enableTooltip={false}
               />
             </div>
@@ -80,7 +80,7 @@ export default function CharacterScroller() {
             >
               <ChineseTooltipText
                 text={character}
-                className="text-4xl sm:text-6xl font-heading font-light text-foreground/40 transition-colors duration-300 group-hover:text-primary-foreground antialiased"
+                className="text-4xl sm:text-6xl font-heading font-normal text-foreground/40 transition-colors duration-300 group-hover:text-primary-foreground antialiased"
                 enableTooltip={false}
               />
             </div>

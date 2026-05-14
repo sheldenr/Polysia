@@ -1,11 +1,13 @@
-import path from "path";
+import path$1 from "path";
 import "dotenv/config";
 import * as express from "express";
 import express__default from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { z } from "zod";
 import Stripe from "stripe";
 const handleDemo = (req, res) => {
   const response = {
@@ -29,7 +31,7 @@ const handleProfile = (req, res) => {
   });
 };
 const supabaseUrl$1 = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE;
 const supabaseAdmin = supabaseUrl$1 && supabaseServiceKey ? createClient(supabaseUrl$1, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
@@ -37,7 +39,278 @@ const supabaseAdmin = supabaseUrl$1 && supabaseServiceKey ? createClient(supabas
   }
 }) : null;
 if (!supabaseAdmin) {
-  console.warn("⚠️ SUPABASE_SERVICE_ROLE_KEY is missing. Webhooks and admin tasks will fail.");
+  console.warn("⚠️ Supabase service role key is missing (SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_ROLE). Webhooks and admin tasks will fail.");
+}
+const DICTIONARY_PATH = path.join(process.cwd(), "public", "chinese-dictionary-custom.json");
+const HSK_VOCAB_SUFFIX_REGEX = /\(HSK level \d+ vocabulary\)\s*$/i;
+const HSK_VOCAB_LABEL_REGEX = /^HSK level \d+ vocabulary$/i;
+const HANZI_REGEX = /[\u3400-\u9fff]/;
+const BRACKETED_ANNOTATION_REGEX = /^\(.*\)$/;
+function parseExampleFromNotes(notes) {
+  const cleanedNotes = (notes || "").replace(HSK_VOCAB_SUFFIX_REGEX, "").trim();
+  if (!cleanedNotes) return { sentence: "", translation: "" };
+  const parts = cleanedNotes.split("|").map((p) => p.trim()).filter(Boolean);
+  const contentParts = parts.filter((p) => !BRACKETED_ANNOTATION_REGEX.test(p));
+  const sentencePart = contentParts.find((p) => HANZI_REGEX.test(p)) ?? contentParts[0] ?? "";
+  const translationPart = contentParts.find((p) => p !== sentencePart) ?? "";
+  const sentence = HSK_VOCAB_LABEL_REGEX.test(sentencePart) || BRACKETED_ANNOTATION_REGEX.test(sentencePart) ? "" : sentencePart;
+  return {
+    sentence,
+    translation: translationPart.replace(HSK_VOCAB_SUFFIX_REGEX, "").trim()
+  };
+}
+async function handleGetFlashcards(req, res) {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  try {
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+    const { data: profile, error: profileError } = await supabaseAdmin.from("profiles").select("id, onboarding_hsk_level, daily_new_limit, daily_review_limit").eq("id", userId).single();
+    if (profileError) throw profileError;
+    const now = /* @__PURE__ */ new Date();
+    const rolloverHour = 4;
+    const srsDayStart = new Date(now);
+    if (now.getHours() < rolloverHour) {
+      srsDayStart.setDate(srsDayStart.getDate() - 1);
+    }
+    srsDayStart.setHours(rolloverHour, 0, 0, 0);
+    const { data: existingCards, error: cardsError } = await supabaseAdmin.from("flashcards").select("*").eq("user_id", userId).lte("due_date", now.toISOString()).order("due_date", { ascending: true });
+    if (cardsError) throw cardsError;
+    const learningDue = existingCards.filter((c) => c.state === "LEARNING" || c.state === "RELEARNING");
+    const reviewLimit = profile.daily_review_limit || 50;
+    const reviewDue = existingCards.filter((c) => c.state === "REVIEW").slice(0, reviewLimit);
+    const newLimit = profile.daily_new_limit || 10;
+    const { count: newStartedToday, error: newTodayError } = await supabaseAdmin.from("flashcards").select("*", { count: "exact", head: true }).eq("user_id", userId).gte("created_at", srsDayStart.toISOString()).neq("state", "NEW");
+    if (newTodayError) throw newTodayError;
+    const { data: existingNew, error: existingNewError } = await supabaseAdmin.from("flashcards").select("*").eq("user_id", userId).eq("state", "NEW").order("created_at", { ascending: true });
+    if (existingNewError) throw existingNewError;
+    let sessionNewCards = [...existingNew];
+    const hasExistingCards = learningDue.length > 0 || reviewDue.length > 0 || sessionNewCards.length > 0;
+    const canPullMore = (newStartedToday || 0) < newLimit;
+    let newNeeded = 0;
+    if (canPullMore) {
+      newNeeded = newLimit - (newStartedToday || 0);
+    } else if (!hasExistingCards) {
+      newNeeded = 10;
+    }
+    if (newNeeded > 0) {
+      try {
+        const dictionaryRaw = await readFile(DICTIONARY_PATH, "utf-8");
+        const dictionary = JSON.parse(dictionaryRaw);
+        const proficiencyToHsk = {
+          "Total Beginner": 1,
+          "Beginner": 1,
+          "Elementary": 2,
+          "Intermediate": 4,
+          "Advanced": 7,
+          "HSK 1": 1,
+          "HSK 2": 2,
+          "HSK 3": 3,
+          "HSK 4": 4,
+          "HSK 5": 5,
+          "HSK 6": 6,
+          "HSK 7": 7,
+          "HSK 8": 8,
+          "HSK 9": 9
+        };
+        const userLevelLabel = profile.onboarding_hsk_level || "HSK 1";
+        let targetHskLevel = proficiencyToHsk[userLevelLabel];
+        if (!targetHskLevel) {
+          const match = userLevelLabel.match(/\d+/);
+          targetHskLevel = match ? parseInt(match[0], 10) : 1;
+        }
+        let allLevelCards = [];
+        for (let i = 1; i <= targetHskLevel; i++) {
+          const levelKey = `hsk-L${i}`;
+          allLevelCards.push(...dictionary.filter((d) => d.h.startsWith(levelKey)));
+        }
+        if (allLevelCards.length === 0) {
+          allLevelCards = dictionary.filter((d) => d.h.startsWith("hsk-L"));
+        }
+        const { data: userCardSourceIds } = await supabaseAdmin.from("flashcards").select("source_id").eq("user_id", userId);
+        const existingSourceIds = new Set((userCardSourceIds || []).map((c) => c.source_id));
+        const availableCards = allLevelCards.filter((c) => !existingSourceIds.has(c.h));
+        const newEntries = availableCards.slice(0, newNeeded);
+        if (newEntries.length > 0) {
+          const inserts = newEntries.map((entry) => {
+            const parsed = parseExampleFromNotes(entry.n);
+            return {
+              user_id: userId,
+              simplified: entry.s,
+              traditional: entry.t,
+              pinyin: entry.p,
+              english: entry.e,
+              grammar: entry.g,
+              notes: entry.n,
+              example_sentence: parsed.sentence || "",
+              source_id: entry.h,
+              hsk_level: parseInt(entry.h.match(/L(\d+)/)?.[1] || "1"),
+              state: "NEW",
+              due_date: now.toISOString()
+            };
+          });
+          const { data: insertedCards, error: insertError } = await supabaseAdmin.from("flashcards").insert(inserts).select();
+          if (insertError) throw insertError;
+          if (insertedCards) {
+            sessionNewCards.push(...insertedCards);
+          }
+        }
+      } catch (dictErr) {
+        console.error("Dictionary pull error:", dictErr);
+      }
+    }
+    res.json({
+      learning: learningDue,
+      review: reviewDue,
+      new: sessionNewCards.slice(0, Math.max(0, newLimit - (newStartedToday || 0)))
+    });
+  } catch (error) {
+    console.error("Error in handleGetFlashcards:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+async function handleSubmitAnswer(req, res) {
+  const userId = req.user?.id;
+  const { cardId, rating } = req.body;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!cardId || !rating) return res.status(400).json({ error: "Missing cardId or rating" });
+  try {
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+    const { data: card, error: cardError } = await supabaseAdmin.from("flashcards").select("*").eq("id", cardId).eq("user_id", userId).single();
+    if (cardError) throw cardError;
+    let newState = card.state;
+    let newStepIndex = card.step_index;
+    let newInterval = card.interval;
+    let newEfactor = card.efactor || 2.5;
+    let newRepetition = card.repetition || 0;
+    let newDueDate;
+    const now = /* @__PURE__ */ new Date();
+    const nextRollover = new Date(now);
+    if (now.getHours() < 4) {
+      nextRollover.setHours(4, 0, 0, 0);
+    } else {
+      nextRollover.setDate(nextRollover.getDate() + 1);
+      nextRollover.setHours(4, 0, 0, 0);
+    }
+    if (card.state === "NEW" || card.state === "LEARNING" || card.state === "RELEARNING") {
+      if (rating === "AGAIN") {
+        newStepIndex = 0;
+        newState = "LEARNING";
+        newDueDate = now;
+      } else if (rating === "HARD") {
+        newStepIndex = Math.max(0, newStepIndex);
+        newState = "LEARNING";
+        newDueDate = now;
+      } else if (rating === "GOOD") {
+        newStepIndex += 1;
+        if (newStepIndex >= 2) {
+          newState = "REVIEW";
+          newInterval = 1;
+          newStepIndex = 0;
+          newRepetition += 1;
+          newDueDate = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1e3);
+          newDueDate.setHours(4, 0, 0, 0);
+        } else {
+          newState = "LEARNING";
+          newDueDate = now;
+        }
+      } else if (rating === "EASY") {
+        newState = "REVIEW";
+        newInterval = 4;
+        newStepIndex = 0;
+        newRepetition += 1;
+        newDueDate = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1e3);
+        newDueDate.setHours(4, 0, 0, 0);
+      } else {
+        newDueDate = nextRollover;
+      }
+    } else if (card.state === "REVIEW") {
+      if (rating === "AGAIN") {
+        newState = "RELEARNING";
+        newStepIndex = 0;
+        newInterval = 0;
+        newEfactor = Math.max(1.3, newEfactor - 0.2);
+        newDueDate = now;
+      } else if (rating === "HARD") {
+        newInterval = Math.max(1, Math.round((card.interval || 1) * 1.2));
+        newEfactor = Math.max(1.3, newEfactor - 0.15);
+        newRepetition += 1;
+        newDueDate = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1e3);
+        newDueDate.setHours(4, 0, 0, 0);
+      } else if (rating === "GOOD") {
+        newInterval = Math.max(1, Math.round((card.interval || 1) * newEfactor));
+        newRepetition += 1;
+        newDueDate = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1e3);
+        newDueDate.setHours(4, 0, 0, 0);
+      } else if (rating === "EASY") {
+        newInterval = Math.max(1, Math.round((card.interval || 1) * newEfactor * 1.3));
+        newEfactor = Math.min(3, newEfactor + 0.15);
+        newRepetition += 1;
+        newDueDate = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1e3);
+        newDueDate.setHours(4, 0, 0, 0);
+      } else {
+        newDueDate = nextRollover;
+      }
+    } else {
+      newDueDate = nextRollover;
+    }
+    const { error: updateError } = await supabaseAdmin.from("flashcards").update({
+      state: newState,
+      step_index: newStepIndex,
+      interval: newInterval,
+      due_date: newDueDate.toISOString(),
+      efactor: newEfactor,
+      repetition: newRepetition,
+      seen_at: now.toISOString()
+    }).eq("id", cardId);
+    if (updateError) throw updateError;
+    let action = "stat:flashcard-success";
+    if (card.state === "NEW") action = "stat:flashcard-new";
+    else if (card.state === "REVIEW") action = "stat:flashcard-review";
+    else if (card.state === "LEARNING" || card.state === "RELEARNING") action = "stat:flashcard-learning";
+    if (rating === "AGAIN") action = "stat:flashcard-failure";
+    await supabaseAdmin.from("learning_activity").insert({
+      user_id: userId,
+      mode: "flashcards",
+      action,
+      minutes_spent: 0
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error in handleSubmitAnswer:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+async function handleSimulateNextDay(req, res) {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  try {
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+    const { data: cards } = await supabaseAdmin.from("flashcards").select("id, due_date, created_at").eq("user_id", userId);
+    if (cards) {
+      for (const card of cards) {
+        const newDueDate = new Date(new Date(card.due_date).getTime() - 24 * 60 * 60 * 1e3);
+        const newCreatedAt = new Date(new Date(card.created_at).getTime() - 24 * 60 * 60 * 1e3);
+        await supabaseAdmin.from("flashcards").update({
+          due_date: newDueDate.toISOString(),
+          created_at: newCreatedAt.toISOString()
+        }).eq("id", card.id);
+      }
+    }
+    const yesterday = /* @__PURE__ */ new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+    await supabaseAdmin.from("profiles").update({ last_activity_date: yesterdayStr }).eq("id", userId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error in handleSimulateNextDay:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 }
 const deepSeekRequestSchema = z.object({
   messages: z.array(
@@ -89,14 +362,33 @@ const handleDeepSeekRoleplay = async (req, res) => {
     });
   }
   let knownVocab = [];
+  let hskNum = 1;
   if (userId && supabaseAdmin) {
-    const { data: flashcards } = await supabaseAdmin.from("flashcards").select("simplified").eq("user_id", userId).not("state", "eq", "NEW");
+    const { data: flashcards } = await supabaseAdmin.from("flashcards").select("simplified, hsk_level").eq("user_id", userId).neq("state", "NEW");
     if (flashcards) {
       knownVocab = flashcards.map((f) => f.simplified);
+      hskNum = Math.max(1, ...flashcards.map((f) => f.hsk_level || 1));
+    } else {
+      const { data: profile } = await supabaseAdmin.from("profiles").select("onboarding_hsk_level").eq("id", userId).maybeSingle();
+      const onboardingLevel = profile?.onboarding_hsk_level || "HSK 1";
+      const hskMatch = onboardingLevel.match(/HSK (\d+)/i);
+      if (hskMatch) {
+        hskNum = parseInt(hskMatch[1], 10);
+      } else {
+        const mapping = {
+          "Total Beginner": 1,
+          "Beginner": 1,
+          "Elementary": 2,
+          "Intermediate": 4,
+          "Advanced": 7
+        };
+        hskNum = mapping[onboardingLevel] || 1;
+      }
     }
   }
   const vocabList = knownVocab.length > 0 ? knownVocab.join(", ") : "basic HSK 1";
-  const vocabConstraint = knownVocab.length > 0 ? `The user knows these Chinese characters/words: [${vocabList}]. Heavily prioritize using these known words in your responses. You can introduce a very small amount of new vocabulary (1-2 new words per response) if necessary for the context, but keep it mostly within their known set.` : "The user is a beginner. Use only very basic HSK 1 vocabulary.";
+  const hskConstraint = hskNum <= 1 ? "HSK 1" : hskNum >= 7 ? "Advanced" : `HSK ${hskNum}`;
+  const vocabConstraint = knownVocab.length > 0 ? `The user is at ${hskConstraint} level and knows these Chinese characters/words: [${vocabList}]. Heavily prioritize using these known words in your responses. You can introduce a very small amount of new vocabulary (1-2 new words per response) if necessary for the context, but keep it mostly within their level and known set.` : `The user is a beginner at ${hskConstraint} level. Use only very basic vocabulary appropriate for this level.`;
   const messages = [...parsed.data.messages];
   const systemMessageIdx = messages.findIndex((m) => m.role === "system");
   if (systemMessageIdx !== -1) {
@@ -244,15 +536,32 @@ const handleDeepSeekReading = async (req, res) => {
       error: "DeepSeek is not configured. Add DEEPSEEK_API_KEY to your environment."
     });
   }
+  let hskNum = 1;
   let hskLevel = "HSK 1";
   if (userId && supabaseAdmin) {
-    const { data: profile } = await supabaseAdmin.from("profiles").select("onboarding_hsk_level").eq("id", userId).maybeSingle();
-    if (profile?.onboarding_hsk_level) {
-      hskLevel = profile.onboarding_hsk_level;
+    const { data: levelData } = await supabaseAdmin.from("flashcards").select("hsk_level").eq("user_id", userId).neq("state", "NEW").order("hsk_level", { ascending: false }).limit(1).maybeSingle();
+    if (levelData?.hsk_level) {
+      hskNum = levelData.hsk_level;
+      hskLevel = `HSK ${hskNum}`;
+    } else {
+      const { data: profile } = await supabaseAdmin.from("profiles").select("onboarding_hsk_level").eq("id", userId).maybeSingle();
+      const onboardingLevel = profile?.onboarding_hsk_level || "HSK 1";
+      const hskMatch = onboardingLevel.match(/HSK (\d+)/i);
+      if (hskMatch) {
+        hskNum = parseInt(hskMatch[1], 10);
+      } else {
+        const mapping = {
+          "Total Beginner": 1,
+          "Beginner": 1,
+          "Elementary": 2,
+          "Intermediate": 4,
+          "Advanced": 7
+        };
+        hskNum = mapping[onboardingLevel] || 1;
+      }
+      hskLevel = `HSK ${hskNum}`;
     }
   }
-  const hskMatch = hskLevel.match(/HSK (\d+)/i);
-  const hskNum = hskMatch ? parseInt(hskMatch[1], 10) : 1;
   let hskConstraint = "";
   if (hskNum <= 1) {
     hskConstraint = "The user is at HSK 1 level. Use only HSK 1 vocabulary and basic grammar.";
@@ -528,8 +837,8 @@ const handleCreateCheckoutSession = async (req, res) => {
     });
   }
   const baseUrl = getBaseUrl(req);
-  const successUrl = process.env.STRIPE_SUCCESS_URL ?? `${baseUrl}/learning-hub?checkout=success&plan=${payload.plan}`;
-  const cancelUrl = process.env.STRIPE_CANCEL_URL ?? `${baseUrl}/pricing?checkout=cancelled&plan=${payload.plan}`;
+  const successUrl = process.env.STRIPE_SUCCESS_URL ?? `${baseUrl}/onboarding?checkout=success&plan=${payload.plan}&session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = process.env.STRIPE_CANCEL_URL ?? `${baseUrl}/onboarding?checkout=cancelled&plan=${payload.plan}`;
   try {
     const session = await stripe.checkout.sessions.create({
       mode: payload.plan === "pro_monthly" ? "subscription" : "payment",
@@ -599,6 +908,7 @@ const handleStripeWebhook = async (req, res) => {
     const { error } = await supabaseAdmin.from("profiles").update({
       subscription_status: "active",
       subscription_plan: plan,
+      onboarding_complete: true,
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     }).eq("id", userId);
     if (error) {
@@ -609,8 +919,56 @@ const handleStripeWebhook = async (req, res) => {
   }
   res.json({ received: true });
 };
+const verifySessionSchema = z.object({
+  sessionId: z.string().min(1)
+});
+const handleVerifyCheckoutSession = async (req, res) => {
+  const parsed = verifySessionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "sessionId is required" });
+  }
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    return res.status(500).json({ error: "Stripe is not configured." });
+  }
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: "Server is not configured for billing verification." });
+  }
+  const userId = req.userId;
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const stripe = new Stripe(secretKey);
+  try {
+    const session = await stripe.checkout.sessions.retrieve(parsed.data.sessionId);
+    const sessionUserId = session.client_reference_id || session.metadata?.user_id;
+    if (sessionUserId !== userId) {
+      return res.status(403).json({ error: "Session does not belong to this user." });
+    }
+    const isPaid = session.payment_status === "paid" || session.status === "complete";
+    if (!isPaid) {
+      return res.status(200).json({ verified: false });
+    }
+    const plan = session.metadata?.product_plan;
+    const subscriptionStatus = session.mode === "subscription" ? "trialing" : "active";
+    const { error } = await supabaseAdmin.from("profiles").update({
+      subscription_status: subscriptionStatus,
+      subscription_plan: plan,
+      onboarding_complete: true,
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", userId);
+    if (error) {
+      console.error("[Verify Session] DB update failed:", error);
+      return res.status(500).json({ error: "Failed to update profile." });
+    }
+    return res.status(200).json({ verified: true, subscriptionStatus });
+  } catch (err) {
+    console.error("[Verify Session] Error:", err);
+    return res.status(500).json({ error: "Unable to verify session." });
+  }
+};
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseApiKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseApiKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE;
 if (!supabaseUrl || !supabaseApiKey) {
   console.warn("⚠️ Supabase environment variables are missing. Auth will fail.");
 }
@@ -679,7 +1037,11 @@ function createServer() {
   apiRouter.get("/ai/reading-prompt", requireAuth, handleDeepSeekReading);
   apiRouter.post("/ai/tts", requireAuth, handleTTS);
   apiRouter.post("/billing/checkout", requireAuth, handleCreateCheckoutSession);
+  apiRouter.post("/billing/verify-session", requireAuth, handleVerifyCheckoutSession);
   apiRouter.get("/profile", requireAuth, handleProfile);
+  apiRouter.get("/flashcards", requireAuth, handleGetFlashcards);
+  apiRouter.post("/flashcards/answer", requireAuth, handleSubmitAnswer);
+  apiRouter.post("/flashcards/simulate-next-day", requireAuth, handleSimulateNextDay);
   app2.use("/api", apiRouter);
   app2.use(apiRouter);
   app2.use((err, _req, res, _next) => {
@@ -694,13 +1056,13 @@ function createServer() {
 const app = createServer();
 const port = process.env.PORT || 3e3;
 const __dirname = import.meta.dirname;
-const distPath = path.join(__dirname, "../spa");
+const distPath = path$1.join(__dirname, "../spa");
 app.use(express.static(distPath));
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/") || req.path.startsWith("/health")) {
     return res.status(404).json({ error: "API endpoint not found" });
   }
-  res.sendFile(path.join(distPath, "index.html"));
+  res.sendFile(path$1.join(distPath, "index.html"));
 });
 app.listen(port, () => {
   console.log(`🚀 Fusion Starter server running on port ${port}`);

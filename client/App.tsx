@@ -18,7 +18,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
 import Developer from "./pages/Developer";
-import LearningHub from "@/pages/LearningHub";
+import { LearningHub } from "@/pages/LearningHub";
 import AuthCallback from "./pages/AuthCallback";
 import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";

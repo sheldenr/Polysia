@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   UserIcon,
@@ -19,6 +19,19 @@ import {
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface ProfileData {
@@ -28,6 +41,8 @@ interface ProfileData {
   onboarding_reason: string | null;
   onboarding_age: number | null;
   onboarding_daily_minutes: number | null;
+  daily_new_limit: number | null;
+  daily_review_limit: number | null;
   onboarding_referral: string | null;
   onboarded_at: string | null;
 }
@@ -54,10 +69,15 @@ function readInitialDarkMode(): boolean {
 
 export default function SettingsPanel({ className, onLogout }: SettingsPanelProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(readInitialDarkMode);
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [newLimitInput, setNewLimitInput] = useState("10");
+  const [reviewLimitInput, setReviewLimitInput] = useState("50");
+  const [isSavingLimits, setIsSavingLimits] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
@@ -77,12 +97,121 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
 
       if (!error && data) {
         setProfileData(data);
+        const nextLimit =
+          Number.isFinite(data.daily_review_limit) && (data.daily_review_limit ?? 0) > 0
+            ? String(data.daily_review_limit)
+            : "50";
+        const nextNewLimit =
+          Number.isFinite(data.daily_new_limit) && (data.daily_new_limit ?? 0) > 0
+            ? String(data.daily_new_limit)
+            : "10";
+        setNewLimitInput(nextNewLimit);
+        setReviewLimitInput(nextLimit);
       }
       setIsLoadingProfile(false);
     }
 
     void fetchProfile();
   }, [user]);
+
+  const handleSaveDailyLimits = useCallback(async () => {
+    if (!supabase || !user) return;
+
+    const parsedReviewLimit = Number.parseInt(reviewLimitInput, 10);
+    const parsedNewLimit = Number.parseInt(newLimitInput, 10);
+    if (!Number.isFinite(parsedReviewLimit) || parsedReviewLimit < 1 || parsedReviewLimit > 500) {
+      toast({
+        title: "Invalid review limit",
+        description: "Please enter a number between 1 and 500.",
+      });
+      return;
+    }
+    if (!Number.isFinite(parsedNewLimit) || parsedNewLimit < 1 || parsedNewLimit > 100) {
+      toast({
+        title: "Invalid new-card limit",
+        description: "Please enter a number between 1 and 100.",
+      });
+      return;
+    }
+
+    setIsSavingLimits(true);
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert(
+        {
+          id: user.id,
+          daily_new_limit: parsedNewLimit,
+          daily_review_limit: parsedReviewLimit,
+        },
+        { onConflict: "id" },
+      )
+      .select("*")
+      .single();
+
+    if (error) {
+      toast({
+        title: "Could not save review limit",
+        description: "Please try again.",
+      });
+    } else if (data) {
+      setProfileData(data);
+      setNewLimitInput(String(data.daily_new_limit ?? parsedNewLimit));
+      setReviewLimitInput(String(data.daily_review_limit ?? parsedReviewLimit));
+      toast({
+        title: "Daily limits updated",
+        description: `New: ${data.daily_new_limit ?? parsedNewLimit} · Review: ${data.daily_review_limit ?? parsedReviewLimit}`,
+      });
+    }
+
+    setIsSavingLimits(false);
+  }, [newLimitInput, reviewLimitInput, toast, user]);
+
+  const handleResetEverything = useCallback(async () => {
+    if (!supabase || !user || isResetting) return;
+
+    setIsResetting(true);
+    try {
+      const [activityResult, flashcardsResult, profileResult] = await Promise.all([
+        supabase.from("learning_activity").delete().eq("user_id", user.id),
+        supabase.from("flashcards").delete().eq("user_id", user.id),
+        supabase
+          .from("profiles")
+          .upsert(
+            {
+              id: user.id,
+              streak_days: 0,
+              last_activity_date: null,
+            },
+            { onConflict: "id" },
+          )
+          .select("*")
+          .single(),
+      ]);
+
+      if (activityResult.error || flashcardsResult.error || profileResult.error) {
+        throw activityResult.error ?? flashcardsResult.error ?? profileResult.error;
+      }
+
+      if (profileResult.data) {
+        setProfileData(profileResult.data);
+        setNewLimitInput(String(profileResult.data.daily_new_limit ?? 10));
+        setReviewLimitInput(String(profileResult.data.daily_review_limit ?? 50));
+      }
+
+      toast({
+        title: "All learning data reset",
+        description: "Your flashcards, activity history, and streak were cleared. Onboarding details were kept.",
+      });
+    } catch (error) {
+      console.error("Failed to reset user data", error);
+      toast({
+        title: "Reset failed",
+        description: "We couldn't reset your data right now. Please try again.",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  }, [isResetting, toast, user]);
 
   const displayName = useMemo(() => {
     const metadata = user?.user_metadata ?? {};
@@ -257,44 +386,124 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 </div>
               ) : profileData ? (
-                <DefinitionList
-                  items={[
-                    {
-                      label: "HSK level",
-                      value: profileData.onboarding_hsk_level ?? "Not set",
-                      icon: Brain01Icon,
-                    },
-                    {
-                      label: "Primary goal",
-                      value: profileData.onboarding_goal ?? "Not set",
-                      icon: Target02Icon,
-                    },
-                    {
-                      label: "Learning reason",
-                      value: profileData.onboarding_reason ?? "Not set",
-                      icon: StarIcon,
-                    },
-                    {
-                      label: "Daily commitment",
-                      value: profileData.onboarding_daily_minutes
-                        ? `${profileData.onboarding_daily_minutes} minutes`
-                        : "Not set",
-                      icon: Clock01Icon,
-                    },
-                    {
-                      label: "Age group",
-                      value: profileData.onboarding_age
-                        ? `${profileData.onboarding_age}`
-                        : "Not set",
-                      icon: UserIcon,
-                    },
-                    {
-                      label: "Discovery source",
-                      value: profileData.onboarding_referral ?? "Not set",
-                      icon: Compass01Icon,
-                    },
-                  ]}
-                />
+                <>
+                  <DefinitionList
+                    items={[
+                      {
+                        label: "HSK level",
+                        value: profileData.onboarding_hsk_level ?? "Not set",
+                        icon: Brain01Icon,
+                      },
+                      {
+                        label: "Primary goal",
+                        value: profileData.onboarding_goal ?? "Not set",
+                        icon: Target02Icon,
+                      },
+                      {
+                        label: "Learning reason",
+                        value: profileData.onboarding_reason ?? "Not set",
+                        icon: StarIcon,
+                      },
+                      {
+                        label: "Daily commitment",
+                        value: profileData.onboarding_daily_minutes
+                          ? `${profileData.onboarding_daily_minutes} minutes`
+                          : "Not set",
+                        icon: Clock01Icon,
+                      },
+                      {
+                        label: "Daily new-card limit",
+                        value: `${profileData.daily_new_limit ?? 10} cards`,
+                        icon: BookOpen01Icon,
+                      },
+                      {
+                        label: "Daily review limit",
+                        value: `${profileData.daily_review_limit ?? 50} cards`,
+                        icon: BookOpen01Icon,
+                      },
+                      {
+                        label: "Age group",
+                        value: profileData.onboarding_age
+                          ? `${profileData.onboarding_age}`
+                          : "Not set",
+                        icon: UserIcon,
+                      },
+                      {
+                        label: "Discovery source",
+                        value: profileData.onboarding_referral ?? "Not set",
+                        icon: Compass01Icon,
+                      },
+                    ]}
+                  />
+                  <div className="mt-6 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Daily flashcard limits</p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={newLimitInput}
+                        onChange={(event) => setNewLimitInput(event.target.value)}
+                        className="sm:max-w-[180px]"
+                      />
+                      <Input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={reviewLimitInput}
+                        onChange={(event) => setReviewLimitInput(event.target.value)}
+                        className="sm:max-w-[180px]"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => void handleSaveDailyLimits()}
+                        disabled={isSavingLimits}
+                        className="sm:w-auto"
+                      >
+                        {isSavingLimits ? "Saving..." : "Save limits"}
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      First field: new cards/day. Second field: review cards/day.
+                    </p>
+                  </div>
+                  <div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
+                    <p className="text-xs uppercase tracking-widest text-destructive">Danger zone</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Reset all learning progress for this account. This clears flashcards, activity history, and streak, but keeps onboarding details.
+                    </p>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          className="mt-4"
+                          disabled={isResetting}
+                        >
+                          {isResetting ? "Resetting..." : "Reset everything"}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent size="sm">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Reset everything?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This permanently deletes your learning progress (cards, activity, streak) and cannot be undone. Your onboarding details stay intact.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            variant="destructive"
+                            disabled={isResetting}
+                            onClick={() => void handleResetEverything()}
+                          >
+                            {isResetting ? "Resetting..." : "Yes, reset everything"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </>
               ) : (
                 <p className="py-6 text-sm italic text-muted-foreground">
                   No learning profile found. Complete onboarding to personalize your experience.

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { type VariantProps } from "class-variance-authority";
-import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui";
+import * as ToggleGroupPrimitive from "@radix-ui/react-toggle-group";
 
 import { cn } from "@/lib/utils";
 import { toggleVariants } from "@/components/ui/toggle";
@@ -19,54 +19,63 @@ const ToggleGroupContext = React.createContext<
   orientation: "horizontal",
 });
 
-function ToggleGroup({
-  className,
-  variant,
-  size,
-  spacing = 0,
-  orientation = "horizontal",
-  children,
-  ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Root> &
-  VariantProps<typeof toggleVariants> & {
-    spacing?: number;
-    orientation?: "horizontal" | "vertical";
-  }) {
-  return (
-    <ToggleGroupPrimitive.Root
-      data-slot="toggle-group"
-      data-variant={variant}
-      data-size={size}
-      data-spacing={spacing}
-      data-orientation={orientation}
-      style={{ "--gap": spacing } as React.CSSProperties}
-      className={cn(
-        "group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] data-[spacing=0]:data-[variant=outline]:rounded-4xl data-vertical:flex-col data-vertical:items-stretch",
-        className,
-      )}
-      {...props}
-    >
-      <ToggleGroupContext.Provider
-        value={{ variant, size, spacing, orientation }}
+const ToggleGroup = React.forwardRef<
+  React.ElementRef<typeof ToggleGroupPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root> &
+    VariantProps<typeof toggleVariants> & {
+      spacing?: number;
+      orientation?: "horizontal" | "vertical";
+    }
+>(
+  (
+    {
+      className,
+      variant,
+      size,
+      spacing = 0,
+      orientation = "horizontal",
+      children,
+      ...props
+    },
+    ref,
+  ) => {
+    return (
+      <ToggleGroupPrimitive.Root
+        ref={ref}
+        data-slot="toggle-group"
+        data-variant={variant}
+        data-size={size}
+        data-spacing={spacing}
+        data-orientation={orientation}
+        style={{ "--gap": spacing } as React.CSSProperties}
+        className={cn(
+          "group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] data-[spacing=0]:data-[variant=outline]:rounded-4xl data-vertical:flex-col data-vertical:items-stretch",
+          className,
+        )}
+        {...props}
       >
-        {children}
-      </ToggleGroupContext.Provider>
-    </ToggleGroupPrimitive.Root>
-  );
-}
+        <ToggleGroupContext.Provider
+          value={{ variant, size, spacing, orientation }}
+        >
+          {children}
+        </ToggleGroupContext.Provider>
+      </ToggleGroupPrimitive.Root>
+    );
+  },
+);
 
-function ToggleGroupItem({
-  className,
-  children,
-  variant = "default",
-  size = "default",
-  ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Item> &
-  VariantProps<typeof toggleVariants>) {
+ToggleGroup.displayName = ToggleGroupPrimitive.Root.displayName;
+
+const ToggleGroupItem = React.forwardRef<
+  React.ElementRef<typeof ToggleGroupPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Item> &
+    VariantProps<typeof toggleVariants>
+>(({ className, children, variant = "default", size = "default", ...props }, ref) => {
   const context = React.useContext(ToggleGroupContext);
 
   return (
     <ToggleGroupPrimitive.Item
+      ref={ref}
       data-slot="toggle-group-item"
       data-variant={context.variant || variant}
       data-size={context.size || size}
@@ -84,6 +93,8 @@ function ToggleGroupItem({
       {children}
     </ToggleGroupPrimitive.Item>
   );
-}
+});
+
+ToggleGroupItem.displayName = ToggleGroupPrimitive.Item.displayName;
 
 export { ToggleGroup, ToggleGroupItem };
