@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { supabase, supabaseConfigError } from "./supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -8,6 +8,9 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   onboardingComplete: boolean;
+  subscriptionStatus: string | null;
+  paymentBypassUntil: string | null;
+  profileLoaded: boolean;
   supabaseConfigError: string | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (
@@ -16,7 +19,8 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; error?: string; requiresEmailVerification?: boolean }>;
   logout: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  loginWithGoogleToken: (token: string) => Promise<{ success: boolean; error?: string }>;
+  refreshProfile: () => Promise<{ onboardingComplete: boolean; subscriptionStatus: string | null; paymentBypassUntil: string | null } | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,29 +29,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  
+  // Consolidate profile into one state to avoid partial updates
+  const [profile, setProfile] = useState<{
+    onboardingComplete: boolean;
+    subscriptionStatus: string | null;
+    paymentBypassUntil: string | null;
+    isLoaded: boolean;
+  }>({
+    onboardingComplete: false,
+    subscriptionStatus: null,
+    paymentBypassUntil: null,
+    isLoaded: false
+  });
 
   const fetchProfile = async (userId: string) => {
     try {
-      if (!supabase) return;
+      if (!supabase) return null;
       const { data, error } = await supabase
         .from("profiles")
-        .select("onboarding_complete")
+        .select("onboarding_complete, subscription_status, payment_bypass_until")
         .eq("id", userId)
         .maybeSingle();
       
       if (error) throw error;
-      setOnboardingComplete(data?.onboarding_complete ?? false);
+      
+      const onboarding = data?.onboarding_complete ?? false;
+      const subStatus = data?.subscription_status ?? null;
+      const bypass = data?.payment_bypass_until ?? null;
+
+      const newProfile = { 
+        onboardingComplete: onboarding, 
+        subscriptionStatus: subStatus, 
+        paymentBypassUntil: bypass,
+        isLoaded: true 
+      };
+      
+      setProfile(newProfile);
+      return newProfile;
     } catch (err) {
       console.error("Error fetching profile:", err);
+      return null;
     }
   };
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) {
-      await fetchProfile(user.id);
+      return await fetchProfile(user.id);
     }
-  };
+    return null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const clearAuthParamsFromUrl = () => {
     const url = new URL(window.location.href);
@@ -107,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
         });
       } else {
-        setOnboardingComplete(false);
+        setProfile({ onboardingComplete: false, subscriptionStatus: null, paymentBypassUntil: null, isLoaded: false });
         setIsLoading(false);
       }
       if (session) {
@@ -172,6 +204,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogleToken = async (token: string) => {
+    if (!supabase) {
+      return { success: false, error: supabaseConfigError ?? "Supabase is not configured" };
+    }
+
+    try {
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: token,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  };
+
   const logout = async () => {
     if (!supabase) {
       return;
@@ -206,12 +262,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         isLoading,
         isAuthenticated: !!user,
-        onboardingComplete,
+        onboardingComplete: profile.onboardingComplete,
+        subscriptionStatus: profile.subscriptionStatus,
+        paymentBypassUntil: profile.paymentBypassUntil,
+        profileLoaded: profile.isLoaded,
         supabaseConfigError,
         login,
         signup,
         logout,
         signInWithGoogle,
+        loginWithGoogleToken,
         refreshProfile,
       }}
     >

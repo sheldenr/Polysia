@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { parseJsonResponse } from "@/lib/http";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import type {
   BillingPlanId,
   CreateCheckoutSessionResponse,
@@ -26,7 +27,7 @@ const plans: Array<{
     name: "Monthly",
     price: "$2.99",
     period: "/mo",
-    description: "Complete access to all of Polysia.",
+    description: "Complete access with a 7-day free trial.",
     features: [
       "Unlimited Practice Conversations",
       "Tailored Reading support",
@@ -34,7 +35,7 @@ const plans: Array<{
       "Cloud Vocabulary Sync",
       "Learning Analytics",
     ],
-    buttonText: "Pay Monthly",
+    buttonText: "Start 7-day Free Trial",
     popular: true,
   },
   {
@@ -55,11 +56,17 @@ const plans: Array<{
 ];
 
 export default function PricingSection() {
-  const { user, session } = useAuth();
+  const { user, session, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<BillingPlanId | null>(null);
 
   const handleCheckout = async (planId: BillingPlanId) => {
+    if (!isAuthenticated) {
+      navigate("/signup");
+      return;
+    }
+    
     setActiveCheckoutPlan(planId);
 
     try {
@@ -110,7 +117,7 @@ export default function PricingSection() {
   };
 
   return (
-    <section className="relative w-full bg-background px-6 pb-4 pt-24 sm:pb-6 sm:pt-32">
+    <section className="relative w-full bg-background px-6 pb-24 pt-24 sm:pb-32 sm:pt-32">
       <div className="absolute left-0 top-0 h-px w-full bg-border/60" />
 
       <div className="mx-auto max-w-5xl">
@@ -139,6 +146,11 @@ export default function PricingSection() {
               <div className="mb-8">
                 <h3 className={`mb-2 text-xl ${plan.id === "pro_monthly" ? "text-white dark:text-black" : "text-foreground"}`}>
                   {plan.name}
+                  {plan.id === "pro_monthly" && (
+                    <span className="ml-2 inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary dark:bg-black/20 dark:text-black">
+                      7-day trial
+                    </span>
+                  )}
                 </h3>
                 <div className="flex items-baseline gap-1">
                   <span className={`text-4xl ${plan.id === "pro_monthly" ? "text-white dark:text-black" : "text-primary"}`}>{plan.price}</span>
@@ -193,9 +205,10 @@ export default function PricingSection() {
             </div>
           ))}
         </div>
+
       </div>
 
-      <div className="mt-16 h-px w-full bg-border/60 sm:mt-24" />
+      <div className="mt-24 h-px w-full bg-border/60" />
     </section>
   );
 }

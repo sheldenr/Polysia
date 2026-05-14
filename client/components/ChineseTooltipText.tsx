@@ -40,6 +40,7 @@ type ChineseTooltipTextProps = {
   enableTooltip?: boolean;
   highlightText?: string;
   variant?: "default" | "reading";
+  showPinyin?: boolean;
 };
 
 function loadDictionaryCollection(): Promise<DictionaryCollection> {
@@ -93,6 +94,7 @@ export default function ChineseTooltipText({
   enableTooltip = true,
   highlightText,
   variant = "default",
+  showPinyin = false,
 }: ChineseTooltipTextProps) {
   const [dictionaries, setDictionaries] = useState<DictionaryCollection | null>(null);
   const [loadError, setLoadError] = useState<Error | null>(null);

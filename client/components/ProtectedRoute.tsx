@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowOnboarding = false }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, onboardingComplete } = useAuth();
+  const { isAuthenticated, isLoading, onboardingComplete, profileLoaded } = useAuth();
 
   if (isLoading) {
     return (
@@ -23,8 +23,19 @@ export function ProtectedRoute({ children, allowOnboarding = false }: ProtectedR
     return <Navigate to="/login" replace />;
   }
 
+  if (!profileLoaded) {
+    if (allowOnboarding) {
+      return <>{children}</>;
+    }
+    return <Navigate to="/onboarding" replace />;
+  }
+
   if (!onboardingComplete && !allowOnboarding) {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  if (allowOnboarding) {
+    return <>{children}</>;
   }
 
   return <PaymentGate>{children}</PaymentGate>;

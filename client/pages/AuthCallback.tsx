@@ -2,10 +2,12 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, supabaseConfigError } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { refreshProfile } = useAuth();
 
   useEffect(() => {
     const completeGoogleSignIn = async () => {
@@ -32,9 +34,18 @@ export default function AuthCallback() {
         return;
       }
 
+      const handleRedirection = async () => {
+        const profile = await refreshProfile();
+        if (profile?.onboardingComplete) {
+          navigate("/learning-hub", { replace: true });
+        } else {
+          navigate("/onboarding", { replace: true });
+        }
+      };
+
       const initial = await supabase.auth.getSession();
       if (initial.data.session) {
-        navigate("/learning-hub", { replace: true });
+        await handleRedirection();
         return;
       }
 
@@ -63,11 +74,11 @@ export default function AuthCallback() {
         return;
       }
 
-      navigate("/learning-hub", { replace: true });
+      await handleRedirection();
     };
 
     void completeGoogleSignIn();
-  }, [navigate, toast]);
+  }, [navigate, toast, refreshProfile]);
 
   return (
     <section className="min-h-screen bg-background px-4 sm:px-6 lg:px-8 py-8 transition-colors duration-300">

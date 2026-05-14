@@ -5,11 +5,13 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import { useState, FormEvent, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function SignUp() {
   const navigate = useNavigate();
-  const { signup, signInWithGoogle, isAuthenticated, onboardingComplete } = useAuth();
+  const { signup, loginWithGoogleToken, isAuthenticated, onboardingComplete } = useAuth();
   const { toast } = useToast();
+  const hasGoogleClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -51,10 +53,6 @@ export default function SignUp() {
           return;
         }
 
-        toast({
-          title: "Account created!",
-          description: "You are now signed in.",
-        });
         navigate("/onboarding");
       } else {
         toast({
@@ -68,15 +66,23 @@ export default function SignUp() {
     }
   };
 
-  const handleGoogleSignup = async () => {
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (!credentialResponse.credential) return;
+    
+    setIsLoading(true);
     try {
-      await signInWithGoogle();
+      const result = await loginWithGoogleToken(credentialResponse.credential);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
     } catch (error) {
       toast({
         variant: "blackDisclaimer",
         title: "Sign up failed",
         description: "Could not sign up with Google",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -156,31 +162,42 @@ export default function SignUp() {
               </Button>
             </form>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-            </div>
+            {hasGoogleClientId && (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
 
-            <Button
-              variant="outline"
-              className="w-full h-12 rounded-xl gap-2 font-medium"
-              disabled={isLoading}
-              onClick={handleGoogleSignup}
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
-                <path
-                  fill="currentColor"
-                  d="M12 10.2v3.9h5.5c-.2 1.2-1.4 3.5-5.5 3.5-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 2.9 14.6 2 12 2 6.5 2 2 6.5 2 12s4.5 10 10 10c5.8 0 9.6-4.1 9.6-9.8 0-.7-.1-1.3-.2-2H12z"
-                />
-              </svg>
-              Google
-            </Button>
+                <div className="flex justify-center w-full">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => {
+                      toast({
+                        variant: "blackDisclaimer",
+                        title: "Sign up failed",
+                        description: "Google sign-in failed",
+                      });
+                    }}
+                    useOneTap
+                    theme="outline"
+                    shape="pill"
+                    width="400"
+                  />
+                </div>
+              </>
+            )}
+            {!hasGoogleClientId && (
+              <div className="text-center text-xs text-muted-foreground">
+                Google sign-up is currently unavailable.
+              </div>
+            )}
           </div>
 
           <p className="text-center text-sm text-muted-foreground">

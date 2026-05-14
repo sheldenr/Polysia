@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
@@ -52,7 +52,15 @@ const referralOptions = [
   "Other",
 ];
 
-type OnboardingStep = "level" | "goal" | "reason" | "age" | "time" | "referral";
+const trialFeatures = [
+  "Unlimited Practice Conversations",
+  "Character Flashcards & SRS",
+  "Tailored Reading Support",
+  "AI Voice Companion",
+  "Learning Analytics",
+];
+
+type OnboardingStep = "level" | "goal" | "reason" | "age" | "time" | "referral" | "payment";
 
 function ExpandingCircles() {
   return (
@@ -74,7 +82,7 @@ function ExpandingCircles() {
             ease: "easeOut",
           }}
           style={{
-            filter: "blur(12px)", // Stronger motion blur feel
+            filter: "blur(12px)",
             borderWidth: "1px",
           }}
         />
@@ -106,7 +114,7 @@ function ExpandingCircles() {
 }
 
 export default function Onboarding() {
-  const { user, refreshProfile } = useAuth();
+  const { user, session, refreshProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -122,6 +130,8 @@ export default function Onboarding() {
   const [age, setAge] = useState<number | null>(null);
   const [dailyMinutes, setDailyMinutes] = useState<number | null>(null);
   const [referral, setReferral] = useState("");
+
+  const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<"pro_monthly" | "lifetime" | null>(null);
 
   const steps: Array<{ key: OnboardingStep; title: string; description: string }> = useMemo(
     () => [
@@ -155,6 +165,11 @@ export default function Onboarding() {
         title: "How'd you hear about us?",
         description: "Knowing how you found Polysia helps us grow our community.",
       },
+      {
+        key: "payment",
+        title: "Start your free trial",
+        description: "7 days free, then $2.99/month. No charge today.",
+      },
     ],
     [],
   );
@@ -175,6 +190,8 @@ export default function Onboarding() {
         return dailyMinutes !== null;
       case "referral":
         return !!referral;
+      case "payment":
+        return true;
       default:
         return false;
     }
@@ -186,60 +203,17 @@ export default function Onboarding() {
     }
 
     async function checkOnboardingStatus() {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("onboarding_complete")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Failed to check onboarding status", error);
-        return;
-      }
-
-      if (data?.onboarding_complete) {
+      const profile = await refreshProfile();
+      if (profile?.onboardingComplete) {
         navigate("/learning-hub", { replace: true });
       }
     }
 
     void checkOnboardingStatus();
-  }, [navigate, user]);
+  }, [navigate, user, refreshProfile, isPreview]);
 
-  const handleContinue = () => {
-    if (!canContinue) {
-      return;
-    }
-
-    if (activeStep < steps.length - 1) {
-      setActiveStep((prev) => prev + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (activeStep > 0) {
-      setActiveStep((prev) => prev - 1);
-    }
-  };
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!supabase || !user || !canContinue || dailyMinutes === null) {
-      return;
-    }
-
-    if (isPreview) {
-      setIsSubmitting(true);
-      window.setTimeout(() => {
-        setIsSubmitting(false);
-        setIsFinishing(true);
-        window.setTimeout(() => {
-          navigate("/learning-hub", { replace: true });
-        }, 1800);
-      }, 1000);
-      return;
-    }
-
-    setIsSubmitting(true);
+  const saveProfileAndSeed = async (): Promise<boolean> => {
+    if (!supabase || !user || dailyMinutes === null) return false;
 
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
@@ -257,21 +231,20 @@ export default function Onboarding() {
     );
 
     if (profileError) {
-      setIsSubmitting(false);
       toast({
         variant: "blackDisclaimer",
         title: "Could not save onboarding",
         description: profileError.message,
       });
-      return;
+      return false;
     }
 
     try {
       const response = await fetch("/chinese-dictionary-custom.json");
       const dictionary = await response.json();
-      
+
       let hskTarget = 1;
-      const levelObj = proficiencyLevels.find(l => l.label === proficiencyLevel);
+      const levelObj = proficiencyLevels.find((l) => l.label === proficiencyLevel);
       if (levelObj) {
         hskTarget = levelObj.hsk;
       } else {
@@ -291,17 +264,15 @@ export default function Onboarding() {
         const flashcardsToInsert = seedCards.map((card: any) => {
           const match = card.h?.match(/hsk-L(\d+)/i) ?? card.n?.match(/HSK level (\d+)/i);
           const level = match ? parseInt(match[1], 10) : 1;
-          
           const isBelowTarget = level < hskTarget;
-          
-          // Extract example sentence from notes if it follows "Sentence | Translation" pattern
+
           let exampleSentence = "";
           if (card.n && card.n.includes("|")) {
             exampleSentence = card.n.split("|")[0].trim();
           }
-          
+
           return {
-            user_id: user.id,
+            user_id: user!.id,
             simplified: card.s,
             traditional: card.t,
             pinyin: card.p,
@@ -314,8 +285,8 @@ export default function Onboarding() {
             repetition: isBelowTarget ? 5 : 0,
             interval: isBelowTarget ? 30 : 0,
             efactor: 2.5,
-            due_date: isBelowTarget 
-              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() 
+            due_date: isBelowTarget
+              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
               : new Date().toISOString(),
             source_id: card.h || null,
             seen_at: isBelowTarget ? new Date().toISOString() : null,
@@ -333,11 +304,69 @@ export default function Onboarding() {
     }
 
     await refreshProfile();
-    setIsSubmitting(false);
-    setIsFinishing(true);
-    window.setTimeout(() => {
-      navigate("/learning-hub", { replace: true });
-    }, 1800);
+    return true;
+  };
+
+  const handleContinue = async () => {
+    if (!canContinue || isSubmitting) return;
+
+    if (currentStep.key === "referral") {
+      if (isPreview) {
+        setActiveStep((prev) => prev + 1);
+        return;
+      }
+      setIsSubmitting(true);
+      const success = await saveProfileAndSeed();
+      setIsSubmitting(false);
+      if (success) setActiveStep((prev) => prev + 1);
+      return;
+    }
+
+    if (activeStep < steps.length - 1) {
+      setActiveStep((prev) => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (activeStep > 0) {
+      setActiveStep((prev) => prev - 1);
+    }
+  };
+
+  const handleStartCheckout = async (plan: "pro_monthly" | "lifetime") => {
+    if (isPreview) {
+      setIsFinishing(true);
+      window.setTimeout(() => navigate("/learning-hub", { replace: true }), 1800);
+      return;
+    }
+
+    setActiveCheckoutPlan(plan);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ plan, customerEmail: user?.email }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.checkoutUrl) {
+        throw new Error(data.error || "Checkout failed.");
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Checkout unavailable",
+        description: error instanceof Error ? error.message : "Please try again in a moment.",
+      });
+      setActiveCheckoutPlan(null);
+    }
   };
 
   if (isFinishing) {
@@ -359,15 +388,15 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen bg-zinc-100 flex overflow-hidden font-sans">
       {/* Left Side (25%) */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="relative w-[25%] hidden lg:flex flex-col justify-between p-12 z-10 overflow-hidden"
       >
         <ExpandingCircles />
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.6 }}
@@ -377,7 +406,7 @@ export default function Onboarding() {
           <span className="font-heading text-2xl tracking-tight text-zinc-900">Polysia</span>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.8 }}
@@ -394,7 +423,7 @@ export default function Onboarding() {
 
       {/* Right Side (75%) */}
       <div className="w-full lg:w-[75%] h-screen flex items-center justify-center p-2 lg:p-3">
-        <motion.div 
+        <motion.div
           initial={{ x: 80, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
@@ -425,82 +454,152 @@ export default function Onboarding() {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-12">
-                    {currentStep.key === "level" && proficiencyLevels.map((level) => (
-                      <SelectionCard
-                        key={level.label}
-                        label={level.label}
-                        icon={level.icon}
-                        description={level.description}
-                        isSelected={proficiencyLevel === level.label}
-                        onClick={() => setProficiencyLevel(level.label)}
-                      />
-                    ))}
-                    {currentStep.key === "level" && (
-                      <div className="sm:col-span-2 pt-2">
-                        <button
+                  {currentStep.key !== "payment" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-12">
+                      {currentStep.key === "level" && proficiencyLevels.map((level) => (
+                        <SelectionCard
+                          key={level.label}
+                          label={level.label}
+                          icon={level.icon}
+                          description={level.description}
+                          isSelected={proficiencyLevel === level.label}
+                          onClick={() => setProficiencyLevel(level.label)}
+                        />
+                      ))}
+                      {currentStep.key === "level" && (
+                        <div className="sm:col-span-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setProficiencyLevel("I don't know")}
+                            className={cn(
+                              "w-full p-4 rounded-xl border transition-all text-center font-medium text-sm",
+                              proficiencyLevel === "I don't know"
+                                ? "bg-zinc-900 text-white border-zinc-900"
+                                : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-300"
+                            )}
+                          >
+                            I don't know my level
+                          </button>
+                        </div>
+                      )}
+
+                      {currentStep.key === "goal" && learningGoals.map((item) => (
+                        <SelectionCard
+                          key={item.label}
+                          label={item.label}
+                          icon={item.icon}
+                          isSelected={goal === item.label}
+                          onClick={() => setGoal(item.label)}
+                        />
+                      ))}
+
+                      {currentStep.key === "reason" && learningReasons.map((item) => (
+                        <SelectionCard
+                          key={item.label}
+                          label={item.label}
+                          icon={item.icon}
+                          isSelected={reason === item.label}
+                          onClick={() => setReason(item.label)}
+                        />
+                      ))}
+
+                      {currentStep.key === "age" && ageOptions.map((option) => (
+                        <SelectionCard
+                          key={option.label}
+                          label={option.label}
+                          isSelected={age === option.value}
+                          onClick={() => setAge(option.value)}
+                        />
+                      ))}
+
+                      {currentStep.key === "time" && dailyTimeOptions.map((option) => (
+                        <SelectionCard
+                          key={option.value}
+                          label={option.label}
+                          description={option.description}
+                          isSelected={dailyMinutes === option.value}
+                          onClick={() => setDailyMinutes(option.value)}
+                        />
+                      ))}
+
+                      {currentStep.key === "referral" && referralOptions.map((item) => (
+                        <SelectionCard
+                          key={item}
+                          label={item}
+                          isSelected={referral === item}
+                          onClick={() => setReferral(item)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {currentStep.key === "payment" && (
+                    <div className="space-y-5 pb-12">
+                      {/* Trial card */}
+                      <div className="rounded-2xl bg-zinc-900 p-8 text-white">
+                        <div className="mb-6">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white/80 mb-4">
+                            7-day free trial
+                          </span>
+                          <div className="flex items-baseline gap-2 mt-3">
+                            <span className="text-4xl font-heading">$2.99</span>
+                            <span className="text-zinc-400 text-sm">/month after trial</span>
+                          </div>
+                          <p className="mt-2 text-sm text-zinc-400">
+                            No charge today. Cancel anytime before the trial ends.
+                          </p>
+                        </div>
+
+                        <div className="space-y-3 mb-8">
+                          {trialFeatures.map((feature) => (
+                            <div key={feature} className="flex items-center gap-3">
+                              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                                <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                              </div>
+                              <span className="text-sm text-zinc-200">{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <Button
                           type="button"
-                          onClick={() => setProficiencyLevel("I don't know")}
-                          className={cn(
-                            "w-full p-4 rounded-xl border transition-all text-center font-medium text-sm",
-                            proficiencyLevel === "I don't know" 
-                              ? "bg-zinc-900 text-white border-zinc-900" 
-                              : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-300"
-                          )}
+                          onClick={() => void handleStartCheckout("pro_monthly")}
+                          disabled={activeCheckoutPlan !== null}
+                          className="w-full h-14 text-base font-semibold bg-white text-black hover:bg-zinc-100 rounded-xl border-none shadow-lg"
                         >
-                          I don't know my level
-                        </button>
+                          {activeCheckoutPlan === "pro_monthly" ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Redirecting to checkout...
+                            </>
+                          ) : (
+                            <>
+                              Start 7-day free trial
+                              <ChevronRight className="ml-1.5 w-4 h-4" />
+                            </>
+                          )}
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => void handleStartCheckout("lifetime")}
+                          disabled={activeCheckoutPlan !== null}
+                          className="mt-3 w-full h-12 rounded-xl border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                        >
+                          {activeCheckoutPlan === "lifetime" ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Redirecting to checkout...
+                            </>
+                          ) : (
+                            "Prefer lifetime access? $44.99 one-time"
+                          )}
+                        </Button>
                       </div>
-                    )}
 
-                    {currentStep.key === "goal" && learningGoals.map((item) => (
-                      <SelectionCard
-                        key={item.label}
-                        label={item.label}
-                        icon={item.icon}
-                        isSelected={goal === item.label}
-                        onClick={() => setGoal(item.label)}
-                      />
-                    ))}
-
-                    {currentStep.key === "reason" && learningReasons.map((item) => (
-                      <SelectionCard
-                        key={item.label}
-                        label={item.label}
-                        icon={item.icon}
-                        isSelected={reason === item.label}
-                        onClick={() => setReason(item.label)}
-                      />
-                    ))}
-
-                    {currentStep.key === "age" && ageOptions.map((option) => (
-                      <SelectionCard
-                        key={option.label}
-                        label={option.label}
-                        isSelected={age === option.value}
-                        onClick={() => setAge(option.value)}
-                      />
-                    ))}
-
-                    {currentStep.key === "time" && dailyTimeOptions.map((option) => (
-                      <SelectionCard
-                        key={option.value}
-                        label={option.label}
-                        description={option.description}
-                        isSelected={dailyMinutes === option.value}
-                        onClick={() => setDailyMinutes(option.value)}
-                      />
-                    ))}
-
-                    {currentStep.key === "referral" && referralOptions.map((item) => (
-                      <SelectionCard
-                        key={item}
-                        label={item}
-                        isSelected={referral === item}
-                        onClick={() => setReferral(item)}
-                      />
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -511,7 +610,7 @@ export default function Onboarding() {
             <div className="mx-auto w-full max-w-3xl flex items-center justify-between">
               <button
                 onClick={handleBack}
-                disabled={activeStep === 0}
+                disabled={activeStep === 0 || currentStep.key === "payment"}
                 className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-400 hover:text-zinc-600 disabled:opacity-0 transition-all"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -522,24 +621,24 @@ export default function Onboarding() {
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest hidden sm:block">
                   Step {activeStep + 1} of {steps.length}
                 </span>
-                
-                {activeStep < steps.length - 1 ? (
+
+                {currentStep.key !== "payment" && (
                   <Button
-                    onClick={handleContinue}
-                    disabled={!canContinue}
+                    onClick={() => void handleContinue()}
+                    disabled={!canContinue || isSubmitting}
                     className="rounded-full px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90 transition-all border-none"
                   >
-                    Continue
-                    <ChevronRight className="ml-1.5 w-4 h-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!canContinue || isSubmitting}
-                    className="rounded-full px-10 h-12 text-base font-semibold shadow-lg shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90 transition-all border-none"
-                  >
-                    {isSubmitting ? "Finalizing..." : "Start Learning"}
-                    {!isSubmitting && <ChevronRight className="ml-1.5 w-4 h-4" />}
+                    {isSubmitting && currentStep.key === "referral" ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        Continue
+                        <ChevronRight className="ml-1.5 w-4 h-4" />
+                      </>
+                    )}
                   </Button>
                 )}
               </div>
@@ -551,18 +650,18 @@ export default function Onboarding() {
   );
 }
 
-function SelectionCard({ 
-  label, 
-  description, 
+function SelectionCard({
+  label,
+  description,
   icon,
-  isSelected, 
-  onClick 
-}: { 
-  label: string; 
+  isSelected,
+  onClick
+}: {
+  label: string;
   description?: string;
   icon?: string;
-  isSelected: boolean; 
-  onClick: () => void 
+  isSelected: boolean;
+  onClick: () => void
 }) {
   return (
     <button
@@ -570,8 +669,8 @@ function SelectionCard({
       onClick={onClick}
       className={cn(
         "p-5 rounded-xl border-2 transition-all text-left flex items-center justify-between group",
-        isSelected 
-          ? "border-primary bg-primary/5 shadow-sm" 
+        isSelected
+          ? "border-primary bg-primary/5 shadow-sm"
           : "border-zinc-100 bg-white hover:border-zinc-200"
       )}
     >

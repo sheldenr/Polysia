@@ -37,7 +37,7 @@ import { useSRS, type SRSRating, getProjectedIntervals, type Flashcard } from "@
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Tabs, TabsContent, List as TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   DeepSeekMessage,
   DeepSeekReadingPromptResponse,

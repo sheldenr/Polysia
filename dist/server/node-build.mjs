@@ -547,6 +547,9 @@ const handleCreateCheckoutSession = async (req, res) => {
           quantity: 1
         }
       ],
+      subscription_data: payload.plan === "pro_monthly" ? {
+        trial_period_days: 7
+      } : void 0,
       success_url: successUrl,
       cancel_url: cancelUrl,
       customer_email: payload.customerEmail,
