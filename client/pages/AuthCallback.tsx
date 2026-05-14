@@ -36,7 +36,13 @@ export default function AuthCallback() {
 
       const handleRedirection = async () => {
         const profile = await refreshProfile();
-        if (profile?.onboardingComplete) {
+        const isSubscribed =
+          profile?.subscriptionStatus === "active" || profile?.subscriptionStatus === "trialing";
+        const hasPaymentBypass = profile?.paymentBypassUntil
+          ? new Date(profile.paymentBypassUntil) > new Date()
+          : false;
+
+        if (profile?.onboardingComplete || isSubscribed || hasPaymentBypass) {
           navigate("/learning-hub", { replace: true });
         } else {
           navigate("/onboarding", { replace: true });

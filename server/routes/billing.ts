@@ -1,6 +1,7 @@
 import { RequestHandler } from "express";
 import Stripe from "stripe";
 import { z } from "zod";
+import { supabaseAdmin } from "../lib/supabase-admin.js";
 import type {
   BillingPlanId,
   CreateCheckoutSessionRequest,
@@ -17,8 +18,15 @@ const planPriceMap: Record<BillingPlanId, string | undefined> = {
   lifetime: process.env.STRIPE_PRICE_LIFETIME,
 };
 
-function getBaseUrl(req: Parameters<RequestHandler>[0]) {
-  const origin = req.headers.origin;
+type RequestLike = {
+  headers: Record<string, string | string[] | undefined>;
+  get(name: string): string | undefined;
+  protocol?: string;
+};
+
+function getBaseUrl(req: RequestLike) {
+  const rawOrigin = req.headers.origin;
+  const origin = Array.isArray(rawOrigin) ? rawOrigin[0] : rawOrigin;
   if (origin && /^https?:\/\//i.test(origin)) {
     return origin;
   }
@@ -56,17 +64,18 @@ export const handleCreateCheckoutSession: RequestHandler = async (req, res) => {
     });
   }
 
-  const baseUrl = getBaseUrl(req);
+  const baseUrl = getBaseUrl(req as unknown as RequestLike);
   const successUrl =
     process.env.STRIPE_SUCCESS_URL ??
-    `${baseUrl}/pricing?checkout=success&plan=${payload.plan}`;
+    `${baseUrl}/onboarding?checkout=success&plan=${payload.plan}&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl =
     process.env.STRIPE_CANCEL_URL ??
-    `${baseUrl}/pricing?checkout=cancelled&plan=${payload.plan}`;
+    `${baseUrl}/onboarding?checkout=cancelled&plan=${payload.plan}`;
 
   try {
     const session = await stripe.checkout.sessions.create({
       mode: payload.plan === "pro_monthly" ? "subscription" : "payment",
+      client_reference_id: req.userId,
       line_items: [
         {
           price: priceId,
@@ -83,6 +92,7 @@ export const handleCreateCheckoutSession: RequestHandler = async (req, res) => {
       billing_address_collection: "auto",
       metadata: {
         product_plan: payload.plan,
+        user_id: req.userId ?? "",
       },
     });
 
@@ -102,5 +112,127 @@ export const handleCreateCheckoutSession: RequestHandler = async (req, res) => {
     return res.status(500).json({
       error: "Unable to start checkout right now.",
     });
+  }
+};
+
+export const handleStripeWebhook: RequestHandler = async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!sig || !webhookSecret) {
+    return res.status(400).send("Webhook Secret or Signature missing.");
+  }
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  let event: Stripe.Event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+  } catch (err: any) {
+    console.error(`Webhook signature verification failed: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  console.log(`[Stripe Webhook] Received event: ${event.type}`);
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const userId = session.client_reference_id || session.metadata?.user_id;
+    const plan = session.metadata?.product_plan;
+
+    if (!userId) {
+      console.error("[Stripe Webhook] No userId found in session.");
+      return res.status(400).send("No userId found.");
+    }
+
+    if (!supabaseAdmin) {
+      console.error("[Stripe Webhook] Supabase Admin client not initialized.");
+      return res.status(500).send("Server configuration error.");
+    }
+
+    // Update profile in database
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        subscription_status: "active",
+        subscription_plan: plan,
+        onboarding_complete: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+
+    if (error) {
+      console.error("[Stripe Webhook] Error updating profile:", error);
+      return res.status(500).send("Database update failed.");
+    }
+
+    console.log(`[Stripe Webhook] Successfully updated subscription for user ${userId}`);
+  }
+
+  res.json({ received: true });
+};
+
+const verifySessionSchema = z.object({
+  sessionId: z.string().min(1),
+});
+
+export const handleVerifyCheckoutSession: RequestHandler = async (req, res) => {
+  const parsed = verifySessionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "sessionId is required" });
+  }
+
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    return res.status(500).json({ error: "Stripe is not configured." });
+  }
+
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: "Server is not configured for billing verification." });
+  }
+
+  const userId = req.userId;
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const stripe = new Stripe(secretKey);
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(parsed.data.sessionId);
+
+    const sessionUserId = session.client_reference_id || session.metadata?.user_id;
+    if (sessionUserId !== userId) {
+      return res.status(403).json({ error: "Session does not belong to this user." });
+    }
+
+    const isPaid = session.payment_status === "paid" || session.status === "complete";
+    if (!isPaid) {
+      return res.status(200).json({ verified: false });
+    }
+
+    const plan = session.metadata?.product_plan;
+    const subscriptionStatus =
+      session.mode === "subscription" ? "trialing" : "active";
+
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        subscription_status: subscriptionStatus,
+        subscription_plan: plan,
+        onboarding_complete: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+
+    if (error) {
+      console.error("[Verify Session] DB update failed:", error);
+      return res.status(500).json({ error: "Failed to update profile." });
+    }
+
+    return res.status(200).json({ verified: true, subscriptionStatus });
+  } catch (err) {
+    console.error("[Verify Session] Error:", err);
+    return res.status(500).json({ error: "Unable to verify session." });
   }
 };

@@ -27,7 +27,7 @@ import {
   RefreshCw,
   Volume2,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { parseJsonResponse } from "@/lib/http";
@@ -144,10 +144,27 @@ export default function LearningHub() {
   const { user, session, supabaseConfigError } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [hasReadStoredTheme, setHasReadStoredTheme] = useState(false);
   const [isFlowActive, setIsFlowActive] = useState(false);
   const [activeFlowIndex, setActiveFlowIndex] = useState(0);
+
+  // Handle payment success redirect from Stripe
+  useEffect(() => {
+    const checkoutState = searchParams.get("checkout");
+    if (checkoutState === "success") {
+      toast({
+        title: "Payment successful!",
+        description: "Your account access has been updated. Welcome to Pro!",
+      });
+      // Clear the query params without reloading the page
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("checkout");
+      newParams.delete("plan");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, toast]);
   const [isRoleplayLoading, setIsRoleplayLoading] = useState(false);
   const [dailyCommitment, setDailyCommitment] = useState<number>(20); // Default 20 mins
   const [readingContent, setReadingContent] = useState<{
@@ -599,11 +616,6 @@ export default function LearningHub() {
         
         if (data.onboarding_daily_minutes) {
           setDailyCommitment(data.onboarding_daily_minutes);
-        }
-
-        if (!data.onboarding_complete) {
-          navigate("/onboarding", { replace: true });
-          return;
         }
 
         if (data.onboarding_hsk_level === "HSK 1") {

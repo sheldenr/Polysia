@@ -117,7 +117,7 @@ export default function Onboarding() {
   const { user, session, refreshProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isPreview = searchParams.get("preview") === "true";
 
   const [activeStep, setActiveStep] = useState(0);
@@ -197,20 +197,91 @@ export default function Onboarding() {
     }
   }, [age, currentStep.key, dailyMinutes, goal, proficiencyLevel, reason, referral]);
 
+  // Handle payment success redirect from Stripe
+  useEffect(() => {
+    const checkoutState = searchParams.get("checkout");
+    if (checkoutState !== "success" || !user) return;
+
+    const sessionId = searchParams.get("session_id");
+
+    const finalizeSuccess = async () => {
+      setIsFinishing(true);
+
+      // Server verifies the Stripe session and flips subscription_status +
+      // onboarding_complete via the service role key. This removes the
+      // dependency on the webhook firing before the redirect.
+      if (sessionId && session?.access_token) {
+        try {
+          const response = await fetch("/api/billing/verify-session", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ sessionId }),
+          });
+          if (!response.ok) {
+            console.error("verify-session failed", await response.text());
+          }
+        } catch (e) {
+          console.error("verify-session error", e);
+        }
+      } else if (supabase) {
+        // Fallback when session_id is missing — keep the client-side flip so
+        // returning users don't get stuck at the survey.
+        await supabase
+          .from("profiles")
+          .update({ onboarding_complete: true })
+          .eq("id", user.id);
+      }
+
+      toast({
+        title: "Payment successful!",
+        description: "Your account access has been updated. Welcome to Pro!",
+      });
+
+      await refreshProfile();
+      navigate("/learning-hub", { replace: true });
+    };
+
+    void finalizeSuccess();
+  }, [searchParams, user, session, toast, refreshProfile, navigate]);
+
   useEffect(() => {
     if (!supabase || !user || isPreview) {
+      return;
+    }
+    // The checkout-success effect drives this flow — don't race with it.
+    if (searchParams.get("checkout") === "success") {
       return;
     }
 
     async function checkOnboardingStatus() {
       const profile = await refreshProfile();
-      if (profile?.onboardingComplete) {
+      const isSubscribed =
+        profile?.subscriptionStatus === "active" || profile?.subscriptionStatus === "trialing";
+      if (profile?.onboardingComplete || isSubscribed) {
         navigate("/learning-hub", { replace: true });
+        return;
+      }
+
+      // Survey saved but payment not received yet — resume at payment step.
+      const { data: surveyRow } = await supabase
+        .from("profiles")
+        .select("onboarded_at")
+        .eq("id", user!.id)
+        .maybeSingle();
+
+      if (surveyRow?.onboarded_at) {
+        const paymentIndex = steps.findIndex((s) => s.key === "payment");
+        if (paymentIndex >= 0) {
+          setActiveStep(paymentIndex);
+        }
       }
     }
 
     void checkOnboardingStatus();
-  }, [navigate, user, refreshProfile, isPreview]);
+  }, [navigate, user, refreshProfile, isPreview, steps, searchParams]);
 
   const saveProfileAndSeed = async (): Promise<boolean> => {
     if (!supabase || !user || dailyMinutes === null) return false;
@@ -218,7 +289,6 @@ export default function Onboarding() {
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: user.id,
-        onboarding_complete: true,
         onboarding_hsk_level: proficiencyLevel,
         onboarding_goal: goal,
         onboarding_reason: reason,

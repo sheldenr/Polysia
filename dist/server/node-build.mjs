@@ -28,25 +28,16 @@ const handleProfile = (req, res) => {
     }
   });
 };
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
-if (!supabase) {
-  console.warn("⚠️ Supabase environment variables are missing. Auth will fail.");
-}
-async function verifySupabaseToken(token) {
-  if (!supabase) {
-    console.error("Auth failed: Supabase client not initialized.");
-    return null;
+const supabaseUrl$1 = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAdmin = supabaseUrl$1 && supabaseServiceKey ? createClient(supabaseUrl$1, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
   }
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return null;
-    return user;
-  } catch (err) {
-    console.error("Supabase token verification error:", err);
-    return null;
-  }
+}) : null;
+if (!supabaseAdmin) {
+  console.warn("⚠️ SUPABASE_SERVICE_ROLE_KEY is missing. Webhooks and admin tasks will fail.");
 }
 const deepSeekRequestSchema = z.object({
   messages: z.array(
@@ -98,8 +89,8 @@ const handleDeepSeekRoleplay = async (req, res) => {
     });
   }
   let knownVocab = [];
-  if (userId && supabase) {
-    const { data: flashcards } = await supabase.from("flashcards").select("simplified").eq("user_id", userId).not("state", "eq", "NEW");
+  if (userId && supabaseAdmin) {
+    const { data: flashcards } = await supabaseAdmin.from("flashcards").select("simplified").eq("user_id", userId).not("state", "eq", "NEW");
     if (flashcards) {
       knownVocab = flashcards.map((f) => f.simplified);
     }
@@ -254,8 +245,8 @@ const handleDeepSeekReading = async (req, res) => {
     });
   }
   let hskLevel = "HSK 1";
-  if (userId && supabase) {
-    const { data: profile } = await supabase.from("profiles").select("onboarding_hsk_level").eq("id", userId).maybeSingle();
+  if (userId && supabaseAdmin) {
+    const { data: profile } = await supabaseAdmin.from("profiles").select("onboarding_hsk_level").eq("id", userId).maybeSingle();
     if (profile?.onboarding_hsk_level) {
       hskLevel = profile.onboarding_hsk_level;
     }
@@ -506,7 +497,8 @@ const planPriceMap = {
   lifetime: process.env.STRIPE_PRICE_LIFETIME
 };
 function getBaseUrl(req) {
-  const origin = req.headers.origin;
+  const rawOrigin = req.headers.origin;
+  const origin = Array.isArray(rawOrigin) ? rawOrigin[0] : rawOrigin;
   if (origin && /^https?:\/\//i.test(origin)) {
     return origin;
   }
@@ -536,11 +528,12 @@ const handleCreateCheckoutSession = async (req, res) => {
     });
   }
   const baseUrl = getBaseUrl(req);
-  const successUrl = process.env.STRIPE_SUCCESS_URL ?? `${baseUrl}/pricing?checkout=success&plan=${payload.plan}`;
+  const successUrl = process.env.STRIPE_SUCCESS_URL ?? `${baseUrl}/learning-hub?checkout=success&plan=${payload.plan}`;
   const cancelUrl = process.env.STRIPE_CANCEL_URL ?? `${baseUrl}/pricing?checkout=cancelled&plan=${payload.plan}`;
   try {
     const session = await stripe.checkout.sessions.create({
       mode: payload.plan === "pro_monthly" ? "subscription" : "payment",
+      client_reference_id: req.userId,
       line_items: [
         {
           price: priceId,
@@ -556,7 +549,8 @@ const handleCreateCheckoutSession = async (req, res) => {
       allow_promotion_codes: true,
       billing_address_collection: "auto",
       metadata: {
-        product_plan: payload.plan
+        product_plan: payload.plan,
+        user_id: req.userId ?? ""
       }
     });
     if (!session.url) {
@@ -575,7 +569,83 @@ const handleCreateCheckoutSession = async (req, res) => {
     });
   }
 };
-async function requireAuth(req, res, next) {
+const handleStripeWebhook = async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!sig || !webhookSecret) {
+    return res.status(400).send("Webhook Secret or Signature missing.");
+  }
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+  } catch (err) {
+    console.error(`Webhook signature verification failed: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+  console.log(`[Stripe Webhook] Received event: ${event.type}`);
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    const userId = session.client_reference_id || session.metadata?.user_id;
+    const plan = session.metadata?.product_plan;
+    if (!userId) {
+      console.error("[Stripe Webhook] No userId found in session.");
+      return res.status(400).send("No userId found.");
+    }
+    if (!supabaseAdmin) {
+      console.error("[Stripe Webhook] Supabase Admin client not initialized.");
+      return res.status(500).send("Server configuration error.");
+    }
+    const { error } = await supabaseAdmin.from("profiles").update({
+      subscription_status: "active",
+      subscription_plan: plan,
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", userId);
+    if (error) {
+      console.error("[Stripe Webhook] Error updating profile:", error);
+      return res.status(500).send("Database update failed.");
+    }
+    console.log(`[Stripe Webhook] Successfully updated subscription for user ${userId}`);
+  }
+  res.json({ received: true });
+};
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseApiKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!supabaseUrl || !supabaseApiKey) {
+  console.warn("⚠️ Supabase environment variables are missing. Auth will fail.");
+}
+async function verifySupabaseToken(token) {
+  if (!supabaseUrl || !supabaseApiKey) {
+    console.error("Auth failed: Supabase credentials are missing.");
+    return null;
+  }
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: supabaseApiKey
+      }
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const payload = await response.json();
+    if (!payload?.id) {
+      return null;
+    }
+    return {
+      id: payload.id,
+      email: payload.email ?? null,
+      created_at: payload.created_at,
+      user_metadata: payload.user_metadata && typeof payload.user_metadata === "object" ? payload.user_metadata : null
+    };
+  } catch (err) {
+    console.error("Supabase token verification error:", err);
+    return null;
+  }
+}
+const requireAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ success: false, message: "No token provided" });
@@ -588,13 +658,14 @@ async function requireAuth(req, res, next) {
   req.user = user;
   req.userId = user.id;
   next();
-}
+};
 function createServer() {
   const app2 = express__default();
   app2.use(cors());
+  app2.use(cookieParser());
+  app2.post("/api/billing/webhook", express__default.raw({ type: "application/json" }), handleStripeWebhook);
   app2.use(express__default.json());
   app2.use(express__default.urlencoded({ extended: true }));
-  app2.use(cookieParser());
   app2.use((req, _res, next) => {
     next();
   });
@@ -607,7 +678,7 @@ function createServer() {
   apiRouter.post("/ai/roleplay", requireAuth, handleDeepSeekRoleplay);
   apiRouter.get("/ai/reading-prompt", requireAuth, handleDeepSeekReading);
   apiRouter.post("/ai/tts", requireAuth, handleTTS);
-  apiRouter.post("/billing/checkout", handleCreateCheckoutSession);
+  apiRouter.post("/billing/checkout", requireAuth, handleCreateCheckoutSession);
   apiRouter.get("/profile", requireAuth, handleProfile);
   app2.use("/api", apiRouter);
   app2.use(apiRouter);

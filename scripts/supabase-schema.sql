@@ -33,6 +33,9 @@ alter table public.profiles add column if not exists onboarding_age integer;
 alter table public.profiles add column if not exists onboarding_daily_minutes integer;
 alter table public.profiles add column if not exists onboarding_referral text;
 alter table public.profiles add column if not exists onboarded_at timestamptz;
+alter table public.profiles add column if not exists subscription_status text;
+alter table public.profiles add column if not exists subscription_plan text;
+alter table public.profiles add column if not exists payment_bypass_until timestamptz;
 
 drop trigger if exists trg_profiles_updated_at on public.profiles;
 create trigger trg_profiles_updated_at

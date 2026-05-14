@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { PaymentGate } from "@/components/PaymentGate";
 
@@ -9,7 +9,8 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowOnboarding = false }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, onboardingComplete, profileLoaded } = useAuth();
+  const { isAuthenticated, isLoading, onboardingComplete, subscriptionStatus, profileLoaded } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -19,19 +20,26 @@ export function ProtectedRoute({ children, allowOnboarding = false }: ProtectedR
     );
   }
 
+  const searchParams = location.search;
+  const isCheckoutSuccessReturn =
+    new URLSearchParams(location.search).get("checkout") === "success";
+
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={`/login${searchParams}`} replace />;
   }
+
+  const isSubscribed = subscriptionStatus === "active" || subscriptionStatus === "trialing";
 
   if (!profileLoaded) {
     if (allowOnboarding) {
       return <>{children}</>;
     }
-    return <Navigate to="/onboarding" replace />;
+    return <Navigate to={`/onboarding${searchParams}`} replace />;
   }
 
-  if (!onboardingComplete && !allowOnboarding) {
-    return <Navigate to="/onboarding" replace />;
+  // Allow access if onboarded OR subscribed
+  if (!onboardingComplete && !isSubscribed && !allowOnboarding && !isCheckoutSuccessReturn) {
+    return <Navigate to={`/onboarding${searchParams}`} replace />;
   }
 
   if (allowOnboarding) {

@@ -1,17 +1,7 @@
-import { Request, Response, NextFunction } from "express";
+import type { RequestHandler } from "express";
 import { verifySupabaseToken } from "../lib/auth.js";
-import type { User } from "@supabase/supabase-js";
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: User;
-      userId?: string;
-    }
-  }
-}
-
-export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+export const requireAuth: RequestHandler = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -28,4 +18,4 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   req.user = user;
   req.userId = user.id;
   next();
-}
+};

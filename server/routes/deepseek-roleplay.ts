@@ -1,6 +1,6 @@
 import { RequestHandler } from "express";
 import { z } from "zod";
-import { supabase } from "../lib/auth.js";
+import { supabaseAdmin } from "../lib/supabase-admin.js";
 import type { DeepSeekV3Response } from "../../shared/api";
 
 const deepSeekRequestSchema = z.object({
@@ -69,8 +69,8 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
 
   // Fetch user's known characters/words from flashcards
   let knownVocab: string[] = [];
-  if (userId && supabase) {
-    const { data: flashcards } = await supabase
+  if (userId && supabaseAdmin) {
+    const { data: flashcards } = await supabaseAdmin
       .from("flashcards")
       .select("simplified")
       .eq("user_id", userId)

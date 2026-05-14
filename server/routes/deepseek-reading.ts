@@ -1,5 +1,5 @@
 import { RequestHandler } from "express";
-import { supabase } from "../lib/auth.js";
+import { supabaseAdmin } from "../lib/supabase-admin.js";
 import type { DeepSeekReadingPromptResponse } from "../../shared/api";
 
 const randomTopics = [
@@ -97,8 +97,8 @@ export const handleDeepSeekReading: RequestHandler = async (req, res) => {
 
   // Fetch user's HSK level from profile
   let hskLevel = "HSK 1";
-  if (userId && supabase) {
-    const { data: profile } = await supabase
+  if (userId && supabaseAdmin) {
+    const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("onboarding_hsk_level")
       .eq("id", userId)
