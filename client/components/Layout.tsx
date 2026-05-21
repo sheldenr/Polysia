@@ -4,12 +4,14 @@ import { GithubIcon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import CharacterScroller from "@/components/CharacterScroller";
 
 interface LayoutProps {
   children: ReactNode;
+  hideFooter?: boolean;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children, hideFooter = false }: LayoutProps) {
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -147,65 +149,67 @@ export default function Layout({ children }: LayoutProps) {
       <main className="flex-1 w-full">{children}</main>
 
       {/* Footer */}
-      <footer className="w-full bg-background border-t mt-12 transition-colors duration-300">
-        <div className="mx-auto max-w-7xl px-6 py-8 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            {/* Logo on Left */}
-            <Link
-              to="/"
-              className="hidden md:flex items-center gap-2 hover:opacity-80 transition-opacity"
-            >
-              <img
-                src="/logo only.svg"
-                alt="Polysia logo"
-                className="w-6 h-6"
-              />
-              <span className="font-heading font-semibold text-lg">
-                Polysia
-              </span>
-            </Link>
+      {!hideFooter && (
+        <footer className="w-full bg-background border-t mt-12 transition-colors duration-300">
+          <div className="mx-auto max-w-7xl px-6 py-8 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+              {/* Logo on Left */}
+              <Link
+                to="/"
+                className="hidden md:flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
+                <img
+                  src="/logo only.svg"
+                  alt="Polysia logo"
+                  className="w-6 h-6"
+                />
+                <span className="font-heading font-semibold text-lg">
+                  Polysia
+                </span>
+              </Link>
 
-            {/* Links in Middle */}
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <Link
-                to="/privacy"
-                className="hover:text-primary transition-colors"
-              >
-                Privacy
-              </Link>
-              <Link
-                to="/terms"
-                className="hover:text-primary transition-colors"
-              >
-                Terms
-              </Link>
-              <Link
-                to="/contact"
-                className="hover:text-primary transition-colors"
-              >
-                Contact
-              </Link>
-              <Link
-                to="/developer"
-                className="hover:text-primary transition-colors"
-              >
-                Developer
-              </Link>
-            </div>
+              {/* Links in Middle */}
+              <div className="flex gap-6 text-sm text-muted-foreground">
+                <Link
+                  to="/privacy"
+                  className="hover:text-primary transition-colors"
+                >
+                  Privacy
+                </Link>
+                <Link
+                  to="/terms"
+                  className="hover:text-primary transition-colors"
+                >
+                  Terms
+                </Link>
+                <Link
+                  to="/contact"
+                  className="hover:text-primary transition-colors"
+                >
+                  Contact
+                </Link>
+                <Link
+                  to="/developer"
+                  className="hover:text-primary transition-colors"
+                >
+                  Developer
+                </Link>
+              </div>
 
-            {/* Social Icons on Right */}
-            <div className="hidden md:flex items-center gap-4">
-              <a
-                href="https://github.com/sheldenr/polysia"
-                className="text-muted-foreground hover:text-primary transition-colors"
-                aria-label="GitHub"
-              >
-                <HugeiconsIcon icon={GithubIcon} className="w-5 h-5" />
-              </a>
+              {/* Social Icons on Right */}
+              <div className="hidden md:flex items-center gap-4">
+                <a
+                  href="https://github.com/sheldenr/polysia"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                  aria-label="GitHub"
+                >
+                  <HugeiconsIcon icon={GithubIcon} className="w-5 h-5" />
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

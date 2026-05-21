@@ -44,6 +44,8 @@ export async function handleGetFlashcards(req: Request, res: Response) {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+  console.log(`[Flashcards] Fetching for user: ${userId}`);
+
   try {
     if (!supabaseAdmin) {
       throw new Error("Supabase admin client not initialized");
@@ -58,14 +60,16 @@ export async function handleGetFlashcards(req: Request, res: Response) {
 
     if (profileError) throw profileError;
 
-    // 2. Determine SRS Day Rollover (4:00 AM)
+    // 2. Determine SRS Day Rollover (3:00 AM)
     const now = new Date();
-    const rolloverHour = 4;
+    const rolloverHour = 3;
     const srsDayStart = new Date(now);
     if (now.getHours() < rolloverHour) {
       srsDayStart.setDate(srsDayStart.getDate() - 1);
     }
     srsDayStart.setHours(rolloverHour, 0, 0, 0);
+
+    console.log(`[Flashcards] SRS Day Start: ${srsDayStart.toISOString()} (Now: ${now.toISOString()})`);
 
     // 3. Fetch existing due cards (Learning & Review)
     // We fetch all cards where due_date <= now
@@ -88,6 +92,8 @@ export async function handleGetFlashcards(req: Request, res: Response) {
     // Then new cards.
     const reviewDue = existingCards.filter(c => c.state === 'REVIEW').slice(0, reviewLimit);
 
+    console.log(`[Flashcards] Existing due: learning=${learningDue.length}, review=${reviewDue.length} (limit=${reviewLimit})`);
+
     // 4. Check if we should pull New cards
     const newLimit = profile.daily_new_limit || 10;
     
@@ -101,6 +107,8 @@ export async function handleGetFlashcards(req: Request, res: Response) {
 
     if (newTodayError) throw newTodayError;
 
+    console.log(`[Flashcards] New cards started today: ${newStartedToday || 0} (limit=${newLimit})`);
+
     // Also check if they already have NEW cards sitting in the DB
     const { data: existingNew, error: existingNewError } = await supabaseAdmin
       .from("flashcards")
@@ -110,6 +118,8 @@ export async function handleGetFlashcards(req: Request, res: Response) {
       .order("created_at", { ascending: true });
 
     if (existingNewError) throw existingNewError;
+
+    console.log(`[Flashcards] Existing NEW cards in DB: ${existingNew.length}`);
 
     let sessionNewCards = [...existingNew];
     
@@ -121,10 +131,12 @@ export async function handleGetFlashcards(req: Request, res: Response) {
     
     let newNeeded = 0;
     if (canPullMore) {
-      // Stacking: We pull new cards based on how many were STARTED today, 
-      // not how many are currently in the NEW state. This allows NEW cards to accumulate.
-      newNeeded = newLimit - (newStartedToday || 0);
+      // We only pull enough to reach the daily limit, 
+      // accounting for both what we already started today AND what we already have sitting in NEW state.
+      newNeeded = Math.max(0, newLimit - (newStartedToday || 0) - existingNew.length);
     }
+
+    console.log(`[Flashcards] canPullMore=${canPullMore}, newNeeded=${newNeeded}`);
 
     if (newNeeded > 0) {
       try {
@@ -156,13 +168,22 @@ export async function handleGetFlashcards(req: Request, res: Response) {
           targetHskLevel = match ? parseInt(match[0], 10) : 1;
         }
 
-        // Pull from ALL levels up to targetHskLevel
+        // Pull from targetHskLevel up to the maximum available (7)
         let allLevelCards: DictionaryEntry[] = [];
-        for (let i = 1; i <= targetHskLevel; i++) {
+        for (let i = targetHskLevel; i <= 7; i++) {
           const levelKey = `hsk-L${i}`;
           allLevelCards.push(...dictionary.filter(d => d.h.startsWith(levelKey)));
         }
         
+        // If we didn't find enough cards (e.g. user finished all levels from targetHskLevel up),
+        // fallback to lower levels just in case.
+        if (allLevelCards.length < newNeeded) {
+          for (let i = targetHskLevel - 1; i >= 1; i--) {
+            const levelKey = `hsk-L${i}`;
+            allLevelCards.push(...dictionary.filter(d => d.h.startsWith(levelKey)));
+          }
+        }
+
         if (allLevelCards.length === 0) {
           allLevelCards = dictionary.filter(d => d.h.startsWith("hsk-L"));
         }
@@ -212,10 +233,53 @@ export async function handleGetFlashcards(req: Request, res: Response) {
       }
     }
 
+    // 5. Calculate HSK progress for meta
+    const dictionaryRaw = await readFile(DICTIONARY_PATH, "utf-8");
+    const dictionary: DictionaryEntry[] = JSON.parse(dictionaryRaw);
+
+    const { data: hskStats } = await supabaseAdmin
+      .from("flashcards")
+      .select("hsk_level, state")
+      .eq("user_id", userId);
+
+    const levelStats: Record<number, { total: number; learned: number; active: number }> = {};
+    for (let i = 1; i <= 7; i++) {
+      const totalInDict = dictionary.filter(d => d.h.startsWith(`hsk-L${i}`)).length;
+      const userCardsForLevel = (hskStats || []).filter(c => c.hsk_level === i);
+      const learned = userCardsForLevel.filter(c => c.state === 'REVIEW').length;
+      const active = userCardsForLevel.filter(c => c.state !== 'NEW').length;
+      
+      levelStats[i] = {
+        total: totalInDict,
+        learned,
+        active,
+      };
+    }
+
+    const hskLearned = (hskStats || []).filter(c => c.state === 'REVIEW').length;
+    const hskTotal = hskStats?.length || 0;
+    const currentHskLevel = hskStats?.length 
+      ? Math.min(...hskStats.map(c => c.hsk_level))
+      : (proficiencyToHsk[userLevelLabel] || 1);
+
     res.json({
       learning: learningDue,
       review: reviewDue,
       new: sessionNewCards.slice(0, Math.max(0, newLimit - (newStartedToday || 0))),
+      meta: {
+        newLimit,
+        reviewLimit,
+        newStartedToday: newStartedToday || 0,
+        reviewDueCount: existingCards.filter(c => c.state === 'REVIEW').length,
+        learningDueCount: learningDue.length,
+        nextReviewDate: existingCards.length === 0 ? (await supabaseAdmin.from("flashcards").select("due_date").eq("user_id", userId).gt("due_date", now.toISOString()).order("due_date", { ascending: true }).limit(1).single()).data?.due_date : null,
+        hskProgress: {
+          currentLevel: currentHskLevel,
+          learned: hskLearned,
+          total: hskTotal,
+          levelStats,
+        }
+      }
     });
   } catch (error) {
     console.error("Error in handleGetFlashcards:", error);
@@ -253,13 +317,13 @@ export async function handleSubmitAnswer(req: Request, res: Response) {
 
     const now = new Date();
     
-    // Calculate next rollover (Next 4:00 AM)
+    // Calculate next rollover (Next 3:00 AM)
     const nextRollover = new Date(now);
-    if (now.getHours() < 4) {
-      nextRollover.setHours(4, 0, 0, 0);
+    if (now.getHours() < 3) {
+      nextRollover.setHours(3, 0, 0, 0);
     } else {
       nextRollover.setDate(nextRollover.getDate() + 1);
-      nextRollover.setHours(4, 0, 0, 0);
+      nextRollover.setHours(3, 0, 0, 0);
     }
 
     if (card.state === "NEW" || card.state === "LEARNING" || card.state === "RELEARNING") {
@@ -345,13 +409,12 @@ export async function handleSubmitAnswer(req: Request, res: Response) {
 
 
     // Log activity for stats tracking
-    let action = "stat:flashcard-success"; 
-    if (card.state === "NEW") action = "stat:flashcard-new";
-    else if (card.state === "REVIEW") action = "stat:flashcard-review";
-    else if (card.state === "LEARNING" || card.state === "RELEARNING") action = "stat:flashcard-learning";
+    let actionType = "learning";
+    if (card.state === "NEW") actionType = "new";
+    else if (card.state === "REVIEW") actionType = "review";
     
-    // If they hit AGAIN, we could log it as failure
-    if (rating === "AGAIN") action = "stat:flashcard-failure";
+    const actionResult = rating === "AGAIN" ? "failure" : "success";
+    const action = `stat:flashcard-${actionType}-${actionResult}`;
 
     await supabaseAdmin.from("learning_activity").insert({
       user_id: userId,
@@ -411,5 +474,66 @@ export async function handleSimulateNextDay(req: Request, res: Response) {
   } catch (error) {
     console.error("Error in handleSimulateNextDay:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function handleResetProgress(req: Request, res: Response) {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  console.log(`[Flashcards] Resetting progress for user: ${userId}`);
+
+  try {
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+
+    // 1. Delete all flashcards for the user
+    console.log(`[Reset] Deleting flashcards for ${userId}...`);
+    const { error: flashcardsError } = await supabaseAdmin
+      .from("flashcards")
+      .delete()
+      .eq("user_id", userId);
+
+    if (flashcardsError) {
+      console.error("[Reset] Flashcards delete error:", flashcardsError);
+      throw flashcardsError;
+    }
+
+    // 2. Delete all learning activity for the user
+    console.log(`[Reset] Deleting learning activity for ${userId}...`);
+    const { error: activityError } = await supabaseAdmin
+      .from("learning_activity")
+      .delete()
+      .eq("user_id", userId);
+
+    if (activityError) {
+      console.error("[Reset] Activity delete error:", activityError);
+      throw activityError;
+    }
+
+    // 3. Reset profile stats (streak, etc.)
+    console.log(`[Reset] Updating profile for ${userId}...`);
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        streak_days: 0,
+        last_activity_date: null,
+        current_word_index: 1
+      })
+      .eq("id", userId);
+
+    if (profileError) {
+      console.error("[Reset] Profile update error:", profileError);
+      throw profileError;
+    }
+
+    res.json({ success: true, message: "Progress reset successfully" });
+  } catch (error) {
+    console.error("Error in handleResetProgress:", error);
+    res.status(500).json({ 
+      error: "Internal server error", 
+      message: error instanceof Error ? error.message : String(error) 
+    });
   }
 }

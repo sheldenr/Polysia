@@ -11,8 +11,6 @@ import {
   Calendar01Icon,
   Target02Icon,
   Clock01Icon,
-  Compass01Icon,
-  Brain01Icon,
   BookOpen01Icon,
   StarIcon,
 } from "@hugeicons/core-free-icons";
@@ -50,6 +48,7 @@ interface ProfileData {
 interface SettingsPanelProps {
   className?: string;
   onLogout: () => Promise<void> | void;
+  onReset?: () => void;
 }
 
 type SettingsTab = "profile" | "learning" | "appearance";
@@ -67,7 +66,7 @@ function readInitialDarkMode(): boolean {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 }
 
-export default function SettingsPanel({ className, onLogout }: SettingsPanelProps) {
+export default function SettingsPanel({ className, onLogout, onReset }: SettingsPanelProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(readInitialDarkMode);
@@ -167,41 +166,42 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
   }, [newLimitInput, reviewLimitInput, toast, user]);
 
   const handleResetEverything = useCallback(async () => {
-    if (!supabase || !user || isResetting) return;
+    if (!user || isResetting) return;
 
     setIsResetting(true);
     try {
-      const [activityResult, flashcardsResult, profileResult] = await Promise.all([
-        supabase.from("learning_activity").delete().eq("user_id", user.id),
-        supabase.from("flashcards").delete().eq("user_id", user.id),
-        supabase
-          .from("profiles")
-          .upsert(
-            {
-              id: user.id,
-              streak_days: 0,
-              last_activity_date: null,
-            },
-            { onConflict: "id" },
-          )
-          .select("*")
-          .single(),
-      ]);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+      if (!session?.access_token) throw new Error("No session");
 
-      if (activityResult.error || flashcardsResult.error || profileResult.error) {
-        throw activityResult.error ?? flashcardsResult.error ?? profileResult.error;
-      }
+      const res = await fetch("/api/flashcards/reset", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`
+        }
+      });
 
-      if (profileResult.data) {
-        setProfileData(profileResult.data);
-        setNewLimitInput(String(profileResult.data.daily_new_limit ?? 10));
-        setReviewLimitInput(String(profileResult.data.daily_review_limit ?? 50));
+      if (!res.ok) throw new Error("Failed to reset progress");
+
+      // Refresh local profile data
+      const { data: newProfile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (!profileError && newProfile) {
+        setProfileData(newProfile);
+        setNewLimitInput(String(newProfile.daily_new_limit ?? 10));
+        setReviewLimitInput(String(newProfile.daily_review_limit ?? 50));
       }
 
       toast({
         title: "All learning data reset",
         description: "Your flashcards, activity history, and streak were cleared. Onboarding details were kept.",
       });
+
+      if (onReset) onReset();
     } catch (error) {
       console.error("Failed to reset user data", error);
       toast({
@@ -211,7 +211,7 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
     } finally {
       setIsResetting(false);
     }
-  }, [isResetting, toast, user]);
+  }, [isResetting, toast, user, onReset]);
 
   const displayName = useMemo(() => {
     const metadata = user?.user_metadata ?? {};
@@ -239,15 +239,7 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
       })
     : null;
 
-  const heroPills = [
-    profileData?.onboarding_hsk_level
-      ? { label: profileData.onboarding_hsk_level, icon: Brain01Icon }
-      : null,
-    profileData?.onboarding_daily_minutes
-      ? { label: `${profileData.onboarding_daily_minutes} min/day`, icon: Clock01Icon }
-      : null,
-    joinedDate ? { label: `Joined ${joinedDate}`, icon: Calendar01Icon } : null,
-  ].filter(Boolean) as { label: string; icon: typeof Brain01Icon }[];
+  const heroPills = joinedDate ? [{ label: `Joined ${joinedDate}`, icon: Calendar01Icon }] : [];
 
   const tabs: { id: SettingsTab; label: string; icon: typeof UserIcon }[] = [
     { id: "profile", label: "Profile", icon: UserIcon },
@@ -256,9 +248,9 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
   ];
 
   return (
-    <div className={cn("flex flex-col gap-8", className)}>
+    <div className={cn("flex flex-col gap-6 sm:gap-8", className)}>
       {/* Hero */}
-      <header className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-primary/10 via-card to-secondary/30 p-6 sm:p-8">
+      <header className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-primary/10 via-card to-secondary/20 p-6 sm:p-8 shadow-sm">
         <div
           aria-hidden
           className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/20 blur-3xl"
@@ -271,7 +263,6 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
           <div className="flex items-center gap-4 sm:gap-5">
             <div className="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl border bg-card text-xl sm:text-2xl font-heading shadow-sm">
               {userInitials}
-              <span className="absolute -bottom-1 -right-1 inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-card bg-emerald-500" />
             </div>
             <div className="min-w-0">
               <h2 className="truncate font-heading text-xl sm:text-2xl tracking-tight">
@@ -310,9 +301,9 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
-        {/* Sidebar nav */}
-        <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible -mx-1 px-1 lg:mx-0 lg:px-0">
+      <div className="space-y-4">
+        <nav className="rounded-2xl border bg-card/70 p-1.5 shadow-sm">
+          <div className="flex gap-1 overflow-x-auto">
           {tabs.map((tab) => {
             const active = activeTab === tab.id;
             return (
@@ -321,24 +312,24 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap",
+                  "flex min-w-fit flex-1 items-center justify-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap",
                   active
-                    ? "bg-primary/10 text-foreground ring-1 ring-primary/30"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                 )}
                 aria-current={active ? "page" : undefined}
               >
                 <HugeiconsIcon
                   icon={tab.icon}
-                  className={cn("h-4 w-4", active ? "text-primary" : "")}
+                  className={cn("h-4 w-4", active ? "text-primary-foreground" : "")}
                 />
                 {tab.label}
               </button>
             );
           })}
+          </div>
         </nav>
 
-        {/* Content */}
         <div className="min-w-0">
           {activeTab === "profile" && (
             <SectionCard
@@ -372,14 +363,6 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
             <SectionCard
               title="Learning profile"
               description="Preferences captured during onboarding."
-              titleAccessory={
-                profileData?.onboarding_complete ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                    <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-3 w-3" />
-                    Complete
-                  </span>
-                ) : null
-              }
             >
               {isLoadingProfile ? (
                 <div className="flex justify-center py-8">
@@ -389,11 +372,6 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
                 <>
                   <DefinitionList
                     items={[
-                      {
-                        label: "HSK level",
-                        value: profileData.onboarding_hsk_level ?? "Not set",
-                        icon: Brain01Icon,
-                      },
                       {
                         label: "Primary goal",
                         value: profileData.onboarding_goal ?? "Not set",
@@ -421,18 +399,6 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
                         value: `${profileData.daily_review_limit ?? 50} cards`,
                         icon: BookOpen01Icon,
                       },
-                      {
-                        label: "Age group",
-                        value: profileData.onboarding_age
-                          ? `${profileData.onboarding_age}`
-                          : "Not set",
-                        icon: UserIcon,
-                      },
-                      {
-                        label: "Discovery source",
-                        value: profileData.onboarding_referral ?? "Not set",
-                        icon: Compass01Icon,
-                      },
                     ]}
                   />
                   <div className="mt-6 rounded-2xl border border-border/60 bg-muted/20 p-4">
@@ -458,7 +424,7 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
                         type="button"
                         onClick={() => void handleSaveDailyLimits()}
                         disabled={isSavingLimits}
-                        className="sm:w-auto"
+                        className="rounded-xl sm:w-auto"
                       >
                         {isSavingLimits ? "Saving..." : "Save limits"}
                       </Button>
@@ -476,8 +442,8 @@ export default function SettingsPanel({ className, onLogout }: SettingsPanelProp
                       <AlertDialogTrigger asChild>
                         <Button
                           type="button"
-                          variant="destructive"
-                          className="mt-4"
+                          variant="outline"
+                          className="mt-4 rounded-xl border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
                           disabled={isResetting}
                         >
                           {isResetting ? "Resetting..." : "Reset everything"}
@@ -563,7 +529,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border bg-card p-5 sm:p-7">
+    <section className="rounded-3xl border bg-card p-5 shadow-sm sm:p-7">
       <header className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-border/50 pb-4">
         <div>
           <h3 className="font-heading text-lg tracking-tight flex items-center gap-2">

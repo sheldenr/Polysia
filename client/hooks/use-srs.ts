@@ -29,6 +29,7 @@ export interface HskProgress {
   learned: number;
   total: number;
   unlockedLevel: number;
+  levelStats?: Record<number, { total: number; learned: number; active: number }>;
 }
 
 export function getProjectedIntervals(): Record<string, string> {
@@ -44,6 +45,20 @@ export function useSRS() {
   const { session } = useAuth();
   const [deck, setDeck] = useState<Flashcard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState<{
+    newLimit: number;
+    reviewLimit: number;
+    newStartedToday: number;
+    reviewDueCount: number;
+    learningDueCount: number;
+    nextReviewDate: string | null;
+    hskProgress?: {
+      currentLevel: number;
+      learned: number;
+      total: number;
+      levelStats: Record<number, { total: number; learned: number; active: number }>;
+    };
+  } | null>(null);
 
   const fetchFlashcards = useCallback(async () => {
     if (!session?.access_token) return;
@@ -58,6 +73,15 @@ export function useSRS() {
       if (!res.ok) throw new Error("Failed to fetch flashcards");
       const data = await res.json();
       
+      setMeta(data.meta || null);
+
+      console.log("[SRS Hook] Received deck data:", {
+        learning: data.learning.length,
+        review: data.review.length,
+        new: data.new.length,
+        meta: data.meta
+      });
+
       // Combine learning, review, and new cards into one deck for the session
       const combined = [
         ...data.learning,
@@ -134,11 +158,12 @@ export function useSRS() {
   const refresh = useCallback(() => void fetchFlashcards(), [fetchFlashcards]);
 
   const hskProgress: HskProgress = {
-    currentLevel: 1,
-    learned: 0,
-    total: 0,
-    unlockedLevel: 1,
+    currentLevel: meta?.hskProgress?.currentLevel || 1,
+    learned: meta?.hskProgress?.learned || 0,
+    total: meta?.hskProgress?.total || 0,
+    unlockedLevel: meta?.hskProgress?.currentLevel || 1,
+    levelStats: meta?.hskProgress?.levelStats,
   };
 
-  return { deck, loading, getDueCards, rateCard, hskProgress, refresh };
+  return { deck, loading, getDueCards, rateCard, hskProgress, refresh, meta };
 }

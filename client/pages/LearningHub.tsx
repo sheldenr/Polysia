@@ -16,7 +16,6 @@ import {
   BookMarked,
   Play,
   TrendingUp,
-  Calendar,
   Clock,
   Target,
   Award,
@@ -33,6 +32,7 @@ import { useAuth } from "@/lib/auth";
 import { parseJsonResponse } from "@/lib/http";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useSRS, type SRSRating, getProjectedIntervals, type Flashcard } from "@/hooks/use-srs";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -90,20 +90,36 @@ const defaultModeTargets: Record<LearningMode, number> = {
   roleplay: 5,
 };
 const DAILY_NEW_CARD_LIMIT = 10;
-const SRS_DAY_ROLLOVER_HOUR = 4;
+const SRS_DAY_ROLLOVER_HOUR = 3;
 
 const statEventActions = {
   flashcardNew: "stat:flashcard-new",
+  flashcardNewSuccess: "stat:flashcard-new-success",
+  flashcardNewFailure: "stat:flashcard-new-failure",
   flashcardSuccess: "stat:flashcard-success",
   flashcardFailure: "stat:flashcard-failure",
   flashcardReview: "stat:flashcard-review",
+  flashcardReviewSuccess: "stat:flashcard-review-success",
+  flashcardReviewFailure: "stat:flashcard-review-failure",
   flashcardLearning: "stat:flashcard-learning",
+  flashcardLearningSuccess: "stat:flashcard-learning-success",
+  flashcardLearningFailure: "stat:flashcard-learning-failure",
   dialogueResponse: "stat:dialogue-response",
   wordsRead: "stat:words-read",
 } as const;
+
 const flashcardStatActions = [
+  statEventActions.flashcardNew,
+  statEventActions.flashcardNewSuccess,
+  statEventActions.flashcardNewFailure,
   statEventActions.flashcardSuccess,
   statEventActions.flashcardFailure,
+  statEventActions.flashcardReview,
+  statEventActions.flashcardReviewSuccess,
+  statEventActions.flashcardReviewFailure,
+  statEventActions.flashcardLearning,
+  statEventActions.flashcardLearningSuccess,
+  statEventActions.flashcardLearningFailure,
 ];
 
 const textbookTopics = [
@@ -271,70 +287,7 @@ export function LearningHub() {
     };
   }, [activeFlowIndex, isFlowActive]);
 
-  const { loading: srsLoading, getDueCards, rateCard, deck, hskProgress, refresh } = useSRS();
-
-  useEffect(() => {
-    if (isTopicSelected || !isFlowActive || activeFlowIndex !== 2) return;
-    const interval = setInterval(() => {
-      setPlaceholderIndex((prev) => (prev + 1) % textbookTopics.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [isTopicSelected, isFlowActive, activeFlowIndex]);
-
-  const handleStartRoleplay = useCallback(async (topic: string) => {
-    const selectedTopic = topic.trim() || textbookTopics[0];
-    setRoleplayTopic(selectedTopic);
-    setIsTopicSelected(true);
-    setIsRoleplayLoading(true);
-
-    try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
-      }
-
-      const response = await fetch("/api/ai/roleplay", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          messages: [
-            {
-              role: "system",
-              content: `You are a person in this real-life scenario: "${selectedTopic}". This is a one-on-one natural conversation in Mandarin Chinese. Stay fully in character. Reply mostly in Chinese, keep responses short (1-3 sentences) as a person would in conversation. Start the conversation naturally based on the scenario.`,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 220,
-        }),
-      });
-      
-      const payload = await parseJsonResponse<DeepSeekV3Response & { error?: string }>(
-        response,
-        {
-          emptyMessage: "Roleplay start failed: the server returned no response.",
-          invalidMessage: "Roleplay start failed: received an invalid server response.",
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Failed to start conversation");
-      }
-
-      setRoleplayMessages([{ role: "ai", text: payload.content }]);
-      setRoleplayInput("");
-    } catch (error) {
-      toast({
-        variant: "blackDisclaimer",
-        title: "Could not start conversation",
-        description: error instanceof Error ? error.message : "AI tutor is unavailable.",
-      });
-      setIsTopicSelected(false);
-    } finally {
-      setIsRoleplayLoading(false);
-    }
-  }, [session, toast]);
+  const { loading: srsLoading, getDueCards, rateCard, deck, hskProgress, refresh, meta } = useSRS();
 
   const formatRelativeTime = useCallback((isoTimestamp: string) => {
     const timestamp = new Date(isoTimestamp).getTime();
@@ -470,11 +423,13 @@ export function LearningHub() {
             nextTodayProgress.roleplay += 1;
           } else if (row.action === statEventActions.wordsRead) {
             nextTodayProgress.reading += 1;
-          } else if (row.action === statEventActions.flashcardNew) {
+          } else if (row.action.includes("flashcard-new")) {
             nextTodayNewFlashcards += 1;
-          } else if (row.action === statEventActions.flashcardReview) {
+          } else if (row.action.includes("flashcard-review") || row.action.includes("flashcard-learning") || row.action.includes("flashcard-success") || row.action.includes("flashcard-failure")) {
             nextTodayReviewFlashcards += 1;
-          } else if ((flashcardStatActions as readonly string[]).includes(row.action)) {
+          }
+          
+          if (row.action.startsWith("stat:flashcard")) {
             nextTodayProgress.flashcards += 1;
           }
         }
@@ -563,9 +518,136 @@ export function LearningHub() {
 
     // Calculate Retention Rate (Successes / Total attempts)
     const totalAttempts = rows.filter(r => r.action.startsWith("stat:flashcard")).length;
-    const successes = rows.filter(r => r.action === statEventActions.flashcardSuccess).length;
+    const successes = rows.filter(r => r.action.startsWith("stat:flashcard") && r.action.endsWith("success")).length;
     setRetentionRate(totalAttempts > 0 ? Math.round((successes / totalAttempts) * 100) : 0);
-  }, [user]);
+  }, [user, flashcardStatActions, statEventActions, getSrsDayStart]);
+
+  // Expose debug functions to console
+  useEffect(() => {
+    (window as any).simulateNextDay = async () => {
+      console.log("Simulating next day...");
+      try {
+        const res = await fetch("/api/flashcards/simulate-next-day", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${session?.access_token}`
+          }
+        });
+        if (res.ok) {
+          console.log("Next day simulated! Refreshing data...");
+          await refresh();
+          await refreshLearningMetrics();
+          return "Success: Tomorrow's cards are now due today.";
+        }
+        return "Error: Failed to simulate next day.";
+      } catch (e) {
+        return "Error: " + (e as Error).message;
+      }
+    };
+
+    (window as any).resetProgress = async () => {
+      if (!confirm("Are you sure you want to reset ALL progress? This cannot be undone.")) return;
+      console.log("Resetting progress...");
+      try {
+        const res = await fetch("/api/flashcards/reset", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${session?.access_token}`
+          }
+        });
+        if (res.ok) {
+          console.log("Progress reset! Refreshing...");
+          await refresh();
+          await refreshLearningMetrics();
+          return "Success: Progress has been reset.";
+        }
+        return "Error: Failed to reset progress.";
+      } catch (e) {
+        return "Error: " + (e as Error).message;
+      }
+    };
+
+    (window as any).getStats = () => {
+      console.table({
+        "HSK Level": hskProgress.currentLevel,
+        "Total Cards": hskProgress.total,
+        "Mastered Cards": hskProgress.learned,
+        "Retention Rate": `${retentionRate}%`,
+        "Current Streak": `${streakDays} days`,
+        "Today's Reviews": todayProgress.flashcards,
+        "Daily Target": modeTargets.flashcards
+      });
+    };
+
+    return () => {
+      delete (window as any).simulateNextDay;
+      delete (window as any).resetProgress;
+      delete (window as any).getStats;
+    };
+  }, [session, refresh, refreshLearningMetrics, hskProgress, retentionRate, streakDays, todayProgress, modeTargets]);
+
+  useEffect(() => {
+    if (isTopicSelected || !isFlowActive || activeFlowIndex !== 2) return;
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % textbookTopics.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isTopicSelected, isFlowActive, activeFlowIndex]);
+
+  const handleStartRoleplay = useCallback(async (topic: string) => {
+    const selectedTopic = topic.trim() || textbookTopics[0];
+    setRoleplayTopic(selectedTopic);
+    setIsTopicSelected(true);
+    setIsRoleplayLoading(true);
+
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch("/api/ai/roleplay", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content: `You are a person in this real-life scenario: "${selectedTopic}". This is a one-on-one natural conversation in Mandarin Chinese. Stay fully in character. Reply mostly in Chinese, keep responses short (1-3 sentences) as a person would in conversation. Start the conversation naturally based on the scenario.`,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 220,
+        }),
+      });
+      
+      const payload = await parseJsonResponse<DeepSeekV3Response & { error?: string }>(
+        response,
+        {
+          emptyMessage: "Roleplay start failed: the server returned no response.",
+          invalidMessage: "Roleplay start failed: received an invalid server response.",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to start conversation");
+      }
+
+      setRoleplayMessages([{ role: "ai", text: payload.content }]);
+      setRoleplayInput("");
+    } catch (error) {
+      toast({
+        variant: "blackDisclaimer",
+        title: "Could not start conversation",
+        description: error instanceof Error ? error.message : "AI tutor is unavailable.",
+      });
+      setIsTopicSelected(false);
+    } finally {
+      setIsRoleplayLoading(false);
+    }
+  }, [session, toast]);
 
   const logLearningActivity = useCallback(
     async (mode: LearningMode, action: string, minutesSpent: number) => {
@@ -753,10 +835,16 @@ export function LearningHub() {
 
   const statItems = [
     {
-      label: "Retention Rate",
-      value: `${retentionRate}%`,
-      icon: Layers,
-      color: "text-primary",
+      label: "Characters Seen",
+      value: seenCharactersCount.toLocaleString(),
+      icon: Eye,
+      color: "text-blue-500",
+    },
+    {
+      label: "Perfected",
+      value: stats.perfected.toLocaleString(),
+      icon: Award,
+      color: "text-emerald-500",
     },
     {
       label: "Streak",
@@ -765,12 +853,11 @@ export function LearningHub() {
       color: "text-orange-500",
     },
     {
-      label: "Dialogues",
-      value: stats.dialogues.toString(),
-      icon: MessagesSquare,
-      color: "text-amber-500",
+      label: "Retention",
+      value: `${retentionRate}%`,
+      icon: Layers,
+      color: "text-primary",
     },
-    { label: "Words Read", value: stats.wordsRead.toLocaleString(), icon: Eye, color: "text-purple-500" },
   ];
 
   // sessionTick forces getDueCards to re-evaluate Date.now() every second in flashcard flow
@@ -778,6 +865,7 @@ export function LearningHub() {
   const allDueCards = useMemo(() => getDueCards(), [getDueCards]);
 
   const dueCards = useMemo(() => {
+    console.log("[LearningHub] Total due cards for session:", allDueCards.length);
     return allDueCards;
   }, [allDueCards]);
 
@@ -1157,38 +1245,6 @@ export function LearningHub() {
     }
   }, [activeFlowIndex, isFlowActive, trackModeTime]);
 
-  const handleSimulateNextDay = useCallback(async () => {
-    if (!session?.access_token) return;
-
-    try {
-      const res = await fetch("/api/flashcards/simulate-next-day", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`
-        }
-      });
-
-      if (res.ok) {
-        toast({
-          title: "Time shifted!",
-          description: "Simulated the next day. Refreshing your deck...",
-        });
-        // Refresh flashcards
-        refresh();
-        // Refresh profile and stats
-        void refreshLearningMetrics();
-      } else {
-        throw new Error("Failed to simulate next day");
-      }
-    } catch (error) {
-      toast({
-        variant: "blackDisclaimer",
-        title: "Simulation failed",
-        description: error instanceof Error ? error.message : "Could not simulate next day.",
-      });
-    }
-  }, [session, toast, refresh, refreshLearningMetrics]);
-
   const handleRoleplaySubmit = async () => {
     if (!roleplayInput.trim() || isRoleplayLoading) {
       return;
@@ -1269,8 +1325,8 @@ export function LearningHub() {
       desc: "Strengthen recall with active spaced repetition.",
       icon: Zap,
       index: 0,
-      objective: `${todayReviewedReviewCards}/${modeTargets.flashcards} reviews today · ${todayNewFlashcards}/${dailyNewCardLimit} new`,
-      progress: Math.min(100, Math.round((todayReviewedReviewCards / modeTargets.flashcards) * 100)),
+      objective: `${todayReviewedReviewCards} reviews · ${meta?.newStartedToday ?? todayNewFlashcards}/${dailyNewCardLimit} new today`,
+      progress: Math.min(100, Math.round((todayReviewedReviewCards / (meta?.reviewLimit ?? modeTargets.flashcards)) * 100)),
     },
     {
       name: "Tailored Reading",
@@ -1300,150 +1356,83 @@ export function LearningHub() {
 
   const maxWeeklyModeMinutes = Math.max(...weeklyModeRows.map((item) => item.minutes), 1);
 
-  const MasteryBoard = ({ cards }: { cards: Flashcard[] }) => {
-    const [filter, setFilter] = useState<"all" | "mastered" | "learning">("all");
-    
-    const filteredCards = useMemo(() => {
-      let base = cards.filter(c => c.state !== "NEW");
-      switch (filter) {
-        case "mastered": base = base.filter(c => c.repetition >= 5); break;
-        case "learning": base = base.filter(c => c.repetition < 5); break;
-      }
-      return base.sort((a, b) => b.repetition - a.repetition);
-    }, [cards, filter]);
-
-    return (
-      <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6 transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-xl font-heading">Vocabulary mastery board</h2>
-          <div className="flex p-1 bg-secondary/30 rounded-xl self-start sm:self-center border border-border/50">
-            {(["all", "mastered", "learning"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setFilter(t)}
-                className={cn(
-                  "px-3 py-1 text-xs font-medium rounded-lg transition-all capitalize border",
-                  filter === t 
-                    ? "bg-card text-foreground shadow-sm border-border/50" 
-                    : "text-muted-foreground hover:text-foreground border-transparent"
-                )}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-6 xl:grid-cols-8 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-          {filteredCards.length > 0 ? (
-            filteredCards.map((card) => {
-              const mastery = Math.min(5, card.repetition);
-              const dotColor =
-                mastery >= 5 ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" :
-                mastery >= 3 ? "bg-sky-500" :
-                mastery >= 1 ? "bg-amber-500" :
-                "bg-rose-400";
-
-              return (
-                <Tooltip key={card.id}>
-                  <TooltipTrigger asChild>
-                    <div className="aspect-square flex flex-col items-center justify-center p-1 rounded-xl border border-border/50 hover:border-primary/30 transition-all hover:bg-secondary/10 group cursor-default relative">
-                      <span className={cn(
-                        "leading-none font-medium text-foreground transition-transform group-hover:scale-110 mb-1",
-                        card.s.length > 2 ? "text-sm sm:text-base" : "text-lg"
-                      )}>
-                        {card.s.slice(0, 3)}
-                      </span>
-                      <div className={cn("w-1.5 h-1.5 rounded-full", dotColor)} />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs font-semibold">{card.p}</p>
-                    <p className="text-[10px] text-muted-foreground">{card.e}</p>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })
-          ) : (
-            <div className="col-span-full py-12 text-center bg-secondary/5 rounded-2xl border border-dashed">
-              <p className="text-sm text-muted-foreground">No vocabulary in this category yet.</p>
-            </div>
-          )}
-        </div>
-
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <Dialog open={showHsk1Intro} onOpenChange={(open) => { if (!open) dismissHsk1Intro(); }}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Before you begin
+        <DialogContent className="w-[min(96vw,68rem)] max-h-[92vh] overflow-hidden rounded-3xl border bg-card p-0 shadow-2xl">
+          <div className="relative border-b bg-gradient-to-br from-primary/10 via-card to-secondary/20 px-6 py-6 sm:px-8 sm:py-7">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-primary/20 blur-3xl"
+            />
+            <DialogHeader className="relative text-left">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Before you begin
+              </div>
+              <DialogTitle className="text-2xl font-heading leading-tight sm:text-3xl">
+                Welcome! A quick primer for HSK 1.
+              </DialogTitle>
+              <DialogDescription className="max-w-3xl text-sm sm:text-base">
+                You picked HSK 1, so you're starting from the beginning. Spend a few minutes with these foundations — they'll make every flashcard, story, and dialogue click much faster.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="max-h-[calc(92vh-12rem)] overflow-y-auto px-6 py-5 sm:px-8 sm:py-6">
+            <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+              <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
+                <h3 className="mb-2 font-heading text-base">1. The four tones (+ neutral)</h3>
+                <p className="mb-3 text-muted-foreground">
+                  Mandarin is tonal — the pitch of a syllable changes the word. Practice these out loud:
+                </p>
+                <ul className="space-y-1.5 text-foreground">
+                  <li><span className="font-mono text-emerald-600 dark:text-emerald-400">mā</span> — 1st tone, high &amp; flat (妈 "mom")</li>
+                  <li><span className="font-mono text-blue-600 dark:text-blue-400">má</span> — 2nd tone, rising (麻 "hemp")</li>
+                  <li><span className="font-mono text-amber-600 dark:text-amber-400">mǎ</span> — 3rd tone, dip down then up (马 "horse")</li>
+                  <li><span className="font-mono text-rose-600 dark:text-rose-400">mà</span> — 4th tone, sharp falling (骂 "scold")</li>
+                  <li><span className="font-mono text-muted-foreground">ma</span> — neutral, light &amp; unstressed (吗 question particle)</li>
+                </ul>
+              </section>
+
+              <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
+                <h3 className="mb-2 font-heading text-base">2. Pinyin — your training wheels</h3>
+                <p className="text-muted-foreground">
+                  Pinyin spells out Chinese sounds using Latin letters, with marks (¯ ´ ˇ `) showing the tone. A few sounds aren't intuitive:
+                </p>
+                <ul className="mt-2 space-y-1 text-foreground">
+                  <li><span className="font-mono">q</span> ≈ "ch" (light, tongue forward)</li>
+                  <li><span className="font-mono">x</span> ≈ "sh" (light, tongue forward)</li>
+                  <li><span className="font-mono">zh / ch / sh</span> — pulled back, retroflex</li>
+                  <li><span className="font-mono">c</span> ≈ "ts" in "cats"</li>
+                  <li><span className="font-mono">ü</span> — say "ee" with rounded lips</li>
+                </ul>
+              </section>
+
+              <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
+                <h3 className="mb-2 font-heading text-base">3. Characters vs words</h3>
+                <p className="text-muted-foreground">
+                  Each character (汉字) is one syllable with its own meaning. Many words are pairs — e.g. 你好 (nǐ hǎo, "hello") = 你 "you" + 好 "good". Don't panic about memorizing strokes; recognition comes first.
+                </p>
+              </section>
+
+              <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
+                <h3 className="mb-2 font-heading text-base">4. How to use Polysia</h3>
+                <ul className="space-y-1 text-muted-foreground">
+                  <li>• <span className="text-foreground">Flashcards</span> — daily reviews; tap a character to hear it.</li>
+                  <li>• <span className="text-foreground">Reading</span> — short stories with pinyin support and audio.</li>
+                  <li>• <span className="text-foreground">Roleplay</span> — try simple conversations once you know ~30 words.</li>
+                </ul>
+              </section>
             </div>
-            <DialogTitle className="text-2xl font-heading leading-tight">
-              Welcome! A quick primer for HSK 1.
-            </DialogTitle>
-            <DialogDescription>
-              You picked HSK 1, so you're starting from the beginning. Spend a few minutes with these foundations — they'll make every flashcard, story, and dialogue click much faster.
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="space-y-5 text-sm">
-            <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
-              <h3 className="font-heading text-base mb-2">1. The four tones (+ neutral)</h3>
-              <p className="text-muted-foreground mb-3">
-                Mandarin is tonal — the pitch of a syllable changes the word. Practice these out loud:
-              </p>
-              <ul className="space-y-1.5 text-foreground">
-                <li><span className="font-mono text-emerald-600 dark:text-emerald-400">mā</span> — 1st tone, high &amp; flat (妈 "mom")</li>
-                <li><span className="font-mono text-blue-600 dark:text-blue-400">má</span> — 2nd tone, rising (麻 "hemp")</li>
-                <li><span className="font-mono text-amber-600 dark:text-amber-400">mǎ</span> — 3rd tone, dip down then up (马 "horse")</li>
-                <li><span className="font-mono text-rose-600 dark:text-rose-400">mà</span> — 4th tone, sharp falling (骂 "scold")</li>
-                <li><span className="font-mono text-muted-foreground">ma</span> — neutral, light &amp; unstressed (吗 question particle)</li>
-              </ul>
-            </section>
-
-            <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
-              <h3 className="font-heading text-base mb-2">2. Pinyin — your training wheels</h3>
-              <p className="text-muted-foreground">
-                Pinyin spells out Chinese sounds using Latin letters, with marks (¯ ´ ˇ `) showing the tone. A few sounds aren't intuitive:
-              </p>
-              <ul className="mt-2 space-y-1 text-foreground">
-                <li><span className="font-mono">q</span> ≈ "ch" (light, tongue forward)</li>
-                <li><span className="font-mono">x</span> ≈ "sh" (light, tongue forward)</li>
-                <li><span className="font-mono">zh / ch / sh</span> — pulled back, retroflex</li>
-                <li><span className="font-mono">c</span> ≈ "ts" in "cats"</li>
-                <li><span className="font-mono">ü</span> — say "ee" with rounded lips</li>
-              </ul>
-            </section>
-
-            <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
-              <h3 className="font-heading text-base mb-2">3. Characters vs words</h3>
-              <p className="text-muted-foreground">
-                Each character (汉字) is one syllable with its own meaning. Many words are pairs — e.g. 你好 (nǐ hǎo, "hello") = 你 "you" + 好 "good". Don't panic about memorizing strokes; recognition comes first.
-              </p>
-            </section>
-
-            <section className="rounded-2xl border border-border/60 bg-secondary/20 p-4">
-              <h3 className="font-heading text-base mb-2">4. How to use Polysia</h3>
-              <ul className="space-y-1 text-muted-foreground">
-                <li>• <span className="text-foreground">Flashcards</span> — daily reviews; tap a character to hear it.</li>
-                <li>• <span className="text-foreground">Reading</span> — short stories with pinyin support and audio.</li>
-                <li>• <span className="text-foreground">Roleplay</span> — try simple conversations once you know ~30 words.</li>
-              </ul>
-            </section>
-
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-4 text-xs text-muted-foreground sm:text-sm">
               Tip: keep YouTube tabs open for tone drills (search "Mandarin tones practice"). 10 minutes a day is plenty to start.
             </p>
           </div>
 
-          <DialogFooter>
-            <Button className="rounded-xl" onClick={dismissHsk1Intro}>
+          <DialogFooter className="border-t bg-card px-6 py-4 sm:px-8">
+            <Button className="w-full rounded-xl sm:w-auto" onClick={dismissHsk1Intro}>
               Got it — let's start
             </Button>
           </DialogFooter>
@@ -1509,7 +1498,7 @@ export function LearningHub() {
         <div className="flex flex-col min-h-screen overflow-x-hidden">
           {/* Top Bar */}
           <header className="border-b bg-background/50 backdrop-blur-sm px-6 py-4 sticky top-0 z-40">
-            <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
               <div className="flex items-center gap-4">
                 <Link to="/" className="flex items-center gap-2">
                   <img src="/logo only.svg" alt="Polysia" className="h-8 w-8" />
@@ -1530,13 +1519,6 @@ export function LearningHub() {
                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
                 <button
-                  aria-label="Simulate next day"
-                  className="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground"
-                  onClick={handleSimulateNextDay}
-                >
-                  <Calendar className="w-5 h-5" />
-                </button>
-                <button
                   aria-label="Open settings"
                   className="p-2 hover:bg-secondary rounded-full transition-colors"
                   onClick={() => navigate("/settings")}
@@ -1549,7 +1531,7 @@ export function LearningHub() {
 
           {/* Dashboard Content */}
           <main className="p-4 sm:p-6 pb-24 sm:pb-32 animate-in fade-in duration-700">
-            <div className="mx-auto max-w-7xl space-y-6 sm:space-y-8">
+            <div className="mx-auto max-w-screen-2xl space-y-6 sm:space-y-8">
               <section className="space-y-3 pt-2">
                 <h1 className="text-3xl font-heading tracking-tight sm:text-5xl">
                   Start your learning session
@@ -1642,6 +1624,7 @@ export function LearningHub() {
 
               <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr,0.8fr] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
                 <div className="space-y-6">
+                  <HSKRoadmap hskProgress={hskProgress} />
                   <MasteryBoard cards={deck} />
                 </div>
 
@@ -1730,7 +1713,7 @@ export function LearningHub() {
                   </div>
                 ) : dueCards.length > 0 ? (
                   <>
-                    <div className="mb-8 text-center">
+                    <div className="mb-8 text-center sm:mb-12">
                       <p className="mb-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
                         HSK {hskProgress.currentLevel}
                       </p>
@@ -1739,130 +1722,138 @@ export function LearningHub() {
                         Review characters with spaced repetition. Cards you struggle with come back sooner, cards you know push further out.
                       </p>
                     </div>
-                    <div className="space-y-8 sm:space-y-12">
-                      <div className="relative aspect-[4/3] sm:aspect-[16/10] group perspective-1000">
-                        <div className="absolute inset-0 bg-primary/20 blur-3xl opacity-20 -z-10" />
-                        <button
-                          type="button"
-                          onClick={handleFlashcardFlip}
-                          className="relative w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-5 sm:p-10 text-center transition-all duration-500 hover:border-zinc-400 dark:hover:border-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 overflow-hidden"
-                          aria-label="Flip flashcard"
-                          aria-pressed={isFlashcardFlipped}
-                        >
-                          <div
-                            className={`absolute inset-0 flex flex-col items-center justify-center ${
-                              skipTransition ? "" : "transition-opacity duration-300"
-                            } ${isFlashcardFlipped ? "opacity-0" : "opacity-100"}`}
-                          >
-                            <div className="relative w-full h-full flex flex-col items-center justify-center gap-8">
-                              <span className="text-7xl sm:text-9xl tracking-tighter">
-                                {currentCard.s}
-                              </span>
-                              <div className="px-4 text-center">
-                                <p className="text-lg sm:text-2xl font-medium leading-relaxed max-w-xl">
-                                  <ChineseTooltipText 
-                                    text={(() => {
-                                      const storedSentence = currentCard.exampleSentence.trim();
-                                      if (storedSentence && !HSK_VOCAB_LABEL_REGEX.test(storedSentence)) {
-                                        return storedSentence;
-                                      }
-                                      const parsed = parseExampleFromNotes(currentCard.n);
-                                      if (parsed.sentence) return parsed.sentence;
-                                      return `这是关于${currentCard.s}的一个例子。`;
-                                    })()} 
-                                    highlightText={currentCard.s}
-                                  />
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div
-                            className={`absolute inset-0 flex flex-col items-center justify-center ${
-                              skipTransition ? "" : "transition-opacity duration-300"
-                            } ${isFlashcardFlipped ? "opacity-100" : "opacity-0"}`}
-                          >
-                            <div className="flex flex-col items-center gap-6 sm:gap-10">
-                              <div className="space-y-1 text-center">
-                                <span className="text-2xl sm:text-4xl tracking-tight block text-muted-foreground">
-                                  {currentCard.p}
-                                </span>
-                                <span className="text-xl sm:text-3xl font-medium max-w-md block text-muted-foreground">
-                                  {currentCard.e}
-                                </span>
-                                {parseExampleFromNotes(currentCard.n).translation && (
-                                  <span className="text-base sm:text-lg italic mt-4 block text-muted-foreground/80 max-w-lg px-4">
-                                    &quot;{parseExampleFromNotes(currentCard.n).translation}&quot;
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      </div>
 
-                      <div className="flex items-center justify-center gap-10 text-sm font-medium">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-primary text-lg">{sessionFlashcardsRef.current + 1}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Cards Seen</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-zinc-400 text-lg">{dueCards.length}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Remaining</span>
-                        </div>
-                      </div>
-
-                      <div
-                        className={`hidden grid-cols-4 gap-3 transition-all duration-300 sm:grid ${
-                          isFlashcardFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
-                        }`}
-                      >
-                        {(() => {
-                          const intervals = getProjectedIntervals();
-                          return [
-                            { label: "Again", rating: "AGAIN" as const },
-                            { label: "Hard", rating: "HARD" as const },
-                            { label: "Good", rating: "GOOD" as const },
-                            { label: "Easy", rating: "EASY" as const },
-                          ].map((item, idx) => (
-                            <button
-                              key={item.label}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRate(item.rating);
-                              }}
-                              className="flex flex-col items-center gap-1 p-3 sm:p-4 rounded-2xl border bg-card hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-secondary transition-all"
+                    <div className="flex flex-col gap-8 items-center">
+                      <div className="w-full max-w-2xl space-y-8 sm:space-y-12">
+                        <div className="relative aspect-[4/3] sm:aspect-[16/12] group perspective-1000">
+                          <div className="absolute inset-0 bg-primary/20 blur-3xl opacity-20 -z-10" />
+                          <button
+                            type="button"
+                            onClick={handleFlashcardFlip}
+                            className="relative w-full h-full bg-card border-2 border-border rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-5 sm:p-10 text-center transition-all duration-500 hover:border-zinc-400 dark:hover:border-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 overflow-hidden"
+                            aria-label="Flip flashcard"
+                            aria-pressed={isFlashcardFlipped}
+                          >
+                            <div
+                              className={`absolute inset-0 flex flex-col items-center justify-center ${
+                                skipTransition ? "" : "transition-opacity duration-300"
+                              } ${isFlashcardFlipped ? "opacity-0" : "opacity-100"}`}
                             >
-                              <span className="text-xs text-muted-foreground uppercase tracking-widest leading-none mb-1">
-                                {idx + 1}
-                              </span>
-                              <span className="font-medium">{item.label}</span>
-                              <span className="text-[10px] sm:text-xs text-muted-foreground font-mono">
-                                {intervals[item.rating]}
-                              </span>
-                            </button>
-                          ));
-                        })()}
+                              <div className="relative w-full h-full flex flex-col items-center justify-center gap-8">
+                                <span className="text-7xl sm:text-9xl tracking-tighter">
+                                  {currentCard.s}
+                                </span>
+                                <div className="px-4 text-center">
+                                  <p className="text-lg sm:text-2xl font-medium leading-relaxed max-w-xl">
+                                    <ChineseTooltipText 
+                                      text={(() => {
+                                        const storedSentence = currentCard.exampleSentence.trim();
+                                        if (storedSentence && !HSK_VOCAB_LABEL_REGEX.test(storedSentence)) {
+                                          return storedSentence;
+                                        }
+                                        const parsed = parseExampleFromNotes(currentCard.n);
+                                        if (parsed.sentence) return parsed.sentence;
+                                        return `这是关于${currentCard.s}的一个例子。`;
+                                      })()} 
+                                      highlightText={currentCard.s}
+                                    />
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <div
+                              className={`absolute inset-0 flex flex-col items-center justify-center ${
+                                skipTransition ? "" : "transition-opacity duration-300"
+                              } ${isFlashcardFlipped ? "opacity-100" : "opacity-0"}`}
+                            >
+                              <div className="flex flex-col items-center gap-6 sm:gap-10">
+                                <div className="space-y-1 text-center">
+                                  <span className="text-2xl sm:text-4xl tracking-tight block text-muted-foreground">
+                                    {currentCard.p}
+                                  </span>
+                                  <span className="text-xl sm:text-3xl font-medium max-w-md block text-muted-foreground">
+                                    {currentCard.e}
+                                  </span>
+                                  {parseExampleFromNotes(currentCard.n).translation && (
+                                    <span className="text-base sm:text-lg italic mt-4 block text-muted-foreground/80 max-w-lg px-4">
+                                      &quot;{parseExampleFromNotes(currentCard.n).translation}&quot;
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        </div>
+
+                        {/* Session Stats centered below the card */}
+                        <div className="flex items-center justify-center gap-10 text-sm font-medium">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-primary text-lg">{sessionFlashcardsRef.current + 1}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest text-center">Session Progress</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-muted-foreground text-lg">{dueCards.length}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest text-center">Remaining</span>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`hidden grid-cols-4 gap-3 transition-all duration-300 sm:grid ${
+                            isFlashcardFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
+                          }`}
+                        >
+                          {(() => {
+                            const intervals = getProjectedIntervals();
+                            return [
+                              { label: "Again", rating: "AGAIN" as const },
+                              { label: "Hard", rating: "HARD" as const },
+                              { label: "Good", rating: "GOOD" as const },
+                              { label: "Easy", rating: "EASY" as const },
+                            ].map((item, idx) => (
+                              <button
+                                key={item.label}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRate(item.rating);
+                                }}
+                                className="flex flex-col items-center gap-1 p-3 sm:p-4 rounded-2xl border bg-card hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-secondary transition-all"
+                              >
+                                <span className="text-xs text-muted-foreground uppercase tracking-widest leading-none mb-1">
+                                  {idx + 1}
+                                </span>
+                                <span className="font-medium">{item.label}</span>
+                                <span className="text-[10px] sm:text-xs text-muted-foreground font-mono">
+                                  {intervals[item.rating]}
+                                </span>
+                              </button>
+                            ));
+                          })()}
+                        </div>
                       </div>
                     </div>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center space-y-6">
-                    <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
-                      <CheckCircle2 className="h-10 w-10 text-primary" />
-                    </div>
-                    <div className="text-center">
-                      <h3 className="text-2xl mb-2">Daily Goal Reached!</h3>
-                      <p className="text-muted-foreground max-w-sm mx-auto">
-                        You've finished your cards for today. Want to learn more? Increase your daily limits in Settings.
+                  <div className="flex flex-col items-center justify-center space-y-8 py-12">
+                    <div className="text-center space-y-2">
+                      <h3 className="text-3xl font-light">All caught up!</h3>
+                      <p className="text-muted-foreground text-sm">
+                        You've reached your goal for today.
                       </p>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Button onClick={() => navigate("/settings")} className="rounded-full shadow-lg">
-                        Adjust Daily Limits <Settings className="ml-2 h-4 w-4" />
+
+                    <div className="flex flex-col items-center gap-4">
+                      <Button 
+                        onClick={exitFlow} 
+                        className="rounded-full px-8 py-6 text-lg shadow-sm hover:shadow-md transition-all"
+                      >
+                        Done
                       </Button>
-                      <Button onClick={exitFlow} variant="outline" className="rounded-full">
-                        Return to Dashboard
-                      </Button>
+                      <button 
+                        onClick={() => navigate("/settings")}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Change daily limits in Settings
+                      </button>
                     </div>
                   </div>
                 )}
@@ -2190,5 +2181,166 @@ export function LearningHub() {
     </div>
   );
 }
+
+const MasteryBoard = ({ cards }: { cards: Flashcard[] }) => {
+  const [filter, setFilter] = useState<"all" | "mastered" | "learning">("all");
+  
+  const filteredCards = useMemo(() => {
+    let base = cards.filter(c => c.state !== "NEW");
+    switch (filter) {
+      case "mastered": base = base.filter(c => c.repetition >= 5); break;
+      case "learning": base = base.filter(c => c.repetition < 5); break;
+    }
+    return base.sort((a, b) => b.repetition - a.repetition);
+  }, [cards, filter]);
+
+  return (
+    <div className="space-y-4 rounded-3xl border bg-card p-5 sm:p-6 transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-xl font-heading">Vocabulary mastery board</h2>
+        <div className="flex p-1 bg-secondary/30 rounded-xl self-start sm:self-center border border-border/50">
+          {(["all", "mastered", "learning"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setFilter(t)}
+              className={cn(
+                "px-3 py-1 text-xs font-medium rounded-lg transition-all capitalize border",
+                filter === t 
+                  ? "bg-card text-foreground shadow-sm border-border/50" 
+                  : "text-muted-foreground hover:text-foreground border-transparent"
+              )}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-6 xl:grid-cols-8 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+        {filteredCards.length > 0 ? (
+          filteredCards.map((card) => {
+            const mastery = Math.min(5, card.repetition);
+            const dotColor =
+              mastery >= 5 ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" :
+              mastery >= 3 ? "bg-sky-500" :
+              mastery >= 1 ? "bg-amber-500" :
+              "bg-rose-400";
+
+            return (
+              <Tooltip key={card.id}>
+                <TooltipTrigger asChild>
+                  <div className="aspect-square flex flex-col items-center justify-center p-1 rounded-xl border border-border/50 hover:border-primary/30 transition-all hover:bg-secondary/10 group cursor-default relative">
+                    <span className={cn(
+                      "leading-none font-medium text-foreground transition-transform group-hover:scale-110 mb-1",
+                      card.s.length > 2 ? "text-sm sm:text-base" : "text-lg"
+                    )}>
+                      {card.s.slice(0, 3)}
+                    </span>
+                    <div className={cn("w-1.5 h-1.5 rounded-full", dotColor)} />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs font-semibold">{card.p}</p>
+                  <p className="text-[10px] text-muted-foreground">{card.e}</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })
+        ) : (
+          <div className="col-span-full py-12 text-center bg-secondary/5 rounded-2xl border border-dashed">
+            <p className="text-sm text-muted-foreground">No vocabulary in this category yet.</p>
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+};
+
+const HSKRoadmap = ({ hskProgress }: { hskProgress: HskProgress }) => {
+  const isMobile = useIsMobile();
+  const allLevels = [1, 2, 3, 4, 5, 6, 7];
+  const currentHsk = hskProgress.currentLevel;
+
+  const levels = useMemo(() => {
+    if (!isMobile) return allLevels;
+    
+    // For mobile, show a window of 4 levels centered around currentHsk as much as possible
+    let start = Math.max(0, currentHsk - 2);
+    if (start + 4 > allLevels.length) {
+      start = Math.max(0, allLevels.length - 4);
+    }
+    return allLevels.slice(start, start + 4);
+  }, [isMobile, currentHsk, allLevels]);
+
+  return (
+    <div className="space-y-6 rounded-3xl border bg-card p-5 sm:p-6 transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-heading">HSK Progress</h2>
+      </div>
+      <div className="relative pt-4 pb-6 overflow-x-auto custom-scrollbar">
+        {/* Background connector line */}
+        <div className={cn(
+          "absolute top-[42px] h-0.5 bg-border z-0",
+          isMobile ? "left-10 right-10" : "left-12 right-12"
+        )} />
+
+        <div className={cn(
+          "flex items-start justify-between px-4",
+          isMobile ? "min-w-full gap-4" : "min-w-[700px] gap-4"
+        )}>
+          {levels.map((lvl, idx) => {
+            const stats = hskProgress.levelStats?.[lvl];
+            const isPrevious = lvl < currentHsk;
+            const isCurrent = lvl === currentHsk;
+            const isUpcoming = lvl > currentHsk;
+
+            const progress = stats ? Math.min(100, Math.round((stats.learned / stats.total) * 100)) : 0;
+            const activeCount = stats ? stats.active : 0;
+            const totalCount = stats ? stats.total : 0;
+
+            return (
+              <div key={lvl} className="flex flex-col items-center gap-4 relative z-10">
+                <div className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all shadow-sm relative z-10",
+                  isPrevious ? "bg-primary border-primary text-primary-foreground" :
+                  isCurrent ? "bg-primary border-primary text-primary-foreground scale-110 shadow-primary/20 shadow-lg" :
+                  "bg-card border-border text-muted-foreground"
+                )}>
+                  <div className="flex flex-col items-center leading-none relative z-10">
+                    <span className="text-[10px] font-bold">HSK</span>
+                    <span className="text-sm font-bold">{lvl}</span>
+                  </div>
+                </div>                
+                <div className={cn("text-center space-y-2", isUpcoming && "opacity-60")}>
+                  <p className={cn(
+                    "text-[10px] uppercase tracking-widest font-bold",
+                    isCurrent ? "text-primary" : "text-foreground/70"
+                  )}>
+                    {isPrevious ? "Learned" : isCurrent ? "Active" : "Upcoming"}
+                  </p>
+                  <div className="flex flex-col items-center">
+                    <div className="w-24 h-1.5 bg-secondary rounded-full overflow-hidden border border-border/20">
+                      <div 
+                        className={cn(
+                          "h-full transition-all duration-1000",
+                          isPrevious ? "bg-primary w-full" : "bg-primary/60"
+                        )}
+                        style={{ width: isPrevious ? "100%" : `${progress}%` }}
+                      />
+                    </div>
+                    <span className="text-[9px] mt-1.5 text-muted-foreground whitespace-nowrap font-medium">
+                      {isPrevious ? "Mastered" : `${activeCount} / ${totalCount} words`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default LearningHub;

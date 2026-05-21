@@ -86,13 +86,10 @@ async function handleGetFlashcards(req, res) {
     const { data: existingNew, error: existingNewError } = await supabaseAdmin.from("flashcards").select("*").eq("user_id", userId).eq("state", "NEW").order("created_at", { ascending: true });
     if (existingNewError) throw existingNewError;
     let sessionNewCards = [...existingNew];
-    const hasExistingCards = learningDue.length > 0 || reviewDue.length > 0 || sessionNewCards.length > 0;
     const canPullMore = (newStartedToday || 0) < newLimit;
     let newNeeded = 0;
     if (canPullMore) {
       newNeeded = newLimit - (newStartedToday || 0);
-    } else if (!hasExistingCards) {
-      newNeeded = 10;
     }
     if (newNeeded > 0) {
       try {

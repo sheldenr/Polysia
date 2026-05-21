@@ -286,27 +286,6 @@ export default function Onboarding() {
   const saveProfileAndSeed = async (): Promise<boolean> => {
     if (!supabase || !user || dailyMinutes === null) return false;
 
-    let startIndex = 1;
-    const mapping: Record<string, number> = {
-      "Total Beginner": 1,
-      "Beginner": 1,
-      "Elementary": 1, // mapping to HSK 1 for now if not specified
-      "Intermediate": 1201, // HSK 4
-      "Advanced": 5601, // HSK 7
-    };
-
-    if (proficiencyLevel in mapping) {
-      startIndex = mapping[proficiencyLevel];
-    } else {
-      const hskMatch = proficiencyLevel.match(/HSK (\d+)/i);
-      if (hskMatch) {
-        const hskLevel = parseInt(hskMatch[1], 10);
-        if (hskLevel >= 7) startIndex = 5601;
-        else if (hskLevel >= 4) startIndex = 1201;
-        else startIndex = 1;
-      }
-    }
-
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: user.id,
