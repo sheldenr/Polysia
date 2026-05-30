@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Layers, ChevronLeft, Volume2, HelpCircle, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ReviewCard, ReviewMeta } from "../hooks/use-review-system";
+import { ReviewCard, ReviewMeta } from "@/hooks/use-review-system";
 import { cn } from "@/lib/utils";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 

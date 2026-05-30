@@ -160,16 +160,6 @@ export default function LandingFeaturesSection() {
                 <h3 className="text-lg font-bold">{cap.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">{cap.description}</p>
               </div>
-              {cap.hasButtons && (
-                <div className="flex gap-2 pt-1">
-                  <button className="px-3 py-1 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors text-[10px] font-bold border border-border/50">
-                    {cap.action}
-                  </button>
-                  <button className="p-1 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors border border-border/50">
-                    <ArrowRight className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
             </motion.div>
           ))}
         </div>

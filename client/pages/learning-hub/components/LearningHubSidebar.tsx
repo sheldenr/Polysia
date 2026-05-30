@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
   useSidebar
 } from "@/components/ui/sidebar";
-import { Layers, BookOpen, MessageCircle, LayoutDashboard, Settings, Search } from "lucide-react";
+import { Layers, BookOpen, MessageCircle, LayoutDashboard, Settings, Search, Book } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UserNav from "@/components/UserNav";
 import { useAuth } from "@/lib/auth";
@@ -36,6 +36,7 @@ const LearningHubSidebar = ({
   const menuItems = [
     { index: null, label: "Dashboard", icon: LayoutDashboard },
     { index: 2, label: "Roleplay", icon: MessageCircle },
+    { index: 3, label: "Grammar", icon: Book },
   ];
 
   return (

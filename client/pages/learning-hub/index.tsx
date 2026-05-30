@@ -18,7 +18,7 @@ import {
   CommandGroup, 
   CommandItem 
 } from "@/components/ui/command";
-import { Layers, BookOpen, MessageCircle, Settings, AlertCircle, Menu } from "lucide-react";
+import { Layers, BookOpen, MessageCircle, Settings, AlertCircle, Menu, Book } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 import LearningHubSidebar from "./components/LearningHubSidebar";
@@ -26,6 +26,7 @@ import DashboardView from "./views/DashboardView";
 import ReviewView from "./views/ReviewView";
 import StoryHubView from "./views/StoryHubView";
 import RoleplayView from "./views/RoleplayView";
+import GrammarView from "./views/GrammarView";
 import Hsk1IntroDialog from "./components/Hsk1IntroDialog";
 import SettingsPanel from "@/components/SettingsPanel";
 
@@ -38,7 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 
 const LearningHub = () => {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -63,13 +64,14 @@ const LearningHub = () => {
     if (mode === "review") setActiveFlowIndex(0);
     else if (mode === "stories") setActiveFlowIndex(1);
     else if (mode === "roleplay") setActiveFlowIndex(2);
+    else if (mode === "grammar") setActiveFlowIndex(3);
     else setActiveFlowIndex(null);
   }, [searchParams]);
 
   useEffect(() => {
     // Check for onboarding intro
     if (user) {
-      const { data: profile } = supabase
+      supabase
         .from("profiles")
         .select("onboarding_hsk_level")
         .eq("id", user.id)
@@ -107,7 +109,7 @@ const LearningHub = () => {
   }, []);
 
   const enterFlow = (index: number) => {
-    const modes = ["review", "stories", "roleplay"];
+    const modes = ["review", "stories", "roleplay", "grammar"];
     setSearchParams({ mode: modes[index] });
     setActiveFlowIndex(index);
   };
@@ -118,13 +120,13 @@ const LearningHub = () => {
   };
 
   const handleLogout = async () => {
-    await signOut();
+    await logout();
     navigate("/login");
   };
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-[#F3F7FF] dark:bg-zinc-950 text-foreground transition-colors duration-300 overflow-hidden">
+      <div className="flex h-screen w-full bg-[#F3F7FF] dark:bg-background text-foreground transition-colors duration-300 overflow-hidden">
         <div className="flex h-full w-full max-w-7xl mx-auto">
           <Hsk1IntroDialog 
             open={showHsk1Intro} 
@@ -161,7 +163,7 @@ const LearningHub = () => {
           />
 
           <SidebarInset className="flex flex-col bg-transparent overflow-hidden p-2 sm:p-4 sm:pl-0">
-            <div className="flex-1 bg-white dark:bg-[#121214] border border-border/60 rounded-2xl shadow-[0_8px_40px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgb(0,0,0,0.4)] overflow-hidden flex flex-col">
+            <div className="flex-1 bg-white dark:bg-white/[0.03] dark:backdrop-blur-xl border border-border/60 dark:border-white/10 rounded-2xl shadow-[0_8px_40px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgb(0,0,0,0.4)] overflow-hidden flex flex-col">
               <header className="flex h-14 shrink-0 items-center justify-between gap-2 px-6 border-b border-border/50 bg-muted/5">
                 <div className="flex items-center gap-2">
                     <SidebarTrigger className="-ml-1 lg:hidden">
@@ -171,7 +173,8 @@ const LearningHub = () => {
                       <h1 className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest font-sans">
                           {activeFlowIndex === 0 ? "Daily Review" : 
                           activeFlowIndex === 1 ? "Story Hub" : 
-                          activeFlowIndex === 2 ? "Practice Conversations" : "Dashboard"}
+                          activeFlowIndex === 2 ? "Practice Conversations" : 
+                          activeFlowIndex === 3 ? "Grammar Reference" : "Dashboard"}
                       </h1>
                     </div>
                 </div>
@@ -238,6 +241,12 @@ const LearningHub = () => {
                         onExit={exitFlow}
                       />
                     )}
+
+                    {activeFlowIndex === 3 && (
+                      <GrammarView 
+                        onExit={exitFlow}
+                      />
+                    )}
                 </div>
               </main>
             </div>
@@ -262,6 +271,10 @@ const LearningHub = () => {
               <CommandItem onSelect={() => { enterFlow(2); setIsSearchOpen(false); }} className="rounded-xl h-11 px-2 data-selected:bg-[rgba(0,0,0,0.05)] cursor-pointer flex items-center gap-2.5">
                 <MessageCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="font-medium text-sm">Roleplay</span>
+              </CommandItem>
+              <CommandItem onSelect={() => { enterFlow(3); setIsSearchOpen(false); }} className="rounded-xl h-11 px-2 data-selected:bg-[rgba(0,0,0,0.05)] cursor-pointer flex items-center gap-2.5">
+                <Book className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="font-medium text-sm">Grammar</span>
               </CommandItem>
             </div>
           </CommandGroup>

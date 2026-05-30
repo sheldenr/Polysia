@@ -275,7 +275,7 @@ const StoryHubView = ({
         </Button>
       </div>
 
-      <div className="group relative bg-card dark:bg-[#121214] border border-border rounded-2xl p-8 sm:p-10 relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none">
+      <div className="group relative bg-card dark:bg-card border border-border rounded-2xl p-8 sm:p-10 relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none">
         {/* Top Accent */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-primary/40" />
 
@@ -312,7 +312,7 @@ const StoryHubView = ({
             return (
               <div 
                 key={chapter.id}
-                className="group relative flex items-center justify-between p-6 rounded-2xl bg-card dark:bg-[#121214] border border-border hover:border-primary/30 transition-all cursor-pointer shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-none overflow-hidden"
+                className="group relative flex items-center justify-between p-6 rounded-2xl bg-card dark:bg-card border border-border hover:border-primary/30 transition-all cursor-pointer shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-none overflow-hidden"
                 onClick={() => onSelectStory(chapter)}
               >
                 {/* Top Accent (Hover) */}

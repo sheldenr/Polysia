@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { ReviewCard } from "../hooks/use-review-system";
+import { ReviewCard } from "@/hooks/use-review-system";
 
 interface MasteryBoardProps {
   cards: ReviewCard[];

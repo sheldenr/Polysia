@@ -56,7 +56,7 @@ const RoleplayView = ({
             <div 
               key={item.id}
               onClick={() => onStartRoleplay(item.id)}
-              className="group relative rounded-2xl bg-card dark:bg-[#121214] border border-border p-6 transition-all hover:border-primary/30 cursor-pointer flex items-center gap-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden"
+              className="group relative rounded-2xl bg-card dark:bg-card border border-border p-6 transition-all hover:border-primary/30 cursor-pointer flex items-center gap-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden"
             >
               {/* Top Accent */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />

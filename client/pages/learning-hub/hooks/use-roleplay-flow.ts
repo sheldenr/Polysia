@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { DeepSeekV3Response } from "@/shared/api";
+import { DeepSeekV3Response } from "@shared/api";
 
 export interface Message {
   role: "user" | "ai";

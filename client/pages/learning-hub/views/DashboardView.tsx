@@ -1,5 +1,5 @@
 import React from "react";
-import { BookOpen, ChevronRight, BarChart3, Target, Flame, GraduationCap, Zap } from "lucide-react";
+import { BookOpen, ChevronRight, BarChart3, Target, Flame, GraduationCap, Zap, Book } from "lucide-react";
 import { ReviewCard, ReviewMeta } from "@/hooks/use-review-system";
 import { LearningActivity } from "../hooks/use-learning-metrics";
 import { Story } from "../hooks/use-story-hub";
@@ -112,7 +112,7 @@ const DashboardView = ({
         {statItems.map((item) => (
           <div
             key={item.label}
-            className="group relative rounded-2xl bg-card dark:bg-[#121214] border border-border p-6 flex flex-col gap-2 hover:border-primary/30 transition-all shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden"
+            className="group relative rounded-2xl bg-card dark:bg-card border border-border p-6 flex flex-col gap-2 hover:border-primary/30 transition-all shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden"
           >
             {/* Top Accent */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -123,6 +123,25 @@ const DashboardView = ({
             <p className="text-2xl font-heading tracking-tight">{item.value}</p>
           </div>
         ))}
+      </section>
+
+      {/* Grammar Quick Access */}
+      <section 
+        className="group relative rounded-2xl bg-primary/5 dark:bg-primary/10 border border-primary/20 p-6 cursor-pointer hover:bg-primary/10 transition-all overflow-hidden"
+        onClick={() => onEnterFlow(3)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <Book className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-heading font-medium">Grammar Reference</h3>
+              <p className="text-xs text-muted-foreground">Master {Object.values(levelNames).length} HSK levels of grammar rules with examples</p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-primary group-hover:translate-x-1 transition-transform" />
+        </div>
       </section>
 
       <section className="grid grid-cols-1 gap-8">
@@ -146,7 +165,7 @@ const DashboardView = ({
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all duration-300",
                       filterLevel === lvl 
-                        ? cn("bg-white dark:bg-[#121214] shadow-sm border-current ring-1 ring-current", levelColors[lvl])
+                        ? cn("bg-white dark:bg-card shadow-sm border-current ring-1 ring-current", levelColors[lvl])
                         : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
                     )}
                   >
@@ -168,7 +187,7 @@ const DashboardView = ({
                 return (
                   <div 
                     key={storyline.name}
-                    className="group relative rounded-2xl bg-card dark:bg-[#121214] border border-border p-6 transition-all hover:border-primary/30 cursor-pointer flex flex-col justify-between shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden"
+                    className="group relative rounded-2xl bg-card dark:bg-card border border-border p-6 transition-all hover:border-primary/30 cursor-pointer flex flex-col justify-between shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden"
                     onClick={() => {
                       onSelectCategory(storyline.name);
                       onEnterFlow(1);
