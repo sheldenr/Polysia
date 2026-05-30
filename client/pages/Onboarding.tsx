@@ -656,7 +656,7 @@ export default function Onboarding() {
                   <Button
                     onClick={() => void handleContinue()}
                     disabled={!canContinue || isSubmitting}
-                    className="rounded-full px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90 transition-all border-none"
+                    className="rounded-[0.75rem] px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90 transition-all border-none"
                   >
                     {isSubmitting && currentStep.key === "referral" ? (
                       <>

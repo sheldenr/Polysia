@@ -4,7 +4,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { handleDemo } from "./routes/demo.js";
 import { handleProfile } from "./routes/profile.js";
-import { handleGetFlashcards, handleSubmitAnswer, handleSimulateNextDay, handleResetProgress } from "./routes/flashcards.js";
+import { handleGetReviews, handleSubmitAnswer, handleSimulateNextDay, handleResetProgress, handleAddToReview } from "./routes/reviews.js";
+import { handleGetStories, handleGetStoryById } from "./routes/stories.js";
 import { handleDeepSeekRoleplay } from "./routes/deepseek-roleplay.js";
 import { handleDeepSeekReading } from "./routes/deepseek-reading.js";
 import { handleTTS } from "./routes/tts.js";
@@ -54,10 +55,15 @@ export function createServer() {
 
   // Protected routes (require authentication)
   apiRouter.get("/profile", requireAuth, handleProfile);
-  apiRouter.get("/flashcards", requireAuth, handleGetFlashcards);
-  apiRouter.post("/flashcards/answer", requireAuth, handleSubmitAnswer);
-  apiRouter.post("/flashcards/simulate-next-day", requireAuth, handleSimulateNextDay);
-  apiRouter.post("/flashcards/reset", requireAuth, handleResetProgress);
+  apiRouter.get("/reviews", requireAuth, handleGetReviews);
+  apiRouter.post("/reviews/answer", requireAuth, handleSubmitAnswer);
+  apiRouter.post("/reviews/add", requireAuth, handleAddToReview);
+  apiRouter.post("/reviews/simulate-next-day", requireAuth, handleSimulateNextDay);
+  apiRouter.post("/reviews/reset", requireAuth, handleResetProgress);
+
+  // Stories
+  apiRouter.get("/stories", requireAuth, handleGetStories);
+  apiRouter.get("/stories/:id", requireAuth, handleGetStoryById);
 
   // Mount the router
   app.use("/api", apiRouter);
@@ -70,7 +76,7 @@ export function createServer() {
     console.error("Express error:", err);
     res.status(500).json({ 
       error: "Internal server error", 
-      message: err instanceof Error ? err.message : String(err) 
+      message: err instanceof Error ? error.message : String(err) 
     });
   });
 

@@ -40,11 +40,11 @@ interface DictionaryEntry {
   h: string;
 }
 
-export async function handleGetFlashcards(req: Request, res: Response) {
+export async function handleGetReviews(req: Request, res: Response) {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-  console.log(`[Flashcards] Fetching for user: ${userId}`);
+  console.log(`[Reviews] Fetching for user: ${userId}`);
 
   try {
     if (!supabaseAdmin) {
@@ -54,11 +54,30 @@ export async function handleGetFlashcards(req: Request, res: Response) {
     // 1. Get user profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("id, onboarding_hsk_level, daily_new_limit, daily_review_limit")
+      .select("id, onboarding_hsk_level, daily_new_limit, daily_review_limit, streak_days")
       .eq("id", userId)
       .single();
 
     if (profileError) throw profileError;
+
+    const proficiencyToHsk: Record<string, number> = {
+      "Total Beginner": 1,
+      "Beginner": 1,
+      "Elementary": 2,
+      "Intermediate": 4,
+      "Advanced": 7,
+      "HSK 1": 1,
+      "HSK 2": 2,
+      "HSK 3": 3,
+      "HSK 4": 4,
+      "HSK 5": 5,
+      "HSK 6": 6,
+      "HSK 7": 7,
+      "HSK 8": 8,
+      "HSK 9": 9,
+    };
+
+    const userLevelLabel = profile.onboarding_hsk_level || "HSK 1";
 
     // 2. Determine SRS Day Rollover (3:00 AM)
     const now = new Date();
@@ -69,12 +88,12 @@ export async function handleGetFlashcards(req: Request, res: Response) {
     }
     srsDayStart.setHours(rolloverHour, 0, 0, 0);
 
-    console.log(`[Flashcards] SRS Day Start: ${srsDayStart.toISOString()} (Now: ${now.toISOString()})`);
+    console.log(`[Reviews] SRS Day Start: ${srsDayStart.toISOString()} (Now: ${now.toISOString()})`);
 
     // 3. Fetch existing due cards (Learning & Review)
     // We fetch all cards where due_date <= now
     const { data: existingCards, error: cardsError } = await supabaseAdmin
-      .from("flashcards")
+      .from("reviews")
       .select("*")
       .eq("user_id", userId)
       .lte("due_date", now.toISOString())
@@ -92,14 +111,14 @@ export async function handleGetFlashcards(req: Request, res: Response) {
     // Then new cards.
     const reviewDue = existingCards.filter(c => c.state === 'REVIEW').slice(0, reviewLimit);
 
-    console.log(`[Flashcards] Existing due: learning=${learningDue.length}, review=${reviewDue.length} (limit=${reviewLimit})`);
+    console.log(`[Reviews] Existing due: learning=${learningDue.length}, review=${reviewDue.length} (limit=${reviewLimit})`);
 
     // 4. Check if we should pull New cards
     const newLimit = profile.daily_new_limit || 10;
     
     // Check how many cards were moved from NEW today
     const { count: newStartedToday, error: newTodayError } = await supabaseAdmin
-      .from("flashcards")
+      .from("reviews")
       .select("*", { count: 'exact', head: true })
       .eq("user_id", userId)
       .gte("created_at", srsDayStart.toISOString())
@@ -107,11 +126,11 @@ export async function handleGetFlashcards(req: Request, res: Response) {
 
     if (newTodayError) throw newTodayError;
 
-    console.log(`[Flashcards] New cards started today: ${newStartedToday || 0} (limit=${newLimit})`);
+    console.log(`[Reviews] New cards started today: ${newStartedToday || 0} (limit=${newLimit})`);
 
     // Also check if they already have NEW cards sitting in the DB
     const { data: existingNew, error: existingNewError } = await supabaseAdmin
-      .from("flashcards")
+      .from("reviews")
       .select("*")
       .eq("user_id", userId)
       .eq("state", "NEW")
@@ -119,7 +138,7 @@ export async function handleGetFlashcards(req: Request, res: Response) {
 
     if (existingNewError) throw existingNewError;
 
-    console.log(`[Flashcards] Existing NEW cards in DB: ${existingNew.length}`);
+    console.log(`[Reviews] Existing NEW cards in DB: ${existingNew.length}`);
 
     let sessionNewCards = [...existingNew];
     
@@ -136,31 +155,13 @@ export async function handleGetFlashcards(req: Request, res: Response) {
       newNeeded = Math.max(0, newLimit - (newStartedToday || 0) - existingNew.length);
     }
 
-    console.log(`[Flashcards] canPullMore=${canPullMore}, newNeeded=${newNeeded}`);
+    console.log(`[Reviews] canPullMore=${canPullMore}, newNeeded=${newNeeded}`);
 
     if (newNeeded > 0) {
       try {
         const dictionaryRaw = await readFile(DICTIONARY_PATH, "utf-8");
         const dictionary: DictionaryEntry[] = JSON.parse(dictionaryRaw);
         
-        const proficiencyToHsk: Record<string, number> = {
-          "Total Beginner": 1,
-          "Beginner": 1,
-          "Elementary": 2,
-          "Intermediate": 4,
-          "Advanced": 7,
-          "HSK 1": 1,
-          "HSK 2": 2,
-          "HSK 3": 3,
-          "HSK 4": 4,
-          "HSK 5": 5,
-          "HSK 6": 6,
-          "HSK 7": 7,
-          "HSK 8": 8,
-          "HSK 9": 9,
-        };
-
-        const userLevelLabel = profile.onboarding_hsk_level || "HSK 1";
         let targetHskLevel = proficiencyToHsk[userLevelLabel];
         
         if (!targetHskLevel) {
@@ -190,7 +191,7 @@ export async function handleGetFlashcards(req: Request, res: Response) {
 
         // We need to skip cards that the user already has
         const { data: userCardSourceIds } = await supabaseAdmin
-          .from("flashcards")
+          .from("reviews")
           .select("source_id")
           .eq("user_id", userId);
         
@@ -219,7 +220,7 @@ export async function handleGetFlashcards(req: Request, res: Response) {
           });
 
           const { data: insertedCards, error: insertError } = await supabaseAdmin
-            .from("flashcards")
+            .from("reviews")
             .insert(inserts)
             .select();
 
@@ -238,7 +239,7 @@ export async function handleGetFlashcards(req: Request, res: Response) {
     const dictionary: DictionaryEntry[] = JSON.parse(dictionaryRaw);
 
     const { data: hskStats } = await supabaseAdmin
-      .from("flashcards")
+      .from("reviews")
       .select("hsk_level, state")
       .eq("user_id", userId);
 
@@ -269,10 +270,11 @@ export async function handleGetFlashcards(req: Request, res: Response) {
       meta: {
         newLimit,
         reviewLimit,
+        streak: profile.streak_days || 0,
         newStartedToday: newStartedToday || 0,
-        reviewDueCount: existingCards.filter(c => c.state === 'REVIEW').length,
+        reviewDueCount: (hskStats || []).filter(c => c.state === 'REVIEW' && new Date(c.due_date) <= now).length,
         learningDueCount: learningDue.length,
-        nextReviewDate: existingCards.length === 0 ? (await supabaseAdmin.from("flashcards").select("due_date").eq("user_id", userId).gt("due_date", now.toISOString()).order("due_date", { ascending: true }).limit(1).single()).data?.due_date : null,
+        nextReviewDate: existingCards.length === 0 ? (await supabaseAdmin.from("reviews").select("due_date").eq("user_id", userId).gt("due_date", now.toISOString()).order("due_date", { ascending: true }).limit(1).single()).data?.due_date : null,
         hskProgress: {
           currentLevel: currentHskLevel,
           learned: hskLearned,
@@ -282,7 +284,7 @@ export async function handleGetFlashcards(req: Request, res: Response) {
       }
     });
   } catch (error) {
-    console.error("Error in handleGetFlashcards:", error);
+    console.error("Error in handleGetReviews:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -300,7 +302,7 @@ export async function handleSubmitAnswer(req: Request, res: Response) {
     }
 
     const { data: card, error: cardError } = await supabaseAdmin
-      .from("flashcards")
+      .from("reviews")
       .select("*")
       .eq("id", cardId)
       .eq("user_id", userId)
@@ -393,7 +395,7 @@ export async function handleSubmitAnswer(req: Request, res: Response) {
     }
 
     const { error: updateError } = await supabaseAdmin
-      .from("flashcards")
+      .from("reviews")
       .update({
         state: newState,
         step_index: newStepIndex,
@@ -414,11 +416,11 @@ export async function handleSubmitAnswer(req: Request, res: Response) {
     else if (card.state === "REVIEW") actionType = "review";
     
     const actionResult = rating === "AGAIN" ? "failure" : "success";
-    const action = `stat:flashcard-${actionType}-${actionResult}`;
+    const action = `stat:review-${actionType}-${actionResult}`;
 
     await supabaseAdmin.from("learning_activity").insert({
       user_id: userId,
-      mode: "flashcards",
+      mode: "review",
       action: action,
       minutes_spent: 0,
     });
@@ -439,10 +441,9 @@ export async function handleSimulateNextDay(req: Request, res: Response) {
       throw new Error("Supabase admin client not initialized");
     }
 
-    // Shift all flashcard due dates and creation times back by 24 hours
-    // This makes tomorrow's cards due today AND resets the "new cards started today" count
+    // Shift all review due dates and creation times back by 24 hours
     const { data: cards } = await supabaseAdmin
-      .from("flashcards")
+      .from("reviews")
       .select("id, due_date, created_at")
       .eq("user_id", userId);
     
@@ -451,7 +452,7 @@ export async function handleSimulateNextDay(req: Request, res: Response) {
         const newDueDate = new Date(new Date(card.due_date).getTime() - 24 * 60 * 60 * 1000);
         const newCreatedAt = new Date(new Date(card.created_at).getTime() - 24 * 60 * 60 * 1000);
         await supabaseAdmin
-          .from("flashcards")
+          .from("reviews")
           .update({ 
             due_date: newDueDate.toISOString(),
             created_at: newCreatedAt.toISOString()
@@ -481,23 +482,23 @@ export async function handleResetProgress(req: Request, res: Response) {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-  console.log(`[Flashcards] Resetting progress for user: ${userId}`);
+  console.log(`[Reviews] Resetting progress for user: ${userId}`);
 
   try {
     if (!supabaseAdmin) {
       throw new Error("Supabase admin client not initialized");
     }
 
-    // 1. Delete all flashcards for the user
-    console.log(`[Reset] Deleting flashcards for ${userId}...`);
-    const { error: flashcardsError } = await supabaseAdmin
-      .from("flashcards")
+    // 1. Delete all reviews for the user
+    console.log(`[Reset] Deleting reviews for ${userId}...`);
+    const { error: reviewsError } = await supabaseAdmin
+      .from("reviews")
       .delete()
       .eq("user_id", userId);
 
-    if (flashcardsError) {
-      console.error("[Reset] Flashcards delete error:", flashcardsError);
-      throw flashcardsError;
+    if (reviewsError) {
+      console.error("[Reset] Reviews delete error:", reviewsError);
+      throw reviewsError;
     }
 
     // 2. Delete all learning activity for the user
@@ -535,5 +536,64 @@ export async function handleResetProgress(req: Request, res: Response) {
       error: "Internal server error", 
       message: error instanceof Error ? error.message : String(error) 
     });
+  }
+}
+
+export async function handleAddToReview(req: Request, res: Response) {
+  const userId = req.user?.id;
+  const { text } = req.body;
+
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!text) return res.status(400).json({ error: "Missing text" });
+
+  try {
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+
+    // 1. Look up in dictionary
+    const dictionaryRaw = await readFile(DICTIONARY_PATH, "utf-8");
+    const dictionary: DictionaryEntry[] = JSON.parse(dictionaryRaw);
+    
+    // Find exact match (simplified or traditional)
+    let entry = dictionary.find(d => d.s === text || d.t === text);
+    
+    let insertData: any;
+    
+    if (entry) {
+      const parsed = parseExampleFromNotes(entry.n);
+      insertData = {
+        user_id: userId,
+        simplified: entry.s,
+        traditional: entry.t,
+        pinyin: entry.p,
+        english: entry.e,
+        grammar: entry.g,
+        notes: entry.n,
+        example_sentence: parsed.sentence || "",
+        source_id: entry.h,
+        hsk_level: parseInt(entry.h.match(/L(\d+)/)?.[1] || "1"),
+      };
+    } else {
+      // Return error if not in dictionary for now
+      return res.status(404).json({ error: "Word not found in dictionary" });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("reviews")
+      .upsert({
+        ...insertData,
+        state: "NEW",
+        due_date: new Date().toISOString(),
+      }, { onConflict: "user_id, source_id" })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, card: data });
+  } catch (error) {
+    console.error("Error in handleAddToReview:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 }

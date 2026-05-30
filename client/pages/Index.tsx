@@ -1,18 +1,14 @@
 import Layout from "@/components/Layout";
-import HeroSection from "@/components/HeroSection";
-import CharacterScroller from "@/components/CharacterScroller";
-import WhyChooseSection from "@/components/WhyChooseSection";
-import FeaturesSection from "@/components/FeaturesSection";
+import NewHeroSection from "@/components/NewHeroSection";
+import LandingFeaturesSection from "@/components/LandingFeaturesSection";
 import PricingSection from "@/components/PricingSection";
 import FAQSection from "@/components/FAQSection";
 
 export default function Index() {
   return (
     <Layout>
-      <HeroSection />
-      <CharacterScroller />
-      <WhyChooseSection />
-      <FeaturesSection />
+      <NewHeroSection />
+      <LandingFeaturesSection />
       <PricingSection />
       <FAQSection />
     </Layout>

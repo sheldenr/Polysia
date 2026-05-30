@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { parseJsonResponse } from "@/lib/http";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import type {
   BillingPlanId,
   CreateCheckoutSessionResponse,
@@ -24,10 +25,10 @@ const plans: Array<{
 }> = [
   {
     id: "pro_monthly",
-    name: "Monthly",
+    name: "Pro Monthly",
     price: "$2.99",
-    period: "/mo",
-    description: "Complete access with a 7-day free trial.",
+    period: "/month",
+    description: "Complete access with a 7-day free trial. Perfect for dedicated learners.",
     features: [
       "Unlimited Practice Conversations",
       "Tailored Reading support",
@@ -40,17 +41,17 @@ const plans: Array<{
   },
   {
     id: "lifetime",
-    name: "Lifetime",
+    name: "Lifetime Access",
     price: "$44.99",
-    period: " one-time",
-    description: "Secure your fluency with a single payment.",
+    period: "one-time",
+    description: "Secure your fluency forever with a single payment. No recurring fees.",
     features: [
       "All Pro features forever",
       "Lifetime updates",
       "Priority Support",
-      "No recurring fees",
+      "Future AI capabilities included",
     ],
-    buttonText: "Get Lifetime",
+    buttonText: "Get Lifetime Access",
     popular: false,
   },
 ];
@@ -117,86 +118,105 @@ export default function PricingSection() {
   };
 
   return (
-    <section className="relative w-full bg-background px-6 pb-24 pt-24 sm:pb-32 sm:pt-32">
-      <div className="absolute left-0 top-0 h-px w-full bg-border/60" />
+    <section className="relative w-full bg-white dark:bg-background px-6 py-24 sm:py-32 overflow-hidden">
+      {/* Refined Divider */}
+      <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-16 text-center">
-          <h2 className="mb-4 text-3xl font-heading text-foreground sm:text-4xl lg:text-5xl">
-            Fair and effective{" "}
-            <span className="italic-serif text-primary">
-              pricing.
-            </span>
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-12 text-left">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-semibold tracking-tight text-foreground mb-4">
+            Invest in your <br />
+            Mandarin future
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-            Choose between a monthly subscription and a lifelong plan for learning. Secure checkout is powered by Stripe.
+          <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl">
+            Professional tools for serious language learners. <br />
+            Simple pricing, powerful results.
           </p>
         </div>
 
-        <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
           {plans.map((plan) => (
             <div
                 key={plan.id}
-                className={`relative flex flex-col overflow-hidden rounded-3xl border p-8 transition-all duration-300 ${
-                  plan.id === "pro_monthly"
-                    ? "bg-black text-white border-black shadow-2xl shadow-black/20 dark:bg-white dark:text-black dark:border-white"
-                    : "bg-zinc-50 dark:bg-zinc-900/50 border-border"
-                }`}
+                className={cn(
+                  "relative flex flex-col justify-between p-6 sm:p-10 transition-all duration-500 group rounded-xl",
+                  plan.popular 
+                    ? "bg-white dark:bg-zinc-950 text-foreground dark:text-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] ring-1 ring-zinc-200 dark:ring-white/10" 
+                    : "bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none"
+                )}
               >
-              <div className="mb-8">
-                <h3 className={`mb-2 text-xl ${plan.id === "pro_monthly" ? "text-white dark:text-black" : "text-foreground"}`}>
-                  {plan.name}
-                  {plan.id === "pro_monthly" && (
-                    <span className="ml-2 inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary dark:bg-black/20 dark:text-black">
-                      7-day trial
-                    </span>
-                  )}
-                </h3>
-                <div className="flex items-baseline gap-1">
-                  <span className={`text-4xl ${plan.id === "pro_monthly" ? "text-white dark:text-black" : "text-primary"}`}>{plan.price}</span>
-                  <span className={`text-sm font-medium ${plan.id === "pro_monthly" ? "text-zinc-400 dark:text-zinc-600" : "text-muted-foreground"}`}>
-                    {plan.period}
-                  </span>
+              <div>
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h3 className={cn(
+                      "text-[10px] font-bold capitalize tracking-[0.15em] mb-3",
+                      plan.popular ? "text-primary" : "text-muted-foreground"
+                    )}>
+                      {plan.name}
+                    </h3>
+                    <div className="flex items-baseline gap-2">
+                      <span className={cn(
+                        "text-4xl sm:text-5xl font-heading tracking-tighter",
+                        plan.popular ? "text-foreground dark:text-white" : "text-foreground"
+                      )}>
+                        {plan.price}
+                      </span>
+                      <span className={cn(
+                        "text-sm font-medium",
+                        plan.popular ? "text-zinc-500 dark:text-zinc-500" : "text-muted-foreground"
+                      )}>
+                        {plan.period}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <p className={`mt-4 text-sm leading-relaxed ${plan.id === "pro_monthly" ? "text-zinc-400 dark:text-zinc-600" : "text-muted-foreground"}`}>
+
+                <p className={cn(
+                  "text-sm leading-relaxed mb-6 max-w-sm",
+                  plan.popular ? "text-muted-foreground dark:text-zinc-400" : "text-muted-foreground"
+                )}>
                   {plan.description}
                 </p>
-              </div>
 
-              <div className="mb-8 flex-1 space-y-4">
-                {plan.features.map((feature) => (
-                  <div key={feature} className="flex items-start gap-3">
-                    <div className="mt-1 shrink-0">
-                      <HugeiconsIcon 
-                        icon={Tick02Icon} 
-                        className={`h-4 w-4 ${plan.id === "pro_monthly" ? "text-white dark:text-black" : "text-primary"}`} 
-                        strokeWidth={3} 
-                      />
+                <div className="space-y-3 mb-8">
+                  {plan.features.map((feature) => (
+                    <div key={feature} className="flex items-start gap-3">
+                      <div className="mt-1 shrink-0">
+                        <HugeiconsIcon 
+                          icon={Tick02Icon} 
+                          className={cn(
+                            "h-3.5 w-3.5",
+                            plan.popular ? "text-primary" : "text-zinc-400"
+                          )} 
+                          strokeWidth={2.5} 
+                        />
+                      </div>
+                      <span className={cn(
+                        "text-xs",
+                        plan.popular ? "text-foreground/80 dark:text-zinc-300" : "text-foreground/80"
+                      )}>
+                        {feature}
+                      </span>
                     </div>
-                    <span className={`text-sm leading-tight ${plan.id === "pro_monthly" ? "text-zinc-300 dark:text-zinc-700" : "text-foreground/80"}`}>
-                      {feature}
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
               <Button
                 type="button"
-                variant={plan.popular ? "default" : "outline"}
                 disabled={activeCheckoutPlan !== null}
                 onClick={() => void handleCheckout(plan.id)}
-                  className={`w-full rounded-xl py-6 text-base ${
-                    plan.id === "pro_monthly"
-                      ? "bg-white text-black hover:bg-zinc-200 border-none shadow-lg shadow-white/10 dark:bg-black dark:text-white dark:hover:bg-black/90 dark:shadow-black/20"
-                      : activeCheckoutPlan === plan.id
-                        ? "bg-primary text-primary-foreground border-none"
-                        : "border-border text-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground"
-                }`}
+                className={cn(
+                  "w-full h-12 text-sm font-bold transition-all duration-300 rounded-xl",
+                  plan.popular
+                    ? "bg-primary text-primary-foreground hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-primary/20"
+                    : "bg-transparent border-2 border-zinc-200 dark:border-zinc-700 text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                )}
               >
                 {activeCheckoutPlan === plan.id ? (
                   <>
-                    <HugeiconsIcon icon={Loading03Icon} className="mr-2 h-4 w-4 animate-spin" />
-                    Redirecting...
+                    <HugeiconsIcon icon={Loading03Icon} className="mr-3 h-5 w-5 animate-spin" />
+                    Connecting...
                   </>
                 ) : (
                   plan.buttonText
@@ -206,9 +226,11 @@ export default function PricingSection() {
           ))}
         </div>
 
+        {/* Stripe Trust Footer */}
+        <div className="mt-16 flex items-center justify-center gap-6 text-muted-foreground/40 grayscale opacity-50">
+           <span className="text-xs font-bold capitalize tracking-widest">Secure Checkout via Stripe</span>
+        </div>
       </div>
-
-      <div className="mt-24 h-px w-full bg-border/60" />
     </section>
   );
 }

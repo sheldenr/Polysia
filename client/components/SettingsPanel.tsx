@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   UserIcon,
@@ -7,43 +7,11 @@ import {
   SunIcon,
   MoonIcon,
   CheckmarkCircle02Icon,
-  Mail01Icon,
   Calendar01Icon,
-  Target02Icon,
-  Clock01Icon,
-  BookOpen01Icon,
-  StarIcon,
 } from "@hugeicons/core-free-icons";
 import { useAuth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
-interface ProfileData {
-  onboarding_complete: boolean;
-  onboarding_hsk_level: string | null;
-  onboarding_goal: string | null;
-  onboarding_reason: string | null;
-  onboarding_age: number | null;
-  onboarding_daily_minutes: number | null;
-  daily_new_limit: number | null;
-  daily_review_limit: number | null;
-  onboarding_referral: string | null;
-  onboarded_at: string | null;
-}
 
 interface SettingsPanelProps {
   className?: string;
@@ -51,167 +19,39 @@ interface SettingsPanelProps {
   onReset?: () => void;
 }
 
-type SettingsTab = "profile" | "learning" | "appearance";
+type SettingsTab = "profile" | "appearance";
 
 function toInitial(value: string) {
   return value.slice(0, 1).toUpperCase();
 }
 
-function readInitialDarkMode(): boolean {
-  if (typeof window === "undefined") return false;
-  const saved = window.localStorage.getItem("theme");
-  if (saved === "dark") return true;
-  if (saved === "light") return false;
-  if (document.documentElement.classList.contains("dark")) return true;
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+type Theme = "light" | "dark" | "system";
+
+function readInitialTheme(): Theme {
+  if (typeof window === "undefined") return "system";
+  const saved = window.localStorage.getItem("theme") as Theme | null;
+  return saved || "system";
 }
 
-export default function SettingsPanel({ className, onLogout, onReset }: SettingsPanelProps) {
+export default function SettingsPanel({ className, onLogout }: SettingsPanelProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(readInitialDarkMode);
+  const [theme, setTheme] = useState<Theme>(readInitialTheme);
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
-  const [profileData, setProfileData] = useState<ProfileData | null>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
-  const [newLimitInput, setNewLimitInput] = useState("10");
-  const [reviewLimitInput, setReviewLimitInput] = useState("50");
-  const [isSavingLimits, setIsSavingLimits] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDarkMode);
-    window.localStorage.setItem("theme", isDarkMode ? "dark" : "light");
-  }, [isDarkMode]);
+    const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.classList.toggle("dark", isDark);
+    window.localStorage.setItem("theme", theme);
 
-  useEffect(() => {
-    if (!user || !supabase) return;
-
-    async function fetchProfile() {
-      setIsLoadingProfile(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user!.id)
-        .maybeSingle();
-
-      if (!error && data) {
-        setProfileData(data);
-        const nextLimit =
-          Number.isFinite(data.daily_review_limit) && (data.daily_review_limit ?? 0) > 0
-            ? String(data.daily_review_limit)
-            : "50";
-        const nextNewLimit =
-          Number.isFinite(data.daily_new_limit) && (data.daily_new_limit ?? 0) > 0
-            ? String(data.daily_new_limit)
-            : "10";
-        setNewLimitInput(nextNewLimit);
-        setReviewLimitInput(nextLimit);
-      }
-      setIsLoadingProfile(false);
+    if (theme === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = (e: MediaQueryListEvent) => {
+        document.documentElement.classList.toggle("dark", e.matches);
+      };
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
     }
-
-    void fetchProfile();
-  }, [user]);
-
-  const handleSaveDailyLimits = useCallback(async () => {
-    if (!supabase || !user) return;
-
-    const parsedReviewLimit = Number.parseInt(reviewLimitInput, 10);
-    const parsedNewLimit = Number.parseInt(newLimitInput, 10);
-    if (!Number.isFinite(parsedReviewLimit) || parsedReviewLimit < 1 || parsedReviewLimit > 500) {
-      toast({
-        title: "Invalid review limit",
-        description: "Please enter a number between 1 and 500.",
-      });
-      return;
-    }
-    if (!Number.isFinite(parsedNewLimit) || parsedNewLimit < 1 || parsedNewLimit > 100) {
-      toast({
-        title: "Invalid new-card limit",
-        description: "Please enter a number between 1 and 100.",
-      });
-      return;
-    }
-
-    setIsSavingLimits(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .upsert(
-        {
-          id: user.id,
-          daily_new_limit: parsedNewLimit,
-          daily_review_limit: parsedReviewLimit,
-        },
-        { onConflict: "id" },
-      )
-      .select("*")
-      .single();
-
-    if (error) {
-      toast({
-        title: "Could not save review limit",
-        description: "Please try again.",
-      });
-    } else if (data) {
-      setProfileData(data);
-      setNewLimitInput(String(data.daily_new_limit ?? parsedNewLimit));
-      setReviewLimitInput(String(data.daily_review_limit ?? parsedReviewLimit));
-      toast({
-        title: "Daily limits updated",
-        description: `New: ${data.daily_new_limit ?? parsedNewLimit} · Review: ${data.daily_review_limit ?? parsedReviewLimit}`,
-      });
-    }
-
-    setIsSavingLimits(false);
-  }, [newLimitInput, reviewLimitInput, toast, user]);
-
-  const handleResetEverything = useCallback(async () => {
-    if (!user || isResetting) return;
-
-    setIsResetting(true);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const session = sessionData.session;
-      if (!session?.access_token) throw new Error("No session");
-
-      const res = await fetch("/api/flashcards/reset", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`
-        }
-      });
-
-      if (!res.ok) throw new Error("Failed to reset progress");
-
-      // Refresh local profile data
-      const { data: newProfile, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (!profileError && newProfile) {
-        setProfileData(newProfile);
-        setNewLimitInput(String(newProfile.daily_new_limit ?? 10));
-        setReviewLimitInput(String(newProfile.daily_review_limit ?? 50));
-      }
-
-      toast({
-        title: "All learning data reset",
-        description: "Your flashcards, activity history, and streak were cleared. Onboarding details were kept.",
-      });
-
-      if (onReset) onReset();
-    } catch (error) {
-      console.error("Failed to reset user data", error);
-      toast({
-        title: "Reset failed",
-        description: "We couldn't reset your data right now. Please try again.",
-      });
-    } finally {
-      setIsResetting(false);
-    }
-  }, [isResetting, toast, user, onReset]);
+  }, [theme]);
 
   const displayName = useMemo(() => {
     const metadata = user?.user_metadata ?? {};
@@ -239,71 +79,16 @@ export default function SettingsPanel({ className, onLogout, onReset }: Settings
       })
     : null;
 
-  const heroPills = joinedDate ? [{ label: `Joined ${joinedDate}`, icon: Calendar01Icon }] : [];
-
   const tabs: { id: SettingsTab; label: string; icon: typeof UserIcon }[] = [
     { id: "profile", label: "Profile", icon: UserIcon },
-    { id: "learning", label: "Learning", icon: BookOpen01Icon },
     { id: "appearance", label: "Appearance", icon: PaintBoardIcon },
   ];
 
   return (
-    <div className={cn("flex flex-col gap-6 sm:gap-8", className)}>
-      {/* Hero */}
-      <header className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-primary/10 via-card to-secondary/20 p-6 sm:p-8 shadow-sm">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/20 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-secondary/40 blur-3xl"
-        />
-        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4 sm:gap-5">
-            <div className="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl border bg-card text-xl sm:text-2xl font-heading shadow-sm">
-              {userInitials}
-            </div>
-            <div className="min-w-0">
-              <h2 className="truncate font-heading text-xl sm:text-2xl tracking-tight">
-                {displayName || user?.email?.split("@")[0] || "Your account"}
-              </h2>
-              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <HugeiconsIcon icon={Mail01Icon} className="h-3.5 w-3.5" />
-                <span className="truncate">{user?.email ?? "Not signed in"}</span>
-              </p>
-              {heroPills.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {heroPills.map((pill) => (
-                    <span
-                      key={pill.label}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur-sm"
-                    >
-                      <HugeiconsIcon icon={pill.icon} className="h-3 w-3" />
-                      {pill.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-xl"
-              onClick={() => void onLogout()}
-            >
-              <HugeiconsIcon icon={Logout01Icon} className="h-4 w-4" />
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <div className="space-y-4">
-        <nav className="rounded-2xl border bg-card/70 p-1.5 shadow-sm">
-          <div className="flex gap-1 overflow-x-auto">
+    <div className={cn("flex flex-col h-full bg-card", className)}>
+      {/* Tab Navigation */}
+      <div className="shrink-0 border-b border-border/50 bg-secondary/20 p-2 sm:p-3">
+        <nav className="flex gap-1 overflow-x-auto no-scrollbar max-w-2xl mx-auto">
           {tabs.map((tab) => {
             const active = activeTab === tab.id;
             return (
@@ -312,204 +97,78 @@ export default function SettingsPanel({ className, onLogout, onReset }: Settings
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex min-w-fit flex-1 items-center justify-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap",
+                  "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all whitespace-nowrap",
                   active
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-[rgba(129,173,184,0.12)] dark:bg-[rgba(129,173,184,0.16)] text-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                 )}
-                aria-current={active ? "page" : undefined}
               >
                 <HugeiconsIcon
                   icon={tab.icon}
-                  className={cn("h-4 w-4", active ? "text-primary-foreground" : "")}
+                  className={cn("h-4 w-4", active ? "text-primary" : "")}
                 />
                 {tab.label}
               </button>
             );
           })}
-          </div>
         </nav>
+      </div>
 
-        <div className="min-w-0">
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8">
+        <div className="max-w-2xl mx-auto space-y-8 pb-10">
           {activeTab === "profile" && (
-            <SectionCard
-              title="Account"
-              description="Your sign-in details and identifiers."
-            >
-              <DefinitionList
-                items={[
-                  {
-                    label: "Email",
-                    value: user?.email ?? "Not available",
-                    icon: Mail01Icon,
-                  },
-                  {
-                    label: "User ID",
-                    value: user?.id ?? "Not available",
-                    icon: UserIcon,
-                    mono: true,
-                  },
-                  {
-                    label: "Joined",
-                    value: joinedDate ?? "Not available",
-                    icon: Calendar01Icon,
-                  },
-                ]}
-              />
-            </SectionCard>
-          )}
-
-          {activeTab === "learning" && (
-            <SectionCard
-              title="Learning profile"
-              description="Preferences captured during onboarding."
-            >
-              {isLoadingProfile ? (
-                <div className="flex justify-center py-8">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-5 p-4 rounded-xl bg-secondary/10 border">
+                <div className="h-14 w-14 shrink-0 rounded-xl border bg-card flex items-center justify-center text-xl font-heading shadow-sm relative overflow-hidden">
+                   <div className="absolute inset-0 bg-primary/10 blur-xl"></div>
+                   <span className="relative z-10">{userInitials}</span>
                 </div>
-              ) : profileData ? (
-                <>
-                  <DefinitionList
-                    items={[
-                      {
-                        label: "Primary goal",
-                        value: profileData.onboarding_goal ?? "Not set",
-                        icon: Target02Icon,
-                      },
-                      {
-                        label: "Learning reason",
-                        value: profileData.onboarding_reason ?? "Not set",
-                        icon: StarIcon,
-                      },
-                      {
-                        label: "Daily commitment",
-                        value: profileData.onboarding_daily_minutes
-                          ? `${profileData.onboarding_daily_minutes} minutes`
-                          : "Not set",
-                        icon: Clock01Icon,
-                      },
-                      {
-                        label: "Daily new-card limit",
-                        value: `${profileData.daily_new_limit ?? 10} cards`,
-                        icon: BookOpen01Icon,
-                      },
-                      {
-                        label: "Daily review limit",
-                        value: `${profileData.daily_review_limit ?? 50} cards`,
-                        icon: BookOpen01Icon,
-                      },
-                    ]}
-                  />
-                  <div className="mt-6 rounded-2xl border border-border/60 bg-muted/20 p-4">
-                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Daily flashcard limits</p>
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <Input
-                        type="number"
-                        min={1}
-                        max={100}
-                        value={newLimitInput}
-                        onChange={(event) => setNewLimitInput(event.target.value)}
-                        className="sm:max-w-[180px]"
-                      />
-                      <Input
-                        type="number"
-                        min={1}
-                        max={500}
-                        value={reviewLimitInput}
-                        onChange={(event) => setReviewLimitInput(event.target.value)}
-                        className="sm:max-w-[180px]"
-                      />
-                      <Button
-                        type="button"
-                        onClick={() => void handleSaveDailyLimits()}
-                        disabled={isSavingLimits}
-                        className="rounded-xl sm:w-auto"
-                      >
-                        {isSavingLimits ? "Saving..." : "Save limits"}
-                      </Button>
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      First field: new cards/day. Second field: review cards/day.
-                    </p>
-                  </div>
-                  <div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
-                    <p className="text-xs uppercase tracking-widest text-destructive">Danger zone</p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Reset all learning progress for this account. This clears flashcards, activity history, and streak, but keeps onboarding details.
-                    </p>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="mt-4 rounded-xl border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          disabled={isResetting}
-                        >
-                          {isResetting ? "Resetting..." : "Reset everything"}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent size="sm">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Reset everything?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This permanently deletes your learning progress (cards, activity, streak) and cannot be undone. Your onboarding details stay intact.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            variant="destructive"
-                            disabled={isResetting}
-                            onClick={() => void handleResetEverything()}
-                          >
-                            {isResetting ? "Resetting..." : "Yes, reset everything"}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </>
-              ) : (
-                <p className="py-6 text-sm italic text-muted-foreground">
-                  No learning profile found. Complete onboarding to personalize your experience.
-                </p>
-              )}
-            </SectionCard>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-heading truncate">{displayName || "Your account"}</h3>
+                  <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+                </div>
+                <Button variant="outline" size="sm" className="rounded-xl h-8 px-3 text-xs" onClick={() => void onLogout()}>
+                  <HugeiconsIcon icon={Logout01Icon} className="h-3.5 w-3.5 mr-1.5" /> Sign out
+                </Button>
+              </div>
+
+              <Section title="Account details">
+                <DefinitionList
+                  items={[
+                    { label: "Joined on", value: joinedDate ?? "N/A", icon: Calendar01Icon },
+                    { label: "User ID", value: user?.id ?? "N/A", icon: UserIcon, mono: true },
+                  ]}
+                />
+              </Section>
+            </div>
           )}
 
           {activeTab === "appearance" && (
-            <SectionCard
-              title="Appearance"
-              description="Switch between light and dark themes."
-            >
-              <div
-                role="radiogroup"
-                aria-label="Theme"
-                className="grid grid-cols-2 gap-3 sm:max-w-md"
-              >
-                <ThemeOption
-                  label="Light"
-                  selected={!isDarkMode}
-                  onSelect={() => setIsDarkMode(false)}
-                  preview={
-                    <div className="flex h-20 w-full items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-900">
-                      <HugeiconsIcon icon={SunIcon} className="h-7 w-7" />
-                    </div>
-                  }
-                />
-                <ThemeOption
-                  label="Dark"
-                  selected={isDarkMode}
-                  onSelect={() => setIsDarkMode(true)}
-                  preview={
-                    <div className="flex h-20 w-full items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-50">
-                      <HugeiconsIcon icon={MoonIcon} className="h-7 w-7" />
-                    </div>
-                  }
-                />
-              </div>
-            </SectionCard>
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Section title="Theme preference">
+                <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                  <ThemeOption
+                    label="Light"
+                    selected={theme === "light"}
+                    onSelect={() => setTheme("light")}
+                    preview={<div className="h-16 w-full rounded-xl bg-[#F3F7FF] border flex items-center justify-center text-amber-500"><HugeiconsIcon icon={SunIcon} className="h-6 w-6" /></div>}
+                  />
+                  <ThemeOption
+                    label="Dark"
+                    selected={theme === "dark"}
+                    onSelect={() => setTheme("dark")}
+                    preview={<div className="h-16 w-full rounded-xl bg-[#09090b] border flex items-center justify-center text-indigo-300"><HugeiconsIcon icon={MoonIcon} className="h-6 w-6" /></div>}
+                  />
+                  <ThemeOption
+                    label="System"
+                    selected={theme === "system"}
+                    onSelect={() => setTheme("system")}
+                    preview={<div className="h-16 w-full rounded-xl bg-gradient-to-br from-[#F3F7FF] to-[#09090b] border flex items-center justify-center text-muted-foreground"><HugeiconsIcon icon={PaintBoardIcon} className="h-6 w-6" /></div>}
+                  />
+                </div>
+              </Section>
+            </div>
           )}
         </div>
       </div>
@@ -517,102 +176,38 @@ export default function SettingsPanel({ className, onLogout, onReset }: Settings
   );
 }
 
-function SectionCard({
-  title,
-  description,
-  titleAccessory,
-  children,
-}: {
-  title: string;
-  description?: string;
-  titleAccessory?: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-3xl border bg-card p-5 shadow-sm sm:p-7">
-      <header className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-border/50 pb-4">
-        <div>
-          <h3 className="font-heading text-lg tracking-tight flex items-center gap-2">
-            {title}
-            {titleAccessory}
-          </h3>
-          {description && (
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-          )}
-        </div>
-      </header>
+    <div className="space-y-3">
+      <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">{title}</h3>
       {children}
-    </section>
+    </div>
   );
 }
 
-function DefinitionList({
-  items,
-}: {
-  items: Array<{
-    label: string;
-    value: string;
-    icon?: typeof UserIcon;
-    mono?: boolean;
-  }>;
-}) {
+function DefinitionList({ items }: { items: Array<{ label: string; value: string; icon?: any; mono?: boolean }> }) {
   return (
-    <dl className="divide-y divide-border/50">
-      {items.map((item) => (
-        <div
-          key={item.label}
-          className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[180px_1fr] sm:items-center sm:gap-4"
-        >
-          <dt className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
-            {item.icon && (
-              <HugeiconsIcon icon={item.icon} className="h-3.5 w-3.5" />
-            )}
-            {item.label}
-          </dt>
-          <dd
-            className={cn(
-              "text-sm text-foreground",
-              item.mono && "font-mono text-xs break-all",
-            )}
-          >
-            {item.value}
-          </dd>
+    <div className="rounded-xl border bg-card overflow-hidden">
+      {items.map((item, i) => (
+        <div key={item.label} className={cn("flex items-center justify-between p-4", i !== items.length - 1 && "border-b border-border/50")}>
+          <div className="flex items-center gap-3">
+             {item.icon && <HugeiconsIcon icon={item.icon} className="h-4 w-4 text-muted-foreground/60" />}
+             <span className="text-xs font-semibold text-muted-foreground">{item.label}</span>
+          </div>
+          <span className={cn("text-sm font-medium", item.mono && "font-mono text-xs")}>{item.value}</span>
         </div>
       ))}
-    </dl>
+    </div>
   );
 }
 
-function ThemeOption({
-  label,
-  selected,
-  onSelect,
-  preview,
-}: {
-  label: string;
-  selected: boolean;
-  onSelect: () => void;
-  preview: React.ReactNode;
-}) {
+function ThemeOption({ label, selected, onSelect, preview }: { label: string; selected: boolean; onSelect: () => void; preview: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onSelect}
-      className={cn(
-        "flex flex-col items-start gap-3 rounded-2xl border p-3 text-left transition-all",
-        selected
-          ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-          : "border-border/60 bg-card hover:border-zinc-400 dark:hover:border-zinc-600",
-      )}
-    >
+    <button onClick={onSelect} className={cn("flex flex-col gap-2 rounded-xl border p-2 transition-all", selected ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "bg-card hover:border-border/80")}>
       {preview}
-      <div className="flex w-full items-center justify-between">
-        <span className="text-sm font-medium">{label}</span>
-        {selected && (
-          <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-4 w-4 text-primary" />
-        )}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-xs font-medium">{label}</span>
+        {selected && <HugeiconsIcon icon={CheckmarkCircle02Icon} className="h-3.5 w-3.5 text-primary" />}
       </div>
     </button>
   );

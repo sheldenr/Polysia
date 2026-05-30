@@ -31,7 +31,7 @@ const NotFound = () => {
           <Button
             size="lg"
             asChild
-            className="rounded-full px-8 h-12 text-base shadow-lg hover:shadow-primary/20 transition-all"
+            className="rounded-[0.75rem] px-8 h-12 text-base shadow-lg hover:shadow-primary/20 transition-all"
           >
             <Link to="/">
               <ArrowLeft className="mr-2 h-4 w-4" />

@@ -3,60 +3,45 @@ import Layout from "@/components/Layout";
 export default function Contact() {
   return (
     <Layout>
-      <section className="px-4 sm:px-6 lg:px-8 py-16 sm:py-20 transition-colors duration-300">
-        <article className="max-w-2xl mx-auto">
-          <h1 className="text-center text-3xl sm:text-4xl text-black dark:text-zinc-100">
-            Contact
-          </h1>
-          <p className="mt-3 text-center text-base text-gray-500 dark:text-zinc-400">
-            Questions, feedback, or partnership ideas. we'd love to hear from
-            you.
-          </p>
+      <section className="px-6 py-20 sm:py-24 transition-colors duration-300">
+        <article className="max-w-3xl mx-auto">
+          <div className="mb-12">
+            <h1 className="text-4xl sm:text-5xl font-heading font-semibold tracking-tight text-foreground">
+              Contact
+            </h1>
+            <p className="mt-4 text-lg text-muted-foreground leading-relaxed max-w-xl">
+              Questions, feedback, or partnership ideas. We'd love to hear from
+              you and help you on your Mandarin journey.
+            </p>
+          </div>
 
-          <div className="mt-12 space-y-10 text-base leading-7 text-gray-700 dark:text-zinc-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-16 border-t border-border pt-12">
             <div>
-              <h2 className="text-lg font-semibold text-black dark:text-zinc-100 mb-3">
+              <h2 className="text-xl font-heading font-semibold text-foreground mb-4">
                 General enquiries
               </h2>
-              <p>
+              <p className="text-muted-foreground leading-relaxed">
                 For anything product-related: bugs, feature requests, feedback,
                 or just to say hi, email us at{" "}
                 <a
-                  className="text-[#3491b2] hover:underline"
+                  className="text-primary hover:underline font-medium"
                   href="mailto:hello@polysia.app"
                 >
                   hello@polysia.app
                 </a>
-                . We aim to reply within a couple of days.
+                . We aim to reply within 48 hours.
               </p>
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-black dark:text-zinc-100 mb-3">
-                Partnerships &amp; press
-              </h2>
-              <p>
-                Interested in collaborating, writing about Polysia, or exploring
-                a partnership? Reach out at{" "}
-                <a
-                  className="text-[#3491b2] hover:underline"
-                  href="mailto:hello@polysia.app"
-                >
-                  hello@polysia.app
-                </a>{" "}
-                with a brief introduction and we'll get back to you.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-lg font-semibold text-black dark:text-zinc-100 mb-3">
+              <h2 className="text-xl font-heading font-semibold text-foreground mb-4">
                 Open source
               </h2>
-              <p>
+              <p className="text-muted-foreground leading-relaxed">
                 Polysia is developed in the open. You can follow the project,
                 file issues, or contribute on{" "}
                 <a
-                  className="text-[#3491b2] hover:underline"
+                  className="text-primary hover:underline font-medium"
                   href="https://github.com/sheldenr/polysia"
                   target="_blank"
                   rel="noreferrer"
@@ -68,27 +53,47 @@ export default function Contact() {
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-black dark:text-zinc-100 mb-3">
-                Privacy &amp; legal
+              <h2 className="text-xl font-heading font-semibold text-foreground mb-4">
+                Partnerships & press
               </h2>
-              <p>
-                For data requests, account deletion, or legal matters, please
-                email{" "}
+              <p className="text-muted-foreground leading-relaxed">
+                Interested in collaborating, writing about Polysia, or exploring
+                a partnership? Reach out at{" "}
                 <a
-                  className="text-[#3491b2] hover:underline"
+                  className="text-primary hover:underline font-medium"
                   href="mailto:hello@polysia.app"
                 >
                   hello@polysia.app
                 </a>{" "}
-                with the subject line{" "}
-                <span className="font-medium text-black dark:text-zinc-100">
-                  "Privacy Request"
-                </span>{" "}
-                or{" "}
-                <span className="font-medium text-black dark:text-zinc-100">
-                  "Legal"
-                </span>{" "}
-                and we'll prioritize your message.
+                with a brief introduction.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-heading font-semibold text-foreground mb-4">
+                Privacy & legal
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                For data requests, account deletion, or legal matters, please
+                email{" "}
+                <a
+                  className="text-primary hover:underline font-medium"
+                  href="mailto:hello@polysia.app"
+                >
+                  hello@polysia.app
+                </a>{" "}
+                with the subject line "Privacy Request" or "Legal".
+              </p>
+            </div>
+
+            <div className="md:col-span-2 p-8 rounded-3xl bg-muted/30 border border-border">
+              <h2 className="text-xl font-heading font-semibold text-foreground mb-4">
+                Global Support
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                As a global community, we strive to support learners from all time zones. 
+                While our primary language for support is English, we'll do our best to 
+                help you in Mandarin or any other language via translation tools.
               </p>
             </div>
           </div>

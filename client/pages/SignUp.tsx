@@ -204,7 +204,7 @@ export default function SignUp() {
               ) : (
                 <Button
                   variant="outline"
-                  className="w-full h-10 rounded-full flex items-center justify-center gap-2 border-slate-300 hover:bg-slate-50 transition-colors"
+                  className="w-full h-10 rounded-[0.75rem] flex items-center justify-center gap-2 border-slate-300 hover:bg-slate-50 transition-colors"
                   onClick={handleManualGoogleSignIn}
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">

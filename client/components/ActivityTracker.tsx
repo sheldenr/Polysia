@@ -113,11 +113,11 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities, variant =
 
   return (
     <div className={cn(
-      "w-full flex flex-col justify-between rounded-3xl border bg-card transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-lg hover:shadow-black/5",
+      "w-full flex flex-col justify-between rounded-xl border bg-card transition-all duration-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-2xl hover:shadow-black/5",
       "p-5 sm:p-6 space-y-4"
     )}>
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-heading">Characters Mastered</h2>
+        <h2 className="text-xl font-heading">Study Activity</h2>
         <div className={cn("hidden items-center text-muted-foreground sm:flex", variant === "compact" ? "gap-1 text-[8px]" : "gap-1.5 text-[10px]")}>
           <span>0</span>
           <div className={cn("rounded-sm bg-zinc-200 dark:bg-zinc-800", variant === "compact" ? "h-2 w-2" : "h-2.5 w-2.5")} />
@@ -180,7 +180,6 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities, variant =
       
       <div className="flex justify-between border-t border-border/50 pt-1 text-[10px] text-muted-foreground uppercase tracking-widest">
         <span>{format(startDate, "MMMM yyyy")}</span>
-        {variant !== "compact" && <span className="font-medium text-primary/80">Character Mastery Heatmap</span>}
       </div>
     </div>
   );

@@ -1,58 +1,39 @@
-import { useAuth } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useState, useEffect } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Settings01Icon, Logout01Icon } from "@hugeicons/core-free-icons";
-import { Link, useNavigate } from "react-router-dom";
+import { SunIcon, MoonIcon } from "@hugeicons/core-free-icons";
+import { Button } from "@/components/ui/button";
+
+function readInitialDarkMode(): boolean {
+  if (typeof window === "undefined") return false;
+  const saved = window.localStorage.getItem("theme");
+  if (saved === "dark") return true;
+  if (saved === "light") return false;
+  if (document.documentElement.classList.contains("dark")) return true;
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+}
 
 export function UserNav() {
-  const { user, logout, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const [isDark, setIsDark] = useState(readInitialDarkMode);
 
-  if (!isAuthenticated || !user) {
-    return null;
-  }
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/");
-  };
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDark);
+    window.localStorage.setItem("theme", isDark ? "dark" : "light");
+  }, [isDark]);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-          <HugeiconsIcon icon={Settings01Icon} className="h-5 w-5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Account</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
-            </p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link to="/settings">
-            <HugeiconsIcon icon={Settings01Icon} className="mr-2 h-4 w-4" />
-            <span>Settings</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleLogout}>
-          <HugeiconsIcon icon={Logout01Icon} className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button 
+      variant="ghost" 
+      size="icon"
+      className="h-10 w-10 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all shadow-none"
+      onClick={() => setIsDark(!isDark)}
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+    >
+      <HugeiconsIcon 
+        icon={isDark ? SunIcon : MoonIcon} 
+        className="h-5 w-5 transition-transform duration-500 rotate-0 hover:rotate-12" 
+      />
+    </Button>
   );
 }
+
+export default UserNav;

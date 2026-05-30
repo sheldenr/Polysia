@@ -35,24 +35,25 @@ const faqs = [
 
 export default function FAQSection() {
   return (
-    <section className="w-full bg-background px-6 pb-24 sm:pb-32 pt-24 sm:pt-32 relative">
+    <section id="faq" className="w-full bg-white dark:bg-background px-6 pb-24 sm:pb-32 pt-24 sm:pt-32 relative">
       {/* Full-width top divider */}
       <div className="absolute top-0 left-0 w-full h-px bg-zinc-200 dark:bg-white/10" />
       
-      <div className="mx-auto max-w-6xl flex flex-col lg:flex-row gap-12 lg:gap-24 relative z-10">
-        {/* Left Side: Heading and Subtext */}
-        <div className="w-full lg:w-1/3">
-          <h2 className="text-3xl font-heading text-foreground sm:text-4xl mb-4 leading-tight">
-            Frequently Asked{" "}
-            <span className="italic-serif block text-primary">questions</span>
+      <div className="mx-auto max-w-3xl relative z-10">
+        {/* Top: Heading and Subtext */}
+        <div className="w-full text-left mb-12">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-semibold tracking-tight text-foreground mb-4">
+            Frequently Asked <br />
+            questions
           </h2>
-          <p className="text-lg text-muted-foreground">
-            Everything you need to know about Polysia and how it helps you master Chinese.
+          <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl">
+            Everything you need to know about Polysia and <br />
+            how it helps you master Chinese.
           </p>
         </div>
 
-        {/* Right Side: Accordion with Dividers */}
-        <div className="w-full lg:w-2/3">
+        {/* Bottom: Accordion with Dividers */}
+        <div className="w-full">
           <Accordion type="single" collapsible className="w-full border-none rounded-none overflow-visible">
             {faqs.map((faq, index) => (
               <AccordionItem
@@ -60,11 +61,11 @@ export default function FAQSection() {
                 value={`item-${index}`}
                 className="border-b border-zinc-200 dark:border-white/10 bg-transparent rounded-none transition-colors duration-200 hover:bg-zinc-50/50 dark:hover:bg-white/[0.02]"
               >
-                <AccordionTrigger className="px-0 py-6 text-xl text-foreground hover:no-underline hover:text-primary transition-all duration-200 group-data-[state=open]:text-primary">
+                <AccordionTrigger className="px-0 py-5 text-lg text-foreground hover:no-underline hover:text-primary transition-all duration-200 group-data-[state=open]:text-primary">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="px-0 pb-8 text-foreground/70 leading-relaxed text-[16px]">
-                  <div className="max-w-xl">
+                <AccordionContent className="px-0 pb-6 text-foreground/70 leading-relaxed text-sm">
+                  <div className="max-w-lg">
                     {faq.answer}
                   </div>
                 </AccordionContent>
