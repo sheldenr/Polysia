@@ -140,9 +140,8 @@ export default function PricingSection() {
                 key={plan.id}
                 className={cn(
                   "relative flex flex-col justify-between p-6 sm:p-10 transition-all duration-500 group rounded-xl",
-                  plan.popular 
-                    ? "bg-white dark:bg-zinc-950 text-foreground dark:text-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] ring-1 ring-zinc-200 dark:ring-white/10" 
-                    : "bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none"
+                  "bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none",
+                  plan.popular && "shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)]"
                 )}
               >
               <div>

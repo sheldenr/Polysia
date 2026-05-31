@@ -50,7 +50,7 @@ const LearningHub = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showHsk1Intro, setShowHsk1Intro] = useState(false);
   const [supabaseConfigError, setSupabaseConfigError] = useState<string | null>(null);
-  const [filterLevel, setFilterLevel] = useState<number>(1);
+  const [selectedLevels, setSelectedLevels] = useState<number[]>([]);
 
   // Hooks
   const metrics = useLearningMetrics();
@@ -195,8 +195,14 @@ const LearningHub = () => {
                           enterFlow(1);
                         }}
                         onSelectCategory={storyHub.selectCategory}
-                        onSelectLevel={setFilterLevel}
-                        filterLevel={filterLevel}
+                        onSelectLevel={(level) => {
+                          setSelectedLevels(prev => 
+                            prev.includes(level) 
+                              ? prev.filter(l => l !== level) 
+                              : [...prev, level]
+                          );
+                        }}
+                        selectedLevels={selectedLevels}
                       />
                     )}
 
@@ -224,6 +230,8 @@ const LearningHub = () => {
                         onHandleTTS={storyHub.handleTTS}
                         onAddToReview={review.addToReview}
                         onExit={exitFlow}
+                        isStoryComplete={storyHub.isStoryComplete}
+                        onToggleComplete={storyHub.toggleStoryComplete}
                       />
                     )}
 

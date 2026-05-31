@@ -18,12 +18,12 @@ const levelNames: Record<number, string> = {
 };
 
 const levelColors: Record<number, string> = {
-  1: "text-emerald-600 dark:text-emerald-400",
-  2: "text-sky-600 dark:text-sky-400",
-  3: "text-blue-600 dark:text-blue-400",
-  4: "text-indigo-600 dark:text-indigo-400",
-  5: "text-purple-600 dark:text-purple-400",
-  6: "text-rose-600 dark:text-rose-400",
+  1: "text-foreground",
+  2: "text-foreground",
+  3: "text-foreground",
+  4: "text-foreground",
+  5: "text-foreground",
+  6: "text-foreground",
 };
 
 const GrammarView = ({ onExit }: GrammarViewProps) => {

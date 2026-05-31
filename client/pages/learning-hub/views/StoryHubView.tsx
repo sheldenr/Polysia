@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { ChevronLeft, Volume2, Plus, Loader2, ChevronRight, BookOpen } from "lucide-react";
+import { ChevronLeft, Volume2, Plus, Loader2, ChevronRight, BookOpen, CheckCircle2, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Story } from "../hooks/use-story-hub";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface StoryHubViewProps {
   stories: Story[];
@@ -21,6 +22,8 @@ interface StoryHubViewProps {
   onHandleTTS: () => void;
   onAddToReview: (text: string) => Promise<boolean>;
   onExit: () => void;
+  isStoryComplete: (storyId: string) => boolean;
+  onToggleComplete: (storyId: string) => void;
 }
 
 const levelNames: Record<number, string> = {
@@ -64,6 +67,8 @@ const StoryHubView = ({
   onHandleTTS,
   onAddToReview,
   onExit,
+  isStoryComplete,
+  onToggleComplete,
 }: StoryHubViewProps) => {
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState<string | null>(null);
@@ -72,17 +77,6 @@ const StoryHubView = ({
     definition: string;
     sentence: string;
   }>({ word: "", definition: "", sentence: "" });
-
-  // Mark story as read when viewed
-  React.useEffect(() => {
-    if (selectedStory) {
-      const readStories = JSON.parse(localStorage.getItem("read_stories") || "[]");
-      if (!readStories.includes(selectedStory.id)) {
-        readStories.push(selectedStory.id);
-        localStorage.setItem("read_stories", JSON.stringify(readStories));
-      }
-    }
-  }, [selectedStory]);
 
   const handleAddSelection = async () => {
     const selection = window.getSelection()?.toString().trim();
@@ -115,122 +109,175 @@ const StoryHubView = ({
     }
   };
 
+  const background = (
+    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+      {/* Mesh Gradient Blobs */}
+      <motion.div 
+        animate={{
+          x: [0, 40, 0],
+          y: [0, -40, 0],
+          scale: [1, 1.2, 1],
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+        className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-[120px]"
+      />
+      <motion.div 
+        animate={{
+          x: [0, -50, 0],
+          y: [0, 60, 0],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="absolute top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 dark:bg-primary/10 blur-[100px]"
+      />
+      <motion.div 
+        animate={{
+          x: [0, 30, 0],
+          y: [0, 40, 0],
+        }}
+        transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+        className="absolute -bottom-[10%] left-[20%] w-[40%] h-[40%] rounded-full bg-sky-500/5 dark:bg-sky-500/10 blur-[110px]"
+      />
+
+      {/* Grain/Noise Overlay */}
+      <div 
+        className="absolute inset-0 opacity-[0.2] dark:opacity-[0.25] mix-blend-overlay"
+        style={{ 
+          backgroundImage: `url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PScwIDAgMjAwIDIwMCcgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJz48ZmlsdGVyIGlkPSdub2lzZUZpbHRlcic+PGZlVHVyYnVsZW5jZSB0eXBlPSdmcmFjdGFsTm9pc2UnIGJhc2VGcmVxdWVuY3k9JzAuNjUnIG51bU9jdGF2ZXM9JzMnIHN0aXRjaFRpbGVzPSdzdGl0Y2gnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWx0ZXI9J3VybCgjbm9pc2VGaWx0ZXIpJy8+PC9zdmc+")`,
+        }} 
+      />
+    </div>
+  );
+
   // Reader Mode
   if (selectedStory) {
     // Split into sentences for hover tracking
     const sentences = selectedStory.content_zh.split(/(?<=[。！？\n])/g).filter(Boolean);
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-        <div className="flex items-center justify-between">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => onSelectStory(null)}
-            className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <ChevronLeft className="h-4 w-4" /> Back to Chapters
-          </Button>
+      <div className="relative min-h-full">
+        <div className="relative z-10 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+          <div className="flex items-center justify-between">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => onSelectStory(null)}
+              className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <ChevronLeft className="h-4 w-4" /> Back to Chapters
+            </Button>
 
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-full border border-border/50">
-                <span className="text-[10px] font-mono w-8 text-center">{readingSpeed}x</span>
-                <input 
-                  type="range" 
-                  min="0.5" max="2.0" step="0.1" 
-                  value={readingSpeed}
-                  onChange={(e) => onSetReadingSpeed(parseFloat(e.target.value))}
-                  className="w-16 h-1 accent-primary"
-                />
-              </div>
+            <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-full border border-border/50">
+                  <span className="text-[10px] font-mono w-8 text-center">{readingSpeed}x</span>
+                  <input 
+                    type="range" 
+                    min="0.5" max="2.0" step="0.1" 
+                    value={readingSpeed}
+                    onChange={(e) => onSetReadingSpeed(parseFloat(e.target.value))}
+                    className="w-16 h-1 accent-primary"
+                  />
+                </div>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={onHandleTTS}
-                    disabled={isTTSLoading}
-                    className="h-9 w-9 rounded-xl border-border/50"
-                  >
-                    <Volume2 className={cn("h-4 w-4", isTTSLoading && "animate-pulse text-primary")} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Listen to story</TooltipContent>
-              </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={onHandleTTS}
+                      disabled={isTTSLoading}
+                      className="h-9 w-9 rounded-xl border-border/50"
+                    >
+                      <Volume2 className={cn("h-4 w-4", isTTSLoading && "animate-pulse text-primary")} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Listen to story</TooltipContent>
+                </Tooltip>
 
-              <Button
-                variant={showPinyin ? "default" : "outline"}
-                size="sm"
-                onClick={() => onTogglePinyin(!showPinyin)}
-                className="rounded-xl h-9 text-xs font-bold capitalize px-4"
-              >
-                Pinyin: {showPinyin ? "ON" : "OFF"}
-              </Button>
-            </TooltipProvider>
+                <Button
+                  variant={showPinyin ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => onTogglePinyin(!showPinyin)}
+                  className="rounded-xl h-9 text-xs font-bold capitalize px-4"
+                >
+                  Pinyin: {showPinyin ? "ON" : "OFF"}
+                </Button>
+
+                <Button
+                  variant={isStoryComplete(selectedStory.id) ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => onToggleComplete(selectedStory.id)}
+                  className={cn(
+                    "rounded-xl h-9 text-xs font-bold px-4 transition-all",
+                    isStoryComplete(selectedStory.id) && "bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-lg shadow-emerald-500/20"
+                  )}
+                >
+                  {isStoryComplete(selectedStory.id) ? "Completed" : "Mark Complete"}
+                </Button>
+              </TooltipProvider>
+            </div>
           </div>
-        </div>
 
-        {/* Hover Info Rows */}
-        <div className="w-full grid gap-3">
-          <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-xl p-4 border border-border/50 transition-all h-16 flex flex-col justify-center overflow-hidden">
-             <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-1">Current Sentence</span>
-             <p className="text-sm font-medium line-clamp-1 italic">
+          {/* Hover Info Rows */}
+          <div className="w-full grid gap-3">
+            <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-xl p-4 border border-border/50 transition-all h-16 flex flex-col justify-center overflow-hidden">
+              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-1">Current Sentence</span>
+              <p className="text-sm font-medium line-clamp-1 italic">
                 {hoveredData.sentence || <span className="opacity-30">Hover over any text to see meaning</span>}
-             </p>
-          </div>
-          <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-xl p-4 border border-border/50 transition-all h-16 flex flex-col justify-center overflow-hidden">
-             <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-1">Word Definition</span>
-             <p className="text-sm font-medium line-clamp-1 italic">
+              </p>
+            </div>
+            <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-xl p-4 border border-border/50 transition-all h-16 flex flex-col justify-center overflow-hidden">
+              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-1">Word Definition</span>
+              <p className="text-sm font-medium line-clamp-1 italic">
                 {hoveredData.word ? (
                   <><strong>{hoveredData.word}</strong>: {hoveredData.definition}</>
                 ) : (
                   <span className="opacity-30">Hover over a word for details</span>
                 )}
-             </p>
-          </div>
-        </div>
-
-        <article className="w-full space-y-8 bg-black/[0.04] dark:bg-white/[0.06] rounded-xl p-8 sm:p-12 relative group/article">
-          <div className="mb-8 border-b border-border/50 pb-6">
-            <div className="text-[10px] font-bold text-primary/60 uppercase tracking-widest mb-1">
-              {levelNames[selectedStory.hsk_level]}
+              </p>
             </div>
-            <h1 className="text-3xl font-heading leading-tight">{selectedStory.title_zh}</h1>
-            <p className="text-muted-foreground italic">{selectedStory.title_en}</p>
           </div>
 
-          <div className="relative">
-             <div className="text-2xl sm:text-3xl leading-[2.5] sm:leading-[3] text-foreground transition-all select-text flex flex-wrap">
-               {sentences.map((sentence, sIdx) => (
-                 <div 
-                   key={sIdx}
-                   className="hover:bg-primary/5 rounded px-1 transition-colors"
-                   onMouseEnter={() => setHoveredData(prev => ({ ...prev, sentence }))}
-                   onMouseLeave={() => setHoveredData(prev => ({ ...prev, sentence: "" }))}
-                 >
-                   <ChineseTooltipText 
-                     text={sentence} 
-                     variant="reading" 
-                     showPinyin={showPinyin}
-                     onTokenHover={(token, definition) => {
-                       if (token) {
-                         setHoveredData(prev => ({ 
-                           ...prev, 
-                           word: token, 
-                           definition: definition?.english || "No definition found" 
-                         }));
-                       } else {
-                         setHoveredData(prev => ({ ...prev, word: "", definition: "" }));
-                       }
-                     }}
-                   />
-                 </div>
-               ))}
-             </div>
-             
-             <div className="mt-12 pt-6 border-t border-dashed border-border/60 flex items-center justify-between text-muted-foreground">
+          <article className="w-full space-y-8 bg-black/[0.04] dark:bg-white/[0.06] rounded-xl p-8 sm:p-12 relative group/article">
+            <div className="mb-8 border-b border-border/50 pb-6">
+              <div className="text-[10px] font-bold text-primary/60 uppercase tracking-widest mb-1">
+                {levelNames[selectedStory.hsk_level]}
+              </div>
+              <h1 className="text-3xl font-heading leading-tight">{selectedStory.title_zh}</h1>
+              <p className="text-muted-foreground italic">{selectedStory.title_en}</p>
+            </div>
+
+            <div className="relative">
+              <div className="text-2xl sm:text-3xl leading-[2.5] sm:leading-[3] text-foreground transition-all select-text flex flex-wrap">
+                {sentences.map((sentence, sIdx) => (
+                  <div 
+                    key={sIdx}
+                    className="hover:bg-primary/5 rounded px-1 transition-colors"
+                    onMouseEnter={() => setHoveredData(prev => ({ ...prev, sentence }))}
+                    onMouseLeave={() => setHoveredData(prev => ({ ...prev, sentence: "" }))}
+                  >
+                    <ChineseTooltipText 
+                      text={sentence} 
+                      variant="reading" 
+                      showPinyin={showPinyin}
+                      onTokenHover={(token, definition) => {
+                        if (token) {
+                          setHoveredData(prev => ({ 
+                            ...prev, 
+                            word: token, 
+                            definition: definition?.english || "No definition found" 
+                          }));
+                        } else {
+                          setHoveredData(prev => ({ ...prev, word: "", definition: "" }));
+                        }
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-12 pt-6 border-t border-dashed border-border/60 flex items-center justify-between text-muted-foreground">
                 <p className="text-xs">Highlight any text to add it to your <strong>Review</strong> queue.</p>
                 <Button 
                   size="sm" 
@@ -242,9 +289,10 @@ const StoryHubView = ({
                   {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
                   Add Selection to Review
                 </Button>
-             </div>
-          </div>
-        </article>
+              </div>
+            </div>
+          </article>
+        </div>
       </div>
     );
   }
@@ -259,82 +307,100 @@ const StoryHubView = ({
 
   if (!storyline) return null;
 
-  const readStories = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("read_stories") || "[]") : [];
-  const progress = Math.round((categoryStories.filter(c => readStories.includes(c.id)).length / Math.max(1, categoryStories.length)) * 100);
+  const progress = Math.round((categoryStories.filter(c => isStoryComplete(c.id)).length / Math.max(1, categoryStories.length)) * 100);
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-      <div className="flex items-center justify-between">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={onExit}
-          className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" /> Back to Dashboard
-        </Button>
-      </div>
-
-      <div className="group relative bg-card dark:bg-card border border-border rounded-2xl p-8 sm:p-10 relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none">
-        {/* Top Accent */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-primary/40" />
-
-        <div className="absolute -right-8 -top-8 opacity-[0.03] dark:opacity-[0.05]">
-           <BookOpen className="w-48 h-48" />
+    <div className="relative min-h-full">
+      <div className="relative z-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+        <div className="flex items-center justify-between">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onExit}
+            className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" /> Back to Dashboard
+          </Button>
         </div>
-        
-        <div className="relative z-10 space-y-4">
-          <div className="space-y-1">
-            <div className={cn("text-[10px] font-bold uppercase tracking-widest", levelColors[storyline.hsk_level])}>
-              {levelNames[storyline.hsk_level]} Path
-            </div>
-            <h1 className="text-4xl font-heading tracking-tight">{storyline.name}</h1>
-            <p className="text-muted-foreground text-lg italic opacity-80">{storyline.chapters.length} chapters for this level.</p>
-          </div>
 
-          <div className="flex flex-col gap-2 w-full max-w-xs pt-2">
+        <div className="space-y-4 px-2">
+          <div className="flex items-center gap-2 mb-2">
+            <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-black/[0.03] dark:bg-white/[0.05]", levelColors[storyline.hsk_level])}>
+              HSK {storyline.hsk_level}
+            </span>
+            <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+              {storyline.chapters.length} Chapters
+            </span>
+          </div>
+          <h1 className="text-3xl font-heading tracking-tight">{storyline.name}</h1>
+          <p className="text-muted-foreground leading-relaxed max-w-2xl">
+            A {storyline.chapters.length}-part journey through {storyline.name.toLowerCase()}. Progress through each chapter to master the content.
+          </p>
+          
+          <div className="flex flex-col gap-2 w-full max-w-[200px] pt-2">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
               <span>Overall Progress</span>
               <span className="text-foreground">{progress}%</span>
             </div>
-            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-foreground transition-all duration-500" style={{ width: `${progress}%` }} />
+            <div className="h-1.5 w-full bg-black/[0.05] dark:bg-white/[0.05] rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-700 ease-out" 
+                style={{ width: `${progress}%` }} 
+              />
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <h2 className="text-xl font-heading px-2 font-medium">Chapters</h2>
-        <div className="grid grid-cols-1 gap-3">
+        <div className="space-y-3">
           {storyline.chapters.map((chapter, idx) => {
-            const isRead = readStories.includes(chapter.id);
+            const isRead = isStoryComplete(chapter.id);
+            const isNext = !isRead && (idx === 0 || isStoryComplete(storyline.chapters[idx-1].id));
+            
             return (
               <div 
                 key={chapter.id}
-                className="group relative flex items-center justify-between p-6 rounded-2xl bg-card dark:bg-card border border-border hover:border-primary/30 transition-all cursor-pointer shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-none overflow-hidden"
+                className={cn(
+                  "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 cursor-pointer",
+                  isRead 
+                    ? "bg-white dark:bg-card border-border/40 opacity-70" 
+                    : isNext
+                      ? "bg-white dark:bg-card border-primary/30 shadow-sm"
+                      : "bg-black/[0.01] dark:bg-white/[0.01] border-border/30"
+                )}
                 onClick={() => onSelectStory(chapter)}
               >
-                {/* Top Accent (Hover) */}
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-4">
                   <div className={cn(
-                    "h-10 w-10 rounded-xl flex items-center justify-center text-sm font-bold transition-colors",
-                    isRead ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground/60"
+                    "size-8 rounded-xl flex items-center justify-center text-[10px] font-bold transition-all",
+                    isRead 
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
+                      : isNext
+                        ? "bg-primary/10 text-primary"
+                        : "bg-muted text-muted-foreground/40"
                   )}>
-                    {idx + 1}
+                    {isRead ? <CheckCircle2 className="size-4" /> : (idx + 1).toString().padStart(2, '0')}
                   </div>
                   <div>
-                    <h3 className="font-heading text-lg transition-colors group-hover:text-primary">{chapter.title_zh}</h3>
-                    <p className="text-sm text-muted-foreground italic opacity-70">{chapter.title_en}</p>
+                    <h3 className={cn(
+                      "font-heading text-base transition-colors",
+                      isRead ? "text-foreground/60" : "text-foreground group-hover:text-primary"
+                    )}>
+                      {chapter.title_zh}
+                    </h3>
+                    <p className="text-xs text-muted-foreground italic opacity-70 line-clamp-1">{chapter.title_en}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  {isRead && (
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg">Completed</span>
-                  )}
-                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-1 transition-transform group-hover:text-primary" />
+
+                <div className="flex items-center gap-3">
+                  {isRead ? (
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-lg">Done</span>
+                  ) : isNext ? (
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-primary bg-primary/5 px-2 py-0.5 rounded-lg">Next</span>
+                  ) : null}
+                  <ChevronRight className={cn(
+                    "size-4 transition-all duration-300",
+                    isNext ? "text-primary translate-x-0" : "text-muted-foreground/30 -translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0"
+                  )} />
                 </div>
               </div>
             );

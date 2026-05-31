@@ -1,5 +1,28 @@
 import React from "react";
-import { BookOpen, ChevronRight, BarChart3, Target, Flame, GraduationCap, Zap, Book } from "lucide-react";
+import { 
+  BookOpen, 
+  ChevronRight, 
+  Target, 
+  Flame, 
+  GraduationCap, 
+  Zap, 
+  Book, 
+  Home, 
+  Search, 
+  Heart, 
+  Plane, 
+  Briefcase, 
+  Globe, 
+  FlaskConical, 
+  Cpu, 
+  PenTool, 
+  Landmark, 
+  History, 
+  Sparkles, 
+  Utensils, 
+  Trophy 
+} from "lucide-react";
+import { motion } from "framer-motion";
 import { ReviewCard, ReviewMeta } from "@/hooks/use-review-system";
 import { LearningActivity } from "../hooks/use-learning-metrics";
 import { Story } from "../hooks/use-story-hub";
@@ -19,7 +42,7 @@ interface DashboardViewProps {
   onSelectStory: (story: Story) => void;
   onSelectCategory: (category: string | null) => void;
   onSelectLevel: (level: number) => void;
-  filterLevel: number;
+  selectedLevels: number[];
 }
 
 const levelNames: Record<number, string> = {
@@ -32,21 +55,21 @@ const levelNames: Record<number, string> = {
 };
 
 const levelColors: Record<number, string> = {
-  1: "text-foreground",
-  2: "text-foreground",
-  3: "text-foreground",
-  4: "text-foreground",
-  5: "text-foreground",
-  6: "text-foreground",
+  1: "text-emerald-600 dark:text-emerald-400",
+  2: "text-sky-600 dark:text-sky-400",
+  3: "text-blue-600 dark:text-blue-400",
+  4: "text-indigo-600 dark:text-indigo-400",
+  5: "text-purple-600 dark:text-purple-400",
+  6: "text-rose-600 dark:text-rose-400",
 };
 
 const levelBgColors: Record<number, string> = {
-  1: "bg-muted-foreground/40",
-  2: "bg-muted-foreground/40",
-  3: "bg-muted-foreground/40",
-  4: "bg-muted-foreground/40",
-  5: "bg-muted-foreground/40",
-  6: "bg-muted-foreground/40",
+  1: "bg-emerald-500/40",
+  2: "bg-sky-500/40",
+  3: "bg-blue-500/40",
+  4: "bg-indigo-500/40",
+  5: "bg-purple-500/40",
+  6: "bg-rose-500/40",
 };
 
 const DashboardView = ({
@@ -56,7 +79,7 @@ const DashboardView = ({
   onEnterFlow,
   onSelectCategory,
   onSelectLevel,
-  filterLevel,
+  selectedLevels,
 }: DashboardViewProps) => {
   const statItems = [
     { 
@@ -98,6 +121,10 @@ const DashboardView = ({
     return a.name.localeCompare(b.name);
   });
 
+  const filteredStorylines = storylines.filter(s => 
+    selectedLevels.length === 0 || selectedLevels.includes(s.hsk_level)
+  );
+
   const getProgress = (chapters: Story[]) => {
     if (typeof window === "undefined") return 0;
     const readStories = JSON.parse(localStorage.getItem("read_stories") || "[]");
@@ -127,7 +154,7 @@ const DashboardView = ({
 
       {/* Grammar Quick Access */}
       <section 
-        className="group relative rounded-2xl bg-primary/5 dark:bg-primary/10 border border-primary/20 p-6 cursor-pointer hover:bg-primary/10 transition-all overflow-hidden"
+        className="group relative rounded-2xl bg-primary/5 dark:bg-primary/10 border border-border p-6 cursor-pointer hover:bg-primary/10 transition-all overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-none"
         onClick={() => onEnterFlow(3)}
       >
         <div className="flex items-center justify-between">
@@ -152,7 +179,10 @@ const DashboardView = ({
               <div className="space-y-1">
                 <h2 className="text-2xl font-heading font-medium">Stories</h2>
                 <p className="text-xs text-muted-foreground font-medium">
-                  {storylines.filter(s => s.hsk_level === filterLevel).length} Storylines available for this level
+                  {selectedLevels.length === 0 
+                    ? `${storylines.length} Storylines available across all levels`
+                    : `${filteredStorylines.length} Storylines available for selected levels`
+                  }
                 </p>
               </div>
 
@@ -164,12 +194,11 @@ const DashboardView = ({
                     onClick={() => onSelectLevel(lvl)}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all duration-300",
-                      filterLevel === lvl 
-                        ? cn("bg-white dark:bg-card shadow-sm border-current ring-1 ring-current", levelColors[lvl])
-                        : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
+                      selectedLevels.includes(lvl)
+                        ? "bg-foreground/5 border-foreground text-foreground shadow-sm font-bold"
+                        : "bg-transparent border-border text-muted-foreground hover:bg-muted/50"
                     )}
                   >
-                    <div className={cn("size-1.5 rounded-full", levelBgColors[lvl])} />
                     <span className="text-[9px] font-bold uppercase tracking-wider">
                       {levelNames[lvl]}
                     </span>
@@ -179,47 +208,80 @@ const DashboardView = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {storylines
-                .filter((s) => s.hsk_level === filterLevel)
-                .map((storyline) => {
+              {filteredStorylines.map((storyline) => {
                 const progress = getProgress(storyline.chapters);
+                const isFinished = progress === 100;
                 const levelColor = levelColors[storyline.hsk_level];
+                const levelBgColor = levelBgColors[storyline.hsk_level].replace("bg-", "text-");
+
                 return (
                   <div 
                     key={storyline.name}
-                    className="group relative rounded-2xl bg-card dark:bg-card border border-border p-6 transition-all hover:border-primary/30 cursor-pointer flex flex-col justify-between shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden"
+                    className="group relative rounded-2xl bg-white dark:bg-card border border-border/50 p-6 transition-all hover:border-primary/30 cursor-pointer flex flex-col shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] dark:shadow-none overflow-hidden"
                     onClick={() => {
                       onSelectCategory(storyline.name);
                       onEnterFlow(1);
                     }}
                   >
-                    {/* Top Accent */}
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-primary/40" />
-
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className={cn("text-[10px] font-bold uppercase tracking-widest", levelColor)}>
-                          {levelNames[storyline.hsk_level]}
-                        </div>
-                        <span className="text-[10px] text-muted-foreground font-medium">{storyline.chapters.length} Chapters</span>
+                    {/* Top Row: Icon & Status */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-zinc-900 dark:text-zinc-100">
+                        <BookOpen className="size-5" strokeWidth={2} />
                       </div>
-                      <h3 className="font-heading text-lg mb-1 transition-colors group-hover:text-primary">
+                      {isFinished ? (
+                        <div className="flex items-center px-3 py-1 rounded-full bg-white dark:bg-black text-zinc-600 dark:text-zinc-400 text-[9px] font-bold uppercase tracking-wider shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-none">
+                          Finished
+                        </div>
+                      ) : (
+                        <div className="flex items-center px-3 py-1 rounded-full bg-white dark:bg-black text-zinc-500 dark:text-zinc-500 text-[9px] font-bold uppercase tracking-wider shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-none">
+                          In Progress
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="space-y-1 mb-4 flex-1">
+                      <h3 className="font-heading text-lg transition-colors group-hover:text-primary leading-tight">
                         {storyline.name}
                       </h3>
-                      <p className="text-xs text-muted-foreground line-clamp-1 italic opacity-70">
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed opacity-70">
                         {storyline.chapters.map(c => c.title_en).join(" · ")}
                       </p>
                     </div>
-                    
-                    <div className="mt-6 space-y-2">
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                        <span>Progress</span>
-                        <span className="text-foreground">{progress}%</span>
+
+                    {/* Details Row */}
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex flex-col">
+                        <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-widest">Level</span>
+                        <span className="text-[10px] font-bold">{levelNames[storyline.hsk_level]}</span>
                       </div>
-                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      <div className="w-[1px] h-4 bg-border dark:bg-white/10" />
+                      <div className="flex flex-col">
+                        <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-widest">Chapters</span>
+                        <span className="text-[10px] font-bold">{storyline.chapters.length} Parts</span>
+                      </div>
+                    </div>
+
+                    {/* Internal Divider - Just for progress */}
+                    <div className="h-[1px] w-full bg-border dark:bg-white/10 mb-4" />
+
+                    {/* Bottom Row: Simple Progress */}
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest px-0.5">
+                        <span>Progress</span>
+                        <span className="text-foreground/60">{progress}%</span>
+                      </div>
+                      <div className="h-[2px] w-full bg-black/[0.03] dark:bg-white/[0.03] rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-foreground transition-all duration-500" 
-                          style={{ width: `${progress}%` }}
+                          className={cn(
+                            "h-full transition-all duration-1000 ease-out",
+                            progress === 100 
+                              ? "bg-zinc-900 dark:bg-zinc-100" 
+                              : progress > 50 
+                                ? "bg-zinc-600 dark:bg-zinc-400" 
+                                : "bg-zinc-400 dark:bg-zinc-600"
+                          )}
+                          style={{ width: `${progress}%` }} 
                         />
                       </div>
                     </div>

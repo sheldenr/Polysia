@@ -42,27 +42,28 @@ export default function NewHeroSection() {
   return (
     <section className="relative w-full overflow-hidden bg-white dark:bg-background px-6 pt-20 pb-0 sm:pt-28 lg:pt-32 lg:px-8 isolate">
       {/* Modern Dot Field Background - Simple & Clean */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden transform-gpu" style={{ transform: 'translateZ(0)' }} aria-hidden="true">
         {/* Base Dot Grid - Very faint */}
         <div 
           className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
           style={{ 
             backgroundImage: `radial-gradient(circle at 1px 1px, var(--primary) 1px, transparent 0)`,
-            backgroundSize: '32px 32px',
-            maskImage: 'radial-gradient(circle at 50% 80%, black, transparent 95%)'
+            backgroundSize: '32px 32px'
           }} 
         />
         
         {/* Single Subtle Twinkle */}
         <div 
-          className="absolute inset-0 opacity-[0.02] dark:opacity-[0.04]"
+          className="absolute inset-0 opacity-[0.02] dark:opacity-[0.04] will-change-[opacity]"
           style={{ 
             backgroundImage: `radial-gradient(circle at 1px 1px, var(--primary) 1.5px, transparent 0)`,
             backgroundSize: '96px 96px',
-            maskImage: 'radial-gradient(circle at 50% 80%, black, transparent 80%)',
             animation: 'simplePulse 12s ease-in-out infinite'
           }} 
         />
+
+        {/* Gradient Overlay to fade dots - More performant than mask-image */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_80%,transparent_0%,white_95%)] dark:bg-[radial-gradient(circle_at_50%_80%,transparent_0%,hsl(var(--background))_95%)]" />
 
         <style dangerouslySetInnerHTML={{ __html: `
           @keyframes simplePulse {
@@ -132,9 +133,9 @@ export default function NewHeroSection() {
         </motion.div>
 
         {/* Browser Window (The "Story Thing") */}
-        <div className="w-full flex justify-center relative mt-16 sm:mt-24">
+        <div className="w-full flex justify-center relative mt-16 sm:mt-24 transform-gpu" style={{ transform: 'translateZ(0)' }}>
           <motion.div 
-            className="w-[min(90vw,900px)] shrink-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-3xl rounded-t-xl overflow-hidden text-left h-[440px] relative group border-x border-t border-border/50 shadow-2xl"
+            className="w-[min(90vw,900px)] shrink-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-md rounded-t-xl overflow-hidden text-left h-[440px] relative group border-x border-t border-border/50 shadow-2xl"
           >
             {/* Mock Showcase Header */}
             <div className="px-6 py-5 flex items-center justify-between">
@@ -170,8 +171,8 @@ export default function NewHeroSection() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.5 }}
-                  className="space-y-6 sm:space-y-8"
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="space-y-6 sm:space-y-8 will-change-[transform,opacity]"
                 >
                   {/* Two Row Meaning Display (Unified Style) */}
                   <div className="grid gap-2">
@@ -224,7 +225,7 @@ export default function NewHeroSection() {
             </div>
           </motion.div>
           {/* Horizontal Line at the bottom of the showcase container */}
-          <div className="absolute bottom-0 left-[-100vw] right-[-100vw] h-[2px] bg-border dark:bg-border/60 z-20 shadow-[0_1px_4px_rgba(0,0,0,0.2)]" />
+          <div className="absolute bottom-0 left-[-100vw] right-[-100vw] h-[2px] bg-border dark:bg-border z-20 shadow-[0_1px_4px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_4px_rgba(255,255,255,0.05)]" />
         </div>
       </div>
     </section>

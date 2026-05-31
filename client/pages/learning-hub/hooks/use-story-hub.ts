@@ -73,7 +73,33 @@ export function useStoryHub() {
   const [showPinyin, setShowPinyin] = useState(true);
   const [readingSpeed, setReadingSpeed] = useState(1.0);
   const [isTTSLoading, setIsTTSLoading] = useState(false);
+  const [readStories, setReadStories] = useState<string[]>([]);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("read_stories");
+    if (saved) {
+      try {
+        setReadStories(JSON.parse(saved));
+      } catch (e) {
+        setReadStories([]);
+      }
+    }
+  }, []);
+
+  const toggleStoryComplete = useCallback((storyId: string) => {
+    setReadStories(prev => {
+      const next = prev.includes(storyId) 
+        ? prev.filter(id => id !== storyId)
+        : [...prev, storyId];
+      localStorage.setItem("read_stories", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const isStoryComplete = useCallback((storyId: string) => {
+    return readStories.includes(storyId);
+  }, [readStories]);
 
   const fetchStories = useCallback(async () => {
     setLoading(true);
@@ -178,6 +204,8 @@ export function useStoryHub() {
     selectStory,
     selectCategory,
     handleTTS,
+    toggleStoryComplete,
+    isStoryComplete,
     refreshStories: fetchStories,
   };
 }
