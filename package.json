@@ -36,6 +36,7 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.3",
+    "motion": "^12.40.0",
     "pinyin": "^4.0.0",
     "radix-ui": "^1.4.3",
     "stripe": "^22.0.1",

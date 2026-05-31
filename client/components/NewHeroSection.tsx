@@ -6,6 +6,7 @@ import { Search, Download, ArrowRight, Play, Sparkles, Menu } from "lucide-react
 import { useAuth } from "@/lib/auth";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import { GlowButton } from "@/components/ui/glow-button";
+import { MagneticButton } from "@/components/ui/magnetic-button";
 
 export default function NewHeroSection() {
   const { isAuthenticated } = useAuth();
@@ -110,20 +111,22 @@ export default function NewHeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="flex flex-col sm:flex-row items-center gap-4 mb-10 w-full sm:w-auto"
+          className="flex flex-row items-center gap-4 mb-10 w-full sm:w-auto"
         >
-          <GlowButton
-            asChild
-            className="w-full sm:w-auto"
-          >
-            <Link to={isAuthenticated ? "/learning-hub" : "/signup"}>
-              Start for free
-            </Link>
-          </GlowButton>
+          <MagneticButton>
+            <GlowButton
+              asChild
+              className="w-auto"
+            >
+              <Link to={isAuthenticated ? "/learning-hub" : "/signup"}>
+                Start for free
+              </Link>
+            </GlowButton>
+          </MagneticButton>
           <Button
             variant="secondary"
             size="default"
-            className="rounded-xl px-6 h-11 text-sm font-bold transition-all w-full sm:w-auto bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.06] dark:hover:bg-white/[0.12] text-foreground border-none shadow-none"
+            className="rounded-xl px-6 h-11 text-sm font-bold transition-all w-auto bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.06] dark:hover:bg-white/[0.12] text-foreground border-none shadow-none"
             onClick={() => {
               document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
             }}
@@ -225,7 +228,7 @@ export default function NewHeroSection() {
             </div>
           </motion.div>
           {/* Horizontal Line at the bottom of the showcase container */}
-          <div className="absolute bottom-0 left-[-100vw] right-[-100vw] h-[2px] bg-border dark:bg-border z-20 shadow-[0_1px_4px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_4px_rgba(255,255,255,0.05)]" />
+          <div className="absolute bottom-0 left-[-100vw] right-[-100vw] h-px bg-border dark:bg-white/[0.1] z-20" />
         </div>
       </div>
     </section>

@@ -19,7 +19,7 @@ export const GlowButton = React.forwardRef<HTMLButtonElement, GlowButtonProps>(
         <div
           className="absolute inset-[-100%] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
           style={{
-            background: `conic-gradient(from 0deg, transparent 0%, white 25%, transparent 50%, white 75%, transparent 100%)`,
+            background: `conic-gradient(from 0deg, transparent 0%, var(--primary) 25%, transparent 50%, var(--primary) 75%, transparent 100%)`,
             animation: "spin 4s linear infinite",
           }}
         />
@@ -29,7 +29,7 @@ export const GlowButton = React.forwardRef<HTMLButtonElement, GlowButtonProps>(
 
         {/* Minimal Hover Bloom */}
         <div
-          className="absolute inset-0 opacity-0 group-hover:opacity-20 scale-100 group-hover:scale-110 blur-xl pointer-events-none transition-all duration-700 bg-white"
+          className="absolute inset-0 opacity-0 group-hover:opacity-20 scale-100 group-hover:scale-110 blur-xl pointer-events-none transition-all duration-700 bg-primary"
         />
 
         {/* Content */}
