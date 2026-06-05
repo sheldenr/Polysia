@@ -1,32 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   BookOpen, 
   ChevronRight, 
-  Target, 
-  Flame, 
   GraduationCap, 
   Zap, 
   Book, 
-  Home, 
-  Search, 
-  Heart, 
-  Plane, 
-  Briefcase, 
-  Globe, 
-  FlaskConical, 
-  Cpu, 
-  PenTool, 
-  Landmark, 
-  History, 
-  Sparkles, 
-  Utensils, 
-  Trophy 
+  CheckCircle2,
+  Clock
 } from "lucide-react";
-import { motion } from "framer-motion";
-import { ReviewCard, ReviewMeta } from "@/hooks/use-review-system";
-import { LearningActivity } from "../hooks/use-learning-metrics";
+import { ReviewMeta } from "@/hooks/use-review-system";
 import { Story } from "../hooks/use-story-hub";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface DashboardViewProps {
   stats: {
@@ -35,13 +20,12 @@ interface DashboardViewProps {
     modeMinutes: { review: number; reading: number; roleplay: number };
   };
   reviewMeta: ReviewMeta | null;
-  reviewDeck: ReviewCard[];
-  allActivities: LearningActivity[];
   stories: Story[];
   onEnterFlow: (index: number) => void;
   onSelectStory: (story: Story) => void;
   onSelectCategory: (category: string | null) => void;
   onSelectLevel: (level: number) => void;
+  onClearLevels: () => void;
   selectedLevels: number[];
 }
 
@@ -63,15 +47,6 @@ const levelColors: Record<number, string> = {
   6: "text-rose-600 dark:text-rose-400",
 };
 
-const levelBgColors: Record<number, string> = {
-  1: "bg-emerald-500/40",
-  2: "bg-sky-500/40",
-  3: "bg-blue-500/40",
-  4: "bg-indigo-500/40",
-  5: "bg-purple-500/40",
-  6: "bg-rose-500/40",
-};
-
 const DashboardView = ({
   stats,
   stories,
@@ -79,30 +54,19 @@ const DashboardView = ({
   onEnterFlow,
   onSelectCategory,
   onSelectLevel,
+  onClearLevels,
   selectedLevels,
 }: DashboardViewProps) => {
-  const statItems = [
-    { 
-      label: "Current Streak", 
-      value: `${reviewMeta?.streak || 0} Days`, 
-      icon: Flame
-    },
-    { 
-      label: "Learned Today", 
-      value: reviewMeta?.newStartedToday || 0, 
-      icon: GraduationCap
-    },
-    { 
-      label: "Due for Review", 
-      value: (reviewMeta?.reviewDueCount || 0) + (reviewMeta?.learningDueCount || 0), 
-      icon: Zap
-    },
-    { 
-      label: "Mastery Level", 
-      value: levelNames[reviewMeta?.hskProgress.currentLevel || 1], 
-      icon: Target
-    },
-  ];
+  const [activeTab, setActiveTab] = useState<"all" | "in-progress" | "completed">("all");
+
+  const dueCount = (reviewMeta?.reviewDueCount || 0) + (reviewMeta?.learningDueCount || 0);
+
+  const getProgress = (chapters: Story[]) => {
+    if (typeof window === "undefined") return 0;
+    const readStories = JSON.parse(localStorage.getItem("read_stories") || "[]");
+    const readInThisStoryline = chapters.filter(c => readStories.includes(c.id)).length;
+    return Math.round((readInThisStoryline / Math.max(1, chapters.length)) * 100);
+  };
 
   const groupedByStoryline = stories.reduce((acc, story) => {
     if (!acc[story.category]) {
@@ -121,175 +85,207 @@ const DashboardView = ({
     return a.name.localeCompare(b.name);
   });
 
-  const filteredStorylines = storylines.filter(s => 
-    selectedLevels.length === 0 || selectedLevels.includes(s.hsk_level)
-  );
-
-  const getProgress = (chapters: Story[]) => {
-    if (typeof window === "undefined") return 0;
-    const readStories = JSON.parse(localStorage.getItem("read_stories") || "[]");
-    const readInThisStoryline = chapters.filter(c => readStories.includes(c.id)).length;
-    return Math.round((readInThisStoryline / Math.max(1, chapters.length)) * 100);
-  };
+  const filteredStorylines = storylines.filter(s => {
+    const matchesLevel = selectedLevels.length === 0 || selectedLevels.includes(s.hsk_level);
+    const progress = getProgress(s.chapters);
+    
+    if (activeTab === "in-progress") return matchesLevel && progress > 0 && progress < 100;
+    if (activeTab === "completed") return matchesLevel && progress === 100;
+    return matchesLevel;
+  });
 
   return (
-    <div className="space-y-8 pb-20 px-1">
-      {/* Clean Stats Grid */}
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {statItems.map((item) => (
-          <div
-            key={item.label}
-            className="group relative rounded-2xl bg-card dark:bg-card border border-border p-6 flex flex-col gap-2 hover:border-primary/30 transition-all shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden"
-          >
-            {/* Top Accent */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{item.label}</span>
-            </div>
-            <p className="text-2xl font-heading tracking-tight">{item.value}</p>
+    <div className="flex flex-col gap-8 pb-20 px-1 max-w-5xl mx-auto">
+      {/* 4-Box Header Grid */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Box 1: Grammar Reference */}
+        <div 
+          onClick={() => onEnterFlow(3)}
+          className="group relative rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 p-5 cursor-pointer shadow-sm hover:shadow-md transition-all overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:scale-110 transition-transform">
+            <Book className="size-12 text-white" />
           </div>
-        ))}
-      </section>
+          <div className="relative z-10 flex flex-col h-full justify-between gap-4">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">Reference</span>
+            <div className="space-y-1">
+              <h3 className="text-lg font-heading font-bold text-white leading-tight">Grammar Hub</h3>
+              <p className="text-[10px] text-white/70 font-medium">HSK 1-6 Master Guide</p>
+            </div>
+          </div>
+        </div>
 
-      {/* Grammar Quick Access */}
-      <section 
-        className="group relative rounded-2xl bg-primary/5 dark:bg-primary/10 border border-border p-6 cursor-pointer hover:bg-primary/10 transition-all overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-none"
-        onClick={() => onEnterFlow(3)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-              <Book className="h-6 w-6" />
-            </div>
-            <div>
-              <h3 className="text-lg font-heading font-medium">Grammar Reference</h3>
-              <p className="text-xs text-muted-foreground">Master {Object.values(levelNames).length} HSK levels of grammar rules with examples</p>
-            </div>
+        {/* Box 2: Weekly Minutes */}
+        <div className="relative rounded-2xl bg-card border border-border/60 p-5 flex flex-col justify-between shadow-sm">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Weekly Practice</span>
+          <div className="flex items-end gap-2">
+            <p className="text-3xl font-heading tracking-tight">{stats.weeklyMinutes}</p>
+            <span className="text-[10px] font-bold text-muted-foreground/40 pb-1.5 uppercase">Mins</span>
           </div>
-          <ChevronRight className="h-5 w-5 text-primary group-hover:translate-x-1 transition-transform" />
+        </div>
+
+        {/* Box 3: Daily Minutes */}
+        <div className="relative rounded-2xl bg-card border border-border/60 p-5 flex flex-col justify-between shadow-sm">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Daily Focus</span>
+          <div className="flex items-end gap-2">
+            <p className="text-3xl font-heading tracking-tight">{stats.dailyMinutes}</p>
+            <span className="text-[10px] font-bold text-muted-foreground/40 pb-1.5 uppercase">Mins</span>
+          </div>
+        </div>
+
+        {/* Box 4: Due Reviews */}
+        <div 
+          onClick={() => onEnterFlow(0)}
+          className="relative rounded-2xl bg-card border border-border/60 p-5 flex flex-col justify-between shadow-sm cursor-pointer hover:border-primary/30 transition-colors"
+        >
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Due for Review</span>
+          <div className="flex items-end gap-2">
+            <p className={cn("text-3xl font-heading tracking-tight", dueCount > 0 ? "text-primary" : "text-muted-foreground/40")}>
+              {dueCount}
+            </p>
+            <Zap className={cn("size-4 mb-2", dueCount > 0 ? "text-primary fill-primary/20" : "text-muted-foreground/20")} />
+          </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-8">
-        <div className="space-y-10">
-          {/* Stories Grid */}
-          <div className="space-y-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end justify-between px-1">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-heading font-medium">Stories</h2>
-                <p className="text-xs text-muted-foreground font-medium">
-                  {selectedLevels.length === 0 
-                    ? `${storylines.length} Storylines available across all levels`
-                    : `${filteredStorylines.length} Storylines available for selected levels`
-                  }
-                </p>
-              </div>
+      {/* Categories / Pills Filter Area */}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View Tabs */}
+          <div className="flex p-1 bg-muted/30 rounded-xl mr-4">
+            {(["all", "in-progress", "completed"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all",
+                  activeTab === tab 
+                    ? "bg-white dark:bg-zinc-800 shadow-sm text-foreground" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {tab.replace("-", " ")}
+              </button>
+            ))}
+          </div>
 
-              {/* Difficulty Selector */}
-              <div className="flex flex-wrap gap-2">
-                {[1, 2, 3, 4, 5, 6].map((lvl) => (
-                  <button 
-                    key={lvl} 
-                    onClick={() => onSelectLevel(lvl)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all duration-300",
-                      selectedLevels.includes(lvl)
-                        ? "bg-foreground/5 border-foreground text-foreground shadow-sm font-bold"
-                        : "bg-transparent border-border text-muted-foreground hover:bg-muted/50"
+          {/* Level Pills */}
+          <div className="h-4 w-[1px] bg-border/60 mx-2" />
+          <div className="flex flex-wrap gap-2">
+            <button 
+              onClick={onClearLevels}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all",
+                selectedLevels.length === 0
+                  ? "bg-foreground/5 border-foreground text-foreground"
+                  : "bg-transparent border-border text-muted-foreground hover:bg-muted/50"
+              )}
+            >
+              All Levels
+            </button>
+            {[1, 2, 3, 4, 5, 6].map((lvl) => (
+              <button 
+                key={lvl} 
+                onClick={() => onSelectLevel(lvl)}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all",
+                  selectedLevels.includes(lvl)
+                    ? "bg-foreground/5 border-foreground text-foreground"
+                    : "bg-transparent border-border text-muted-foreground hover:bg-muted/50"
+                )}
+              >
+                {levelNames[lvl]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Row-Based Story List */}
+      <section className="space-y-4">
+        <div className="grid grid-cols-12 px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
+          <div className="col-span-1">Status</div>
+          <div className="col-span-6 px-2">Story Title</div>
+          <div className="col-span-2">Difficulty</div>
+          <div className="col-span-3 text-right">Progress</div>
+        </div>
+
+        <div className="space-y-1 rounded-2xl overflow-hidden border border-border/50 bg-muted/20">
+          {filteredStorylines.length > 0 ? (
+            filteredStorylines.map((storyline, index) => {
+              const progress = getProgress(storyline.chapters);
+              const isFinished = progress === 100;
+              const isStarted = progress > 0;
+
+              return (
+                <div 
+                  key={storyline.name}
+                  onClick={() => {
+                    onSelectCategory(storyline.name);
+                    onEnterFlow(1);
+                  }}
+                  className={cn(
+                    "grid grid-cols-12 items-center p-4 px-6 cursor-pointer transition-all group",
+                    index % 2 === 0 
+                      ? "bg-card hover:bg-primary/[0.03] dark:hover:bg-primary/[0.05]" 
+                      : "bg-muted/30 hover:bg-primary/[0.03] dark:hover:bg-primary/[0.05]"
+                  )}
+                >
+                  <div className="col-span-1">
+                    {isFinished ? (
+                      <CheckCircle2 className="size-5 text-emerald-500" />
+                    ) : isStarted ? (
+                      <Clock className="size-5 text-primary" />
+                    ) : (
+                      <BookOpen className="size-5 text-muted-foreground/40 group-hover:text-primary/60" />
                     )}
-                  >
-                    <span className="text-[9px] font-bold uppercase tracking-wider">
-                      {levelNames[lvl]}
+                  </div>
+                  <div className="col-span-6 space-y-0.5 pr-4 px-2">
+                    <h4 className="font-heading text-sm font-medium group-hover:text-primary transition-colors line-clamp-1">
+                      {storyline.name}
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground/60 line-clamp-1 italic">
+                      {storyline.chapters.map(c => c.title_en).join(" · ")}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg bg-background/50 border border-border/20", levelColors[storyline.hsk_level])}>
+                      {levelNames[storyline.hsk_level]}
                     </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredStorylines.map((storyline) => {
-                const progress = getProgress(storyline.chapters);
-                const isFinished = progress === 100;
-                const levelColor = levelColors[storyline.hsk_level];
-                const levelBgColor = levelBgColors[storyline.hsk_level].replace("bg-", "text-");
-
-                return (
-                  <div 
-                    key={storyline.name}
-                    className="group relative rounded-2xl bg-white dark:bg-card border border-border/50 p-6 transition-all hover:border-primary/30 cursor-pointer flex flex-col shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] dark:shadow-none overflow-hidden"
-                    onClick={() => {
-                      onSelectCategory(storyline.name);
-                      onEnterFlow(1);
-                    }}
-                  >
-                    {/* Top Row: Icon & Status */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-zinc-900 dark:text-zinc-100">
-                        <BookOpen className="size-5" strokeWidth={2} />
-                      </div>
-                      {isFinished ? (
-                        <div className="flex items-center px-3 py-1 rounded-full bg-white dark:bg-black text-zinc-600 dark:text-zinc-400 text-[9px] font-bold uppercase tracking-wider shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-none">
-                          Finished
-                        </div>
-                      ) : (
-                        <div className="flex items-center px-3 py-1 rounded-full bg-white dark:bg-black text-zinc-500 dark:text-zinc-500 text-[9px] font-bold uppercase tracking-wider shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-none">
-                          In Progress
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <div className="space-y-1 mb-4 flex-1">
-                      <h3 className="font-heading text-lg transition-colors group-hover:text-primary leading-tight">
-                        {storyline.name}
-                      </h3>
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed opacity-70">
-                        {storyline.chapters.map(c => c.title_en).join(" · ")}
-                      </p>
-                    </div>
-
-                    {/* Details Row */}
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="flex flex-col">
-                        <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-widest">Level</span>
-                        <span className="text-[10px] font-bold">{levelNames[storyline.hsk_level]}</span>
-                      </div>
-                      <div className="w-[1px] h-4 bg-border dark:bg-white/10" />
-                      <div className="flex flex-col">
-                        <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-widest">Chapters</span>
-                        <span className="text-[10px] font-bold">{storyline.chapters.length} Parts</span>
-                      </div>
-                    </div>
-
-                    {/* Internal Divider - Just for progress */}
-                    <div className="h-[1px] w-full bg-border dark:bg-white/10 mb-4" />
-
-                    {/* Bottom Row: Simple Progress */}
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest px-0.5">
-                        <span>Progress</span>
-                        <span className="text-foreground/60">{progress}%</span>
-                      </div>
-                      <div className="h-[2px] w-full bg-black/[0.03] dark:bg-white/[0.03] rounded-full overflow-hidden">
+                  </div>
+                  <div className="col-span-3 flex flex-col items-end gap-1.5">
+                    <div className="flex items-center gap-2 w-24">
+                      <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                         <div 
                           className={cn(
-                            "h-full transition-all duration-1000 ease-out",
-                            progress === 100 
-                              ? "bg-zinc-900 dark:bg-zinc-100" 
-                              : progress > 50 
-                                ? "bg-zinc-600 dark:bg-zinc-400" 
-                                : "bg-zinc-400 dark:bg-zinc-600"
+                            "h-full transition-all duration-1000",
+                            isFinished ? "bg-emerald-500" : "bg-primary"
                           )}
                           style={{ width: `${progress}%` }} 
                         />
                       </div>
+                      <span className="text-[10px] font-mono font-bold text-muted-foreground/60 w-8 text-right">
+                        {progress}%
+                      </span>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              );
+            })
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 bg-card">
+              <BookOpen className="size-10 text-muted-foreground/20 mb-3" />
+              <p className="text-xs text-muted-foreground font-medium">No stories found matching your filters</p>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="mt-4 text-[10px] font-bold uppercase tracking-widest"
+                onClick={() => { onClearLevels(); setActiveTab("all"); }}
+              >
+                Reset All Filters
+              </Button>
             </div>
-          </div>
+          )}
         </div>
       </section>
     </div>

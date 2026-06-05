@@ -14,6 +14,7 @@ import {
   Sparkles,
   Layers,
   BookOpen,
+  Book,
   MessageCircle,
   Volume2
 } from "lucide-react";
@@ -23,20 +24,20 @@ const features = [
   {
     icon: Layers,
     title: "Integrated SRS",
-    description: "Connect your reading library directly to your spaced-repetition deck.",
+    description: "Instantly add words from stories to your daily spaced-repetition deck.",
     action: "Explore SRS",
   },
   {
     icon: Search,
     title: "Instant Dictionary",
-    description: "Look up any word or grammar point without leaving the story.",
-    action: "View Demo",
+    description: "One-tap lookups for any word or grammar point while you read.",
+    action: "Try Reading",
   },
   {
-    icon: Sparkles,
-    title: "AI Analysis",
-    description: "Extract grammar patterns and vocabulary automatically from any text.",
-    action: "Docs",
+    icon: MessageCircle,
+    title: "AI Roleplay",
+    description: "Practice real-life conversations with an AI that adapts to your HSK level.",
+    action: "Go Practice",
   },
 ];
 
@@ -44,22 +45,22 @@ const capabilities = [
   {
     icon: BookOpen,
     title: "HSK Graded Stories",
-    description: "Never forget about your progress with level-appropriate content.",
+    description: "Dozens of hand-crafted stories designed for every level from HSK 1 to 6.",
   },
   {
     icon: Volume2,
     title: "Audio Transcripts",
-    description: "Natural AI voices with full synchronized text for listening.",
+    description: "High-quality AI voices provide full synchronized audio for every single story.",
   },
   {
-    icon: FileText,
-    title: "Upload PDFs",
-    description: "Extract content from PDFs and search them just like any other link.",
+    icon: Book,
+    title: "Grammar Guide",
+    description: "A complete HSK grammar reference with hundreds of clear examples.",
   },
   {
-    icon: MessageCircle,
-    title: "Contextual Chat",
-    description: "Discuss stories with AI to improve your conversation skills.",
+    icon: Sparkles,
+    title: "Ongoing Series",
+    description: "Follow recurring characters through multi-chapter storylines and series.",
   },
 ];
 
@@ -75,8 +76,8 @@ export default function LandingFeaturesSection() {
             viewport={{ once: true }}
             className="text-2xl sm:text-3xl font-heading mb-4 tracking-tight"
           >
-            Connect your reading to SRS, <br />
-            AI tools, and more.
+            Turn your reading into <br />
+            long-term memory.
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -85,8 +86,8 @@ export default function LandingFeaturesSection() {
             transition={{ delay: 0.1 }}
             className="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed"
           >
-            Polysia integrates perfectly into your character study, <br />
-            conversation practice, and research workflows.
+            Polysia bridges the gap between passive reading <br />
+            and active vocabulary mastery.
           </motion.p>
         </div>
 
@@ -121,7 +122,7 @@ export default function LandingFeaturesSection() {
             viewport={{ once: true }}
             className="text-2xl sm:text-3xl font-heading mb-4 tracking-tight"
           >
-            Import stories or upload files with a click.
+            Curated content for every step of your journey.
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -130,8 +131,8 @@ export default function LandingFeaturesSection() {
             transition={{ delay: 0.1 }}
             className="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed"
           >
-            Automatically sync news, site feeds, and <br />
-            YouTube transcripts to your library.
+            From your first character to your first novel, <br />
+            we provide the roadmap you need.
           </motion.p>
         </div>
 

@@ -7,29 +7,29 @@ import {
 
 const faqs = [
   {
-    question: "What is Polysia?",
+    question: "How does the Story Hub work?",
     answer:
-      "Polysia is a premium Chinese learning platform that combines AI-powered conversations, tailored reading tools, and character flashcards to help you master Mandarin effectively.",
+      "Our Story Hub contains a curated library of hand-crafted Chinese stories graded by HSK level. Each story includes synchronized audio, instant dictionary lookups, and the ability to toggle pinyin on or off.",
   },
   {
-    question: "Is Polysia suitable for beginners?",
+    question: "What is Integrated SRS?",
     answer:
-      "Absolutely! Polysia is designed for learners at all levels. Our tailored reading tools and conversation sessions can be adjusted to match your current proficiency, from absolute beginner to advanced.",
+      "SRS stands for Spaced Repetition System. In Polysia, you can highlight any word or phrase in a story and instantly add it to your daily review deck. Our system then schedules these words for review at optimal intervals to ensure long-term retention.",
   },
   {
-    question: "How do the Practice Conversations work?",
+    question: "Can I use Polysia for HSK exam prep?",
     answer:
-      "The Conversations feature allows you to practice realistic Mandarin dialogues in various scenarios. It provides instant feedback, suggests improvements, and helps you build confidence in speaking and listening.",
+      "Yes! Our content is specifically mapped to the HSK 3.0 curriculum. We provide stories and grammar references for all levels, allowing you to master the exact vocabulary and structures required for your proficiency goals.",
   },
   {
-    question: "How can I get started with Polysia?",
+    question: "How does the AI Roleplay feature work?",
     answer:
-      "You can start your Mandarin journey by choosing between our monthly Pro plan for ongoing access or our Lifetime plan for a one-time investment. Both plans offer full access to all our AI-powered features.",
+      "The AI Roleplay feature lets you practice real-world conversations—like ordering food or checking into a hotel—with an AI partner. The AI understands your current HSK level and provides feedback to help you improve your speaking and listening.",
   },
   {
-    question: "What makes Polysia different from other apps?",
+    question: "Is there a free version?",
     answer:
-      "Unlike many apps that focus on repetitive drills, Polysia emphasizes contextual learning. Our tailored reading tool and interactive conversations simulate real-world usage, ensuring that what you learn is immediately applicable.",
+      "You can start for free and access a selection of sample stories and introductory content. To unlock the full library, advanced SRS features, and unlimited AI roleplay, you can upgrade to a Pro or Lifetime plan.",
   },
 ];
 

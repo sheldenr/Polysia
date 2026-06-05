@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { GlowButton } from "@/components/ui/glow-button";
 
 const proficiencyLevels = [
   { label: "Total Beginner", description: "Starting from scratch", hsk: 1, icon: "🌱" },
@@ -62,53 +63,25 @@ const trialFeatures = [
 
 type OnboardingStep = "level" | "goal" | "reason" | "age" | "time" | "referral" | "payment";
 
-function ExpandingCircles() {
+function Background() {
   return (
-    <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-      {[...Array(5)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute border border-primary/30 rounded-full"
-          initial={{ width: "0%", height: "0%", opacity: 0 }}
-          animate={{
-            width: ["0%", "300%"],
-            height: ["0%", "300%"],
-            opacity: [0, 0.4, 0],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            delay: i * 1.6,
-            ease: "easeOut",
-          }}
-          style={{
-            filter: "blur(12px)",
-            borderWidth: "1px",
-          }}
-        />
-      ))}
-      {[...Array(3)].map((_, i) => (
-        <motion.div
-          key={`thin-${i}`}
-          className="absolute border border-primary/20 rounded-full"
-          initial={{ width: "0%", height: "0%", opacity: 0 }}
-          animate={{
-            width: ["0%", "200%"],
-            height: ["0%", "200%"],
-            opacity: [0, 0.3, 0],
-          }}
-          transition={{
-            duration: 5,
-            repeat: Infinity,
-            delay: i * 2,
-            ease: "linear",
-          }}
-          style={{
-            filter: "blur(2px)",
-            borderWidth: "0.5px",
-          }}
-        />
-      ))}
+    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden transform-gpu" style={{ transform: 'translateZ(0)' }} aria-hidden="true">
+      <div 
+        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
+        style={{ 
+          backgroundImage: `radial-gradient(circle at 1px 1px, var(--primary) 1px, transparent 0)`,
+          backgroundSize: '32px 32px'
+        }} 
+      />
+      <div 
+        className="absolute inset-0 opacity-[0.02] dark:opacity-[0.04]"
+        style={{ 
+          backgroundImage: `radial-gradient(circle at 1px 1px, var(--primary) 1.5px, transparent 0)`,
+          backgroundSize: '96px 96px',
+        }} 
+      />
+      {/* Gradient Overlay to fade dots */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,var(--background)_90%)]" />
     </div>
   );
 }
@@ -207,9 +180,6 @@ export default function Onboarding() {
     const finalizeSuccess = async () => {
       setIsFinishing(true);
 
-      // Server verifies the Stripe session and flips subscription_status +
-      // onboarding_complete via the service role key. This removes the
-      // dependency on the webhook firing before the redirect.
       if (sessionId && session?.access_token) {
         try {
           const response = await fetch("/api/billing/verify-session", {
@@ -227,8 +197,6 @@ export default function Onboarding() {
           console.error("verify-session error", e);
         }
       } else if (supabase) {
-        // Fallback when session_id is missing — keep the client-side flip so
-        // returning users don't get stuck at the survey.
         await supabase
           .from("profiles")
           .update({ onboarding_complete: true })
@@ -251,7 +219,6 @@ export default function Onboarding() {
     if (!supabase || !user || isPreview) {
       return;
     }
-    // The checkout-success effect drives this flow — don't race with it.
     if (searchParams.get("checkout") === "success") {
       return;
     }
@@ -265,7 +232,6 @@ export default function Onboarding() {
         return;
       }
 
-      // Survey saved but payment not received yet — resume at payment step.
       const { data: surveyRow } = await supabase
         .from("profiles")
         .select("onboarded_at")
@@ -310,24 +276,10 @@ export default function Onboarding() {
     }
 
     try {
-      // Wipe any existing flashcards
-      const { error: wipeError } = await supabase
+      await supabase
         .from("flashcards")
         .delete()
         .eq("user_id", user.id);
-      
-      if (wipeError) {
-        toast({
-          variant: "blackDisclaimer",
-          title: "Could not reset your flashcards",
-          description: wipeError.message,
-        });
-        return false;
-      }
-
-      // We no longer seed thousands of cards here. 
-      // The useSRS hook will fetch the first batch based on proficiencyLevel.
-      
     } catch (e) {
       console.error("Failed to reset cards:", e);
       return false;
@@ -401,13 +353,14 @@ export default function Onboarding() {
 
   if (isFinishing) {
     return (
-      <section className="min-h-screen bg-zinc-100 flex items-center justify-center px-6">
-        <div className="flex flex-col items-center text-center">
+      <section className="min-h-screen bg-background flex items-center justify-center px-6">
+        <Background />
+        <div className="flex flex-col items-center text-center relative z-10">
           <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-          <h1 className="text-3xl font-heading text-zinc-900">Building your learning plan...</h1>
-          <p className="mt-3 text-zinc-500">
+          <h1 className="text-3xl font-heading font-semibold text-foreground">Building your learning plan...</h1>
+          <p className="mt-3 text-muted-foreground">
             Setting up your daily path based on your goals and level.
           </p>
         </div>
@@ -416,266 +369,245 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-100 flex overflow-hidden font-sans">
-      {/* Left Side (25%) */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="relative w-[25%] hidden lg:flex flex-col justify-between p-12 z-10 overflow-hidden"
-      >
-        <ExpandingCircles />
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="relative z-20 flex items-center gap-3"
-        >
+    <div className="min-h-screen bg-background flex flex-col items-center overflow-x-hidden font-sans relative">
+      <Background />
+      
+      {/* Header */}
+      <header className="w-full max-w-7xl px-6 py-8 flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-3">
           <img src="/logo only.svg" alt="Polysia" className="h-10 w-10" />
-          <span className="font-heading text-2xl tracking-tight text-zinc-900">Polysia</span>
-        </motion.div>
+          <span className="font-heading text-2xl font-semibold tracking-tight text-foreground">Polysia</span>
+        </div>
+        <div className="hidden sm:flex flex-col items-end gap-0.5">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Account</span>
+          <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
+            {user?.email || "Guest"}
+          </span>
+        </div>
+      </header>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          className="relative z-20"
-        >
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Logged in as</span>
-            <span className="text-sm font-medium text-zinc-600 truncate max-w-full">
-              {user?.email || "Guest"}
-            </span>
+      {/* Main Content */}
+      <main className="flex-1 w-full max-w-4xl flex flex-col items-center px-6 pb-24 relative z-10">
+        <div className="w-full pt-8 sm:pt-12">
+          {/* Progress Bar */}
+          <div className="w-full h-1 bg-muted rounded-full mb-12 overflow-hidden">
+            <motion.div 
+              initial={false}
+              animate={{ width: `${((activeStep + 1) / steps.length) * 100}%` }}
+              className="h-full bg-primary transition-all duration-500 ease-out"
+            />
           </div>
-        </motion.div>
-      </motion.div>
 
-      {/* Right Side (75%) */}
-      <div className="w-full lg:w-[75%] h-screen flex items-center justify-center p-2 lg:p-3">
-        <motion.div
-          initial={{ x: 80, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          className="h-full w-full bg-white rounded-2xl lg:rounded-3xl border border-zinc-200 overflow-hidden flex flex-col relative"
-        >
-          <div className="flex-1 flex flex-col p-8 sm:p-14 lg:p-20 overflow-y-auto">
-            <div className="mx-auto w-full max-w-3xl flex flex-col h-full">
-              {/* Inner Card Logo */}
-              <div className="mb-14">
-                <img src="/logo only.svg" alt="Polysia" className="h-12 w-12" />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep.key}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="space-y-10"
+            >
+              <div className="space-y-4 text-center sm:text-left">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-semibold tracking-tight text-foreground leading-[1.1]">
+                  {currentStep.title}
+                </h1>
+                <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl leading-relaxed">
+                  {currentStep.description}
+                </p>
               </div>
 
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentStep.key}
-                  initial={{ y: 15, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -15, opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="space-y-10"
-                >
-                  <div className="space-y-3">
-                    <h1 className="text-3xl sm:text-4xl font-heading tracking-tight text-zinc-900 leading-tight">
-                      {currentStep.title}
-                    </h1>
-                    <p className="text-lg text-zinc-500 max-w-2xl leading-relaxed">
-                      {currentStep.description}
-                    </p>
-                  </div>
-
-                  {currentStep.key !== "payment" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-12">
-                      {currentStep.key === "level" && proficiencyLevels.map((level) => (
-                        <SelectionCard
-                          key={level.label}
-                          label={level.label}
-                          icon={level.icon}
-                          description={level.description}
-                          isSelected={proficiencyLevel === level.label}
-                          onClick={() => setProficiencyLevel(level.label)}
-                        />
-                      ))}
-                      {currentStep.key === "level" && (
-                        <div className="sm:col-span-2 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => setProficiencyLevel("I don't know")}
-                            className={cn(
-                              "w-full p-4 rounded-xl border transition-all text-center font-medium text-sm",
-                              proficiencyLevel === "I don't know"
-                                ? "bg-zinc-900 text-white border-zinc-900"
-                                : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-300"
-                            )}
-                          >
-                            I don't know my level
-                          </button>
-                        </div>
-                      )}
-
-                      {currentStep.key === "goal" && learningGoals.map((item) => (
-                        <SelectionCard
-                          key={item.label}
-                          label={item.label}
-                          icon={item.icon}
-                          isSelected={goal === item.label}
-                          onClick={() => setGoal(item.label)}
-                        />
-                      ))}
-
-                      {currentStep.key === "reason" && learningReasons.map((item) => (
-                        <SelectionCard
-                          key={item.label}
-                          label={item.label}
-                          icon={item.icon}
-                          isSelected={reason === item.label}
-                          onClick={() => setReason(item.label)}
-                        />
-                      ))}
-
-                      {currentStep.key === "age" && ageOptions.map((option) => (
-                        <SelectionCard
-                          key={option.label}
-                          label={option.label}
-                          isSelected={age === option.value}
-                          onClick={() => setAge(option.value)}
-                        />
-                      ))}
-
-                      {currentStep.key === "time" && dailyTimeOptions.map((option) => (
-                        <SelectionCard
-                          key={option.value}
-                          label={option.label}
-                          description={option.description}
-                          isSelected={dailyMinutes === option.value}
-                          onClick={() => setDailyMinutes(option.value)}
-                        />
-                      ))}
-
-                      {currentStep.key === "referral" && referralOptions.map((item) => (
-                        <SelectionCard
-                          key={item}
-                          label={item}
-                          isSelected={referral === item}
-                          onClick={() => setReferral(item)}
-                        />
-                      ))}
+              {currentStep.key !== "payment" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {currentStep.key === "level" && proficiencyLevels.map((level) => (
+                    <SelectionCard
+                      key={level.label}
+                      label={level.label}
+                      icon={level.icon}
+                      description={level.description}
+                      isSelected={proficiencyLevel === level.label}
+                      onClick={() => setProficiencyLevel(level.label)}
+                    />
+                  ))}
+                  {currentStep.key === "level" && (
+                    <div className="sm:col-span-2">
+                      <button
+                        type="button"
+                        onClick={() => setProficiencyLevel("I don't know")}
+                        className={cn(
+                          "w-full p-5 rounded-2xl border-2 transition-all text-center font-semibold text-base",
+                          proficiencyLevel === "I don't know"
+                            ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
+                            : "bg-card/50 backdrop-blur-sm text-muted-foreground border-border hover:border-primary/50 hover:bg-card"
+                        )}
+                      >
+                        I don't know my level
+                      </button>
                     </div>
                   )}
 
-                  {currentStep.key === "payment" && (
-                    <div className="space-y-5 pb-12">
-                      {/* Trial card */}
-                      <div className="rounded-2xl bg-zinc-900 p-8 text-white">
-                        <div className="mb-6">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white/80 mb-4">
-                            7-day free trial
-                          </span>
-                          <div className="flex items-baseline gap-2 mt-3">
-                            <span className="text-4xl font-heading">$2.99</span>
-                            <span className="text-zinc-400 text-sm">/month after trial</span>
-                          </div>
-                          <p className="mt-2 text-sm text-zinc-400">
-                            No charge today. Cancel anytime before the trial ends.
-                          </p>
+                  {currentStep.key === "goal" && learningGoals.map((item) => (
+                    <SelectionCard
+                      key={item.label}
+                      label={item.label}
+                      icon={item.icon}
+                      isSelected={goal === item.label}
+                      onClick={() => setGoal(item.label)}
+                    />
+                  ))}
+
+                  {currentStep.key === "reason" && learningReasons.map((item) => (
+                    <SelectionCard
+                      key={item.label}
+                      label={item.label}
+                      icon={item.icon}
+                      isSelected={reason === item.label}
+                      onClick={() => setReason(item.label)}
+                    />
+                  ))}
+
+                  {currentStep.key === "age" && ageOptions.map((option) => (
+                    <SelectionCard
+                      key={option.label}
+                      label={option.label}
+                      isSelected={age === option.value}
+                      onClick={() => setAge(option.value)}
+                    />
+                  ))}
+
+                  {currentStep.key === "time" && dailyTimeOptions.map((option) => (
+                    <SelectionCard
+                      key={option.value}
+                      label={option.label}
+                      description={option.description}
+                      isSelected={dailyMinutes === option.value}
+                      onClick={() => setDailyMinutes(option.value)}
+                    />
+                  ))}
+
+                  {currentStep.key === "referral" && referralOptions.map((item) => (
+                    <SelectionCard
+                      key={item}
+                      label={item}
+                      isSelected={referral === item}
+                      onClick={() => setReferral(item)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {currentStep.key === "payment" && (
+                <div className="max-w-xl mx-auto w-full">
+                  <div className="rounded-3xl bg-card border border-border p-8 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                    
+                    <div className="relative z-10">
+                      <div className="mb-8">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary mb-4">
+                          7-day free trial
+                        </span>
+                        <div className="flex items-baseline gap-2 mt-3">
+                          <span className="text-5xl font-heading font-bold text-foreground">$2.99</span>
+                          <span className="text-muted-foreground font-medium">/month after trial</span>
                         </div>
-
-                        <div className="space-y-3 mb-8">
-                          {trialFeatures.map((feature) => (
-                            <div key={feature} className="flex items-center gap-3">
-                              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                                <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                              </div>
-                              <span className="text-sm text-zinc-200">{feature}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        <Button
-                          type="button"
-                          onClick={() => void handleStartCheckout("pro_monthly")}
-                          disabled={activeCheckoutPlan !== null}
-                          className="w-full h-14 text-base font-semibold bg-white text-black hover:bg-zinc-100 rounded-xl border-none shadow-lg"
-                        >
-                          {activeCheckoutPlan === "pro_monthly" ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Redirecting to checkout...
-                            </>
-                          ) : (
-                            <>
-                              Start 7-day free trial
-                              <ChevronRight className="ml-1.5 w-4 h-4" />
-                            </>
-                          )}
-                        </Button>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void handleStartCheckout("lifetime")}
-                          disabled={activeCheckoutPlan !== null}
-                          className="mt-3 w-full h-12 rounded-xl border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                        >
-                          {activeCheckoutPlan === "lifetime" ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Redirecting to checkout...
-                            </>
-                          ) : (
-                            "Prefer lifetime access? $44.99 one-time"
-                          )}
-                        </Button>
+                        <p className="mt-4 text-muted-foreground leading-relaxed">
+                          No charge today. Cancel anytime before the trial ends. Full access to everything.
+                        </p>
                       </div>
 
+                      <div className="space-y-4 mb-10">
+                        {trialFeatures.map((feature) => (
+                          <div key={feature} className="flex items-center gap-3">
+                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <Check className="w-3.5 h-3.5 text-primary" strokeWidth={3} />
+                            </div>
+                            <span className="text-foreground font-medium">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <GlowButton
+                        type="button"
+                        onClick={() => void handleStartCheckout("pro_monthly")}
+                        disabled={activeCheckoutPlan !== null}
+                        className="w-full h-14 text-base font-bold rounded-2xl"
+                      >
+                        {activeCheckoutPlan === "pro_monthly" ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                            Redirecting...
+                          </>
+                        ) : (
+                          <>
+                            Start 7-day free trial
+                            <ChevronRight className="ml-1.5 w-5 h-5" />
+                          </>
+                        )}
+                      </GlowButton>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => void handleStartCheckout("lifetime")}
+                        disabled={activeCheckoutPlan !== null}
+                        className="mt-4 w-full h-12 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      >
+                        {activeCheckoutPlan === "lifetime" ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Redirecting...
+                          </>
+                        ) : (
+                          "Prefer lifetime access? $44.99 one-time"
+                        )}
+                      </Button>
                     </div>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </main>
 
-          {/* Footer Navigation */}
-          <div className="p-8 sm:px-14 lg:px-20 border-t border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
-            <div className="mx-auto w-full max-w-3xl flex items-center justify-between">
-              <button
-                onClick={handleBack}
-                disabled={activeStep === 0 || currentStep.key === "payment"}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-400 hover:text-zinc-600 disabled:opacity-0 transition-all"
+      {/* Fixed Footer Navigation */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-border p-6 z-20">
+        <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
+          <button
+            onClick={handleBack}
+            disabled={activeStep === 0 || currentStep.key === "payment"}
+            className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground disabled:opacity-0 transition-all uppercase tracking-widest"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back
+          </button>
+
+          <div className="flex items-center gap-6">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] hidden sm:block">
+              {activeStep + 1} / {steps.length}
+            </span>
+
+            {currentStep.key !== "payment" && (
+              <GlowButton
+                onClick={() => void handleContinue()}
+                disabled={!canContinue || isSubmitting}
+                className="min-w-[140px]"
               >
-                <ChevronLeft className="w-4 h-4" />
-                Go back
-              </button>
-
-              <div className="flex items-center gap-8">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest hidden sm:block">
-                  Step {activeStep + 1} of {steps.length}
-                </span>
-
-                {currentStep.key !== "payment" && (
-                  <Button
-                    onClick={() => void handleContinue()}
-                    disabled={!canContinue || isSubmitting}
-                    className="rounded-[0.75rem] px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90 transition-all border-none"
-                  >
-                    {isSubmitting && currentStep.key === "referral" ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        Continue
-                        <ChevronRight className="ml-1.5 w-4 h-4" />
-                      </>
-                    )}
-                  </Button>
+                {isSubmitting && currentStep.key === "referral" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Saving
+                  </>
+                ) : (
+                  <>
+                    Continue
+                    <ChevronRight className="ml-1.5 w-4 h-4" />
+                  </>
                 )}
-              </div>
-            </div>
+              </GlowButton>
+            )}
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -698,32 +630,32 @@ function SelectionCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "p-5 rounded-xl border-2 transition-all text-left flex items-center justify-between group",
+        "p-5 rounded-2xl border-2 transition-all text-left flex items-center justify-between group relative overflow-hidden",
         isSelected
-          ? "border-primary bg-primary/5 shadow-sm"
-          : "border-zinc-100 bg-white hover:border-zinc-200"
+          ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
+          : "border-border bg-card/50 backdrop-blur-sm hover:border-primary/50 hover:bg-card"
       )}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-5 relative z-10">
         {icon && (
           <div className={cn(
-            "w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-zinc-50 border border-zinc-100 transition-colors group-hover:bg-white",
-            isSelected && "bg-primary/10 border-primary/20"
+            "w-14 h-14 rounded-2xl flex items-center justify-center text-3xl bg-muted/50 border border-border transition-all group-hover:scale-110",
+            isSelected && "bg-primary/10 border-primary/20 scale-110"
           )}>
             {icon}
           </div>
         )}
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-1">
           <span className={cn(
-            "font-semibold text-base",
-            isSelected ? "text-primary" : "text-zinc-700 group-hover:text-zinc-900"
+            "font-bold text-lg leading-tight",
+            isSelected ? "text-foreground" : "text-foreground/80 group-hover:text-foreground"
           )}>
             {label}
           </span>
           {description && (
             <span className={cn(
-              "text-xs font-medium uppercase tracking-wider",
-              isSelected ? "text-primary/70" : "text-zinc-400"
+              "text-[10px] font-bold uppercase tracking-widest leading-none",
+              isSelected ? "text-primary" : "text-muted-foreground"
             )}>
               {description}
             </span>
@@ -731,10 +663,16 @@ function SelectionCard({
         </div>
       </div>
       <div className={cn(
-        "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0",
-        isSelected ? "border-primary bg-primary" : "border-zinc-200"
+        "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 relative z-10",
+        isSelected ? "border-primary bg-primary" : "border-border group-hover:border-primary/50"
       )}>
-        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+        {isSelected && (
+          <motion.div 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="w-2 h-2 rounded-full bg-primary-foreground" 
+          />
+        )}
       </div>
     </button>
   );

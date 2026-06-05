@@ -151,10 +151,10 @@ export default function NewHeroSection() {
                 </div>
               </div>
 
-              {/* Center: Settings Pill */}
+              {/* Center: Story Hub Pill */}
               <div className="flex justify-center w-1/3">
                 <div className="h-8 px-4 rounded-full bg-white/70 dark:bg-zinc-800/70 backdrop-blur-md shadow-[0_2px_10px_rgb(0,0,0,0.06)] flex items-center">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Settings</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Story Hub</span>
                 </div>
               </div>
 

@@ -24,6 +24,7 @@ interface StoryHubViewProps {
   onExit: () => void;
   isStoryComplete: (storyId: string) => boolean;
   onToggleComplete: (storyId: string) => void;
+  currentLevel?: number;
 }
 
 const levelNames: Record<number, string> = {
@@ -69,6 +70,7 @@ const StoryHubView = ({
   onExit,
   isStoryComplete,
   onToggleComplete,
+  currentLevel = 1,
 }: StoryHubViewProps) => {
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState<string | null>(null);
@@ -109,46 +111,6 @@ const StoryHubView = ({
     }
   };
 
-  const background = (
-    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
-      {/* Mesh Gradient Blobs */}
-      <motion.div 
-        animate={{
-          x: [0, 40, 0],
-          y: [0, -40, 0],
-          scale: [1, 1.2, 1],
-        }}
-        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-        className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-[120px]"
-      />
-      <motion.div 
-        animate={{
-          x: [0, -50, 0],
-          y: [0, 60, 0],
-          scale: [1, 1.1, 1],
-        }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        className="absolute top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 dark:bg-primary/10 blur-[100px]"
-      />
-      <motion.div 
-        animate={{
-          x: [0, 30, 0],
-          y: [0, 40, 0],
-        }}
-        transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-        className="absolute -bottom-[10%] left-[20%] w-[40%] h-[40%] rounded-full bg-sky-500/5 dark:bg-sky-500/10 blur-[110px]"
-      />
-
-      {/* Grain/Noise Overlay */}
-      <div 
-        className="absolute inset-0 opacity-[0.2] dark:opacity-[0.25] mix-blend-overlay"
-        style={{ 
-          backgroundImage: `url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PScwIDAgMjAwIDIwMCcgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJz48ZmlsdGVyIGlkPSdub2lzZUZpbHRlcic+PGZlVHVyYnVsZW5jZSB0eXBlPSdmcmFjdGFsTm9pc2UnIGJhc2VGcmVxdWVuY3k9JzAuNjUnIG51bU9jdGF2ZXM9JzMnIHN0aXRjaFRpbGVzPSdzdGl0Y2gnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWx0ZXI9J3VybCgjbm9pc2VGaWx0ZXIpJy8+PC9zdmc+")`,
-        }} 
-      />
-    </div>
-  );
-
   // Reader Mode
   if (selectedStory) {
     // Split into sentences for hover tracking
@@ -164,7 +126,7 @@ const StoryHubView = ({
               onClick={() => onSelectStory(null)}
               className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
             >
-              <ChevronLeft className="h-4 w-4" /> Back to Chapters
+              <ChevronLeft className="h-4 w-4" /> Back to Stories
             </Button>
 
             <div className="flex items-center gap-2">
@@ -298,117 +260,121 @@ const StoryHubView = ({
   }
 
   // Storyline Detail Mode
-  const categoryStories = stories.filter(s => s.category === selectedCategory);
-  const storyline = categoryStories.length > 0 ? {
-    name: selectedCategory,
-    hsk_level: categoryStories[0].hsk_level,
-    chapters: [...categoryStories].sort((a, b) => (a.chapter_number || 0) - (b.chapter_number || 0))
-  } : null;
+  if (selectedCategory) {
+    const categoryStories = stories.filter(s => s.category === selectedCategory);
+    const storyline = categoryStories.length > 0 ? {
+      name: selectedCategory,
+      hsk_level: categoryStories[0].hsk_level,
+      chapters: [...categoryStories].sort((a, b) => (a.chapter_number || 0) - (b.chapter_number || 0))
+    } : null;
 
-  if (!storyline) return null;
+    if (storyline) {
+      const progress = Math.round((categoryStories.filter(c => isStoryComplete(c.id)).length / Math.max(1, categoryStories.length)) * 100);
 
-  const progress = Math.round((categoryStories.filter(c => isStoryComplete(c.id)).length / Math.max(1, categoryStories.length)) * 100);
-
-  return (
-    <div className="relative min-h-full">
-      <div className="relative z-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-        <div className="flex items-center justify-between">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onExit}
-            className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <ChevronLeft className="h-4 w-4" /> Back to Dashboard
-          </Button>
-        </div>
-
-        <div className="space-y-4 px-2">
-          <div className="flex items-center gap-2 mb-2">
-            <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-black/[0.03] dark:bg-white/[0.05]", levelColors[storyline.hsk_level])}>
-              HSK {storyline.hsk_level}
-            </span>
-            <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
-              {storyline.chapters.length} Chapters
-            </span>
-          </div>
-          <h1 className="text-3xl font-heading tracking-tight">{storyline.name}</h1>
-          <p className="text-muted-foreground leading-relaxed max-w-2xl">
-            A {storyline.chapters.length}-part journey through {storyline.name.toLowerCase()}. Progress through each chapter to master the content.
-          </p>
-          
-          <div className="flex flex-col gap-2 w-full max-w-[200px] pt-2">
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-              <span>Overall Progress</span>
-              <span className="text-foreground">{progress}%</span>
-            </div>
-            <div className="h-1.5 w-full bg-black/[0.05] dark:bg-white/[0.05] rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary transition-all duration-700 ease-out" 
-                style={{ width: `${progress}%` }} 
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {storyline.chapters.map((chapter, idx) => {
-            const isRead = isStoryComplete(chapter.id);
-            const isNext = !isRead && (idx === 0 || isStoryComplete(storyline.chapters[idx-1].id));
-            
-            return (
-              <div 
-                key={chapter.id}
-                className={cn(
-                  "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 cursor-pointer",
-                  isRead 
-                    ? "bg-white dark:bg-card border-border/40 opacity-70" 
-                    : isNext
-                      ? "bg-white dark:bg-card border-primary/30 shadow-sm"
-                      : "bg-black/[0.01] dark:bg-white/[0.01] border-border/30"
-                )}
-                onClick={() => onSelectStory(chapter)}
+      return (
+        <div className="relative min-h-full">
+          <div className="relative z-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+            <div className="flex items-center justify-between">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => onSelectCategory(null)}
+                className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
               >
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "size-8 rounded-xl flex items-center justify-center text-[10px] font-bold transition-all",
-                    isRead 
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
-                      : isNext
-                        ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground/40"
-                  )}>
-                    {isRead ? <CheckCircle2 className="size-4" /> : (idx + 1).toString().padStart(2, '0')}
-                  </div>
-                  <div>
-                    <h3 className={cn(
-                      "font-heading text-base transition-colors",
-                      isRead ? "text-foreground/60" : "text-foreground group-hover:text-primary"
-                    )}>
-                      {chapter.title_zh}
-                    </h3>
-                    <p className="text-xs text-muted-foreground italic opacity-70 line-clamp-1">{chapter.title_en}</p>
-                  </div>
-                </div>
+                <ChevronLeft className="h-4 w-4" /> Back to Dashboard
+              </Button>
+            </div>
 
-                <div className="flex items-center gap-3">
-                  {isRead ? (
-                    <span className="text-[8px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-lg">Done</span>
-                  ) : isNext ? (
-                    <span className="text-[8px] font-bold uppercase tracking-widest text-primary bg-primary/5 px-2 py-0.5 rounded-lg">Next</span>
-                  ) : null}
-                  <ChevronRight className={cn(
-                    "size-4 transition-all duration-300",
-                    isNext ? "text-primary translate-x-0" : "text-muted-foreground/30 -translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0"
-                  )} />
+            <div className="space-y-4 px-2">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-black/[0.03] dark:bg-white/[0.05]", levelColors[storyline.hsk_level])}>
+                  HSK {storyline.hsk_level}
+                </span>
+                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+                  {storyline.chapters.length} Chapters
+                </span>
+              </div>
+              <h1 className="text-3xl font-heading tracking-tight">{storyline.name}</h1>
+              <p className="text-muted-foreground leading-relaxed max-w-2xl">
+                A {storyline.chapters.length}-part journey through {storyline.name.toLowerCase()}. Progress through each chapter to master the content.
+              </p>
+              
+              <div className="flex flex-col gap-2 w-full max-w-[200px] pt-2">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                  <span>Overall Progress</span>
+                  <span className="text-foreground">{progress}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-black/[0.05] dark:bg-white/[0.05] rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-700 ease-out" 
+                    style={{ width: `${progress}%` }} 
+                  />
                 </div>
               </div>
-            );
-          })}
+            </div>
+
+            <div className="space-y-3">
+              {storyline.chapters.map((chapter, idx) => {
+                const isRead = isStoryComplete(chapter.id);
+                const isNext = !isRead && (idx === 0 || isStoryComplete(storyline.chapters[idx-1].id));
+                
+                return (
+                  <div 
+                    key={chapter.id}
+                    className={cn(
+                      "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 cursor-pointer",
+                      isRead 
+                        ? "bg-white dark:bg-card border-border/40 opacity-70" 
+                        : isNext
+                          ? "bg-white dark:bg-card border-primary/30 shadow-sm"
+                          : "bg-black/[0.01] dark:bg-white/[0.01] border-border/30"
+                    )}
+                    onClick={() => onSelectStory(chapter)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "size-8 rounded-xl flex items-center justify-center text-[10px] font-bold transition-all",
+                        isRead 
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
+                          : isNext
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground/40"
+                      )}>
+                        {isRead ? <CheckCircle2 className="size-4" /> : (idx + 1).toString().padStart(2, '0')}
+                      </div>
+                      <div>
+                        <h3 className={cn(
+                          "font-heading text-base transition-colors",
+                          isRead ? "text-foreground/60" : "text-foreground group-hover:text-primary"
+                        )}>
+                          {chapter.title_zh}
+                        </h3>
+                        <p className="text-xs text-muted-foreground italic opacity-70 line-clamp-1">{chapter.title_en}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {isRead ? (
+                        <span className="text-[8px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-lg">Done</span>
+                      ) : isNext ? (
+                        <span className="text-[8px] font-bold uppercase tracking-widest text-primary bg-primary/5 px-2 py-0.5 rounded-lg">Next</span>
+                      ) : null}
+                      <ChevronRight className={cn(
+                        "size-4 transition-all duration-300",
+                        isNext ? "text-primary translate-x-0" : "text-muted-foreground/30 -translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0"
+                      )} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  );
+      );
+    }
+  }
+
+  return null;
 };
 
 export default StoryHubView;

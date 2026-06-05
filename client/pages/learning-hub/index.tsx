@@ -186,8 +186,6 @@ const LearningHub = () => {
                       <DashboardView 
                         stats={metrics.stats}
                         reviewMeta={review.meta}
-                        reviewDeck={review.deck}
-                        allActivities={metrics.allActivities}
                         stories={storyHub.stories}
                         onEnterFlow={enterFlow}
                         onSelectStory={(story) => {
@@ -202,6 +200,7 @@ const LearningHub = () => {
                               : [...prev, level]
                           );
                         }}
+                        onClearLevels={() => setSelectedLevels([])}
                         selectedLevels={selectedLevels}
                       />
                     )}
@@ -232,6 +231,7 @@ const LearningHub = () => {
                         onExit={exitFlow}
                         isStoryComplete={storyHub.isStoryComplete}
                         onToggleComplete={storyHub.toggleStoryComplete}
+                        currentLevel={review.meta?.hskProgress.currentLevel || 1}
                       />
                     )}
 

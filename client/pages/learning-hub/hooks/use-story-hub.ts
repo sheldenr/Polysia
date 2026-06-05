@@ -61,6 +61,14 @@ export const SAMPLE_STORYLINES: Story[] = [
     content_zh: "上海是一个非常现代的城市。这里有很多高楼大厦。虽然工作很忙，但我很喜欢这里的生活。",
     hsk_level: 3,
     category: "Travel Stories"
+  },
+  {
+    id: "sample-funny-1",
+    title_zh: "聪明的猴子",
+    title_en: "The Smart Monkey",
+    content_zh: "这只猴子很聪明，它会用手机。有一天，它给它的朋友打了个电话。它的朋友也是一只猴子！",
+    hsk_level: 2,
+    category: "Funny story"
   }
 ];
 
