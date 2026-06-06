@@ -322,7 +322,7 @@ const StoryHubView = ({
                   <div 
                     key={chapter.id}
                     className={cn(
-                      "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 cursor-pointer",
+                      "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:ring-1 hover:ring-primary hover:ring-inset hover:border-transparent",
                       isRead 
                         ? "bg-white dark:bg-card border-border/40 opacity-70" 
                         : isNext
@@ -332,20 +332,13 @@ const StoryHubView = ({
                     onClick={() => onSelectStory(chapter)}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "size-8 rounded-xl flex items-center justify-center text-[10px] font-bold transition-all",
-                        isRead 
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
-                          : isNext
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-muted-foreground/40"
-                      )}>
-                        {isRead ? <CheckCircle2 className="size-4" /> : (idx + 1).toString().padStart(2, '0')}
+                      <div className="size-8 flex items-center justify-center text-[10px] font-bold transition-all">
+                        {isRead ? <CheckCircle2 className="size-5 text-white" /> : (idx + 1).toString().padStart(2, '0')}
                       </div>
                       <div>
                         <h3 className={cn(
                           "font-heading text-base transition-colors",
-                          isRead ? "text-foreground/60" : "text-foreground group-hover:text-primary"
+                          isRead ? "text-foreground/60" : "text-foreground"
                         )}>
                           {chapter.title_zh}
                         </h3>

@@ -139,11 +139,13 @@ const DashboardView = ({
           className="relative rounded-2xl bg-card border border-border/60 p-5 flex flex-col justify-between shadow-sm cursor-pointer hover:border-primary/30 transition-colors"
         >
           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Due for Review</span>
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-2 justify-between">
             <p className={cn("text-3xl font-heading tracking-tight", dueCount > 0 ? "text-primary" : "text-muted-foreground/40")}>
               {dueCount}
             </p>
-            <Zap className={cn("size-4 mb-2", dueCount > 0 ? "text-primary fill-primary/20" : "text-muted-foreground/20")} />
+            <div className="size-8 flex items-center justify-center transition-all">
+              <Zap className={cn("size-5 text-white", dueCount > 0 && "fill-white/20")} />
+            </div>
           </div>
         </div>
       </section>
@@ -225,23 +227,24 @@ const DashboardView = ({
                     onEnterFlow(1);
                   }}
                   className={cn(
-                    "grid grid-cols-12 items-center p-4 px-6 cursor-pointer transition-all group",
-                    index % 2 === 0 
-                      ? "bg-card hover:bg-primary/[0.03] dark:hover:bg-primary/[0.05]" 
-                      : "bg-muted/30 hover:bg-primary/[0.03] dark:hover:bg-primary/[0.05]"
+                    "grid grid-cols-12 items-center p-4 px-6 cursor-pointer transition-all group relative rounded-xl",
+                    index % 2 === 0 ? "bg-card" : "bg-muted/30",
+                    "hover:z-10 hover:ring-1 hover:ring-primary hover:ring-inset"
                   )}
                 >
                   <div className="col-span-1">
-                    {isFinished ? (
-                      <CheckCircle2 className="size-5 text-emerald-500" />
-                    ) : isStarted ? (
-                      <Clock className="size-5 text-primary" />
-                    ) : (
-                      <BookOpen className="size-5 text-muted-foreground/40 group-hover:text-primary/60" />
-                    )}
+                    <div className="size-8 flex items-center justify-center transition-all">
+                      {isFinished ? (
+                        <CheckCircle2 className="size-5 text-emerald-500" />
+                      ) : isStarted ? (
+                        <Clock className="size-5 text-primary" />
+                      ) : (
+                        <BookOpen className="size-5 text-muted-foreground/40 group-hover:text-primary/60" />
+                      )}
+                    </div>
                   </div>
                   <div className="col-span-6 space-y-0.5 pr-4 px-2">
-                    <h4 className="font-heading text-sm font-medium group-hover:text-primary transition-colors line-clamp-1">
+                    <h4 className="font-heading text-sm font-medium transition-colors line-clamp-1">
                       {storyline.name}
                     </h4>
                     <p className="text-[10px] text-muted-foreground/60 line-clamp-1 italic">
