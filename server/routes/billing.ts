@@ -156,6 +156,7 @@ export const handleStripeWebhook: RequestHandler = async (req, res) => {
       .update({
         subscription_status: "active",
         subscription_plan: plan,
+        stripe_customer_id: session.customer as string,
         onboarding_complete: true,
         updated_at: new Date().toISOString(),
       })
@@ -199,15 +200,18 @@ export const handleVerifyCheckoutSession: RequestHandler = async (req, res) => {
   const stripe = new Stripe(secretKey);
 
   try {
+    console.log(`[Verify Session] Verifying session ${parsed.data.sessionId} for user ${userId}`);
     const session = await stripe.checkout.sessions.retrieve(parsed.data.sessionId);
 
     const sessionUserId = session.client_reference_id || session.metadata?.user_id;
     if (sessionUserId !== userId) {
+      console.error(`[Verify Session] Session owner mismatch. Session: ${sessionUserId}, Current: ${userId}`);
       return res.status(403).json({ error: "Session does not belong to this user." });
     }
 
     const isPaid = session.payment_status === "paid" || session.status === "complete";
     if (!isPaid) {
+      console.log(`[Verify Session] Session not paid yet. Status: ${session.status}, Payment: ${session.payment_status}`);
       return res.status(200).json({ verified: false });
     }
 
@@ -215,11 +219,13 @@ export const handleVerifyCheckoutSession: RequestHandler = async (req, res) => {
     const subscriptionStatus =
       session.mode === "subscription" ? "trialing" : "active";
 
+    console.log(`[Verify Session] Updating DB for user ${userId} with status ${subscriptionStatus}`);
     const { error } = await supabaseAdmin
       .from("profiles")
       .update({
         subscription_status: subscriptionStatus,
         subscription_plan: plan,
+        stripe_customer_id: session.customer as string,
         onboarding_complete: true,
         updated_at: new Date().toISOString(),
       })
@@ -227,9 +233,10 @@ export const handleVerifyCheckoutSession: RequestHandler = async (req, res) => {
 
     if (error) {
       console.error("[Verify Session] DB update failed:", error);
-      return res.status(500).json({ error: "Failed to update profile." });
+      return res.status(500).json({ error: `Database update failed: ${error.message}` });
     }
 
+    console.log(`[Verify Session] Success for user ${userId}`);
     return res.status(200).json({ verified: true, subscriptionStatus });
   } catch (err) {
     console.error("[Verify Session] Error:", err);

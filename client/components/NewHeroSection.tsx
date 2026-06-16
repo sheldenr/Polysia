@@ -90,7 +90,7 @@ export default function NewHeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-3xl sm:text-4xl lg:text-5xl font-heading font-semibold mb-5 tracking-tight leading-[1.05]"
+          className="text-3xl sm:text-4xl lg:text-5xl font-heading font-semibold mb-2 tracking-tight leading-[1.05]"
         >
           Learn Chinese with stories <br />
           you can understand
@@ -138,7 +138,7 @@ export default function NewHeroSection() {
         {/* Browser Window (The "Story Thing") */}
         <div className="w-full flex justify-center relative mt-16 sm:mt-24 transform-gpu" style={{ transform: 'translateZ(0)' }}>
           <motion.div 
-            className="w-[min(90vw,900px)] shrink-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-md rounded-t-xl overflow-hidden text-left h-[440px] relative group border-x border-t border-border/50 shadow-2xl"
+            className="w-[min(90vw,900px)] shrink-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-md rounded-t-xl overflow-hidden text-left min-h-[480px] relative group border-x border-t border-border/50 shadow-2xl"
           >
             {/* Mock Showcase Header */}
             <div className="px-6 py-5 flex items-center justify-between">
@@ -179,21 +179,21 @@ export default function NewHeroSection() {
                 >
                   {/* Two Row Meaning Display (Unified Style) */}
                   <div className="grid gap-2">
-                    <div className="bg-white/60 dark:bg-white/[0.05] rounded-xl p-3 h-14 flex flex-col justify-center shadow-sm">
+                    <div className="bg-white/60 dark:bg-white/[0.05] rounded-xl p-3 min-h-14 flex flex-col justify-center shadow-sm">
                        <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest">Current Sentence</span>
-                       <p className="text-xs italic truncate font-medium">{sentences[activeSentence].en}</p>
+                       <p className="text-xs italic font-medium">{sentences[activeSentence].en}</p>
                     </div>
-                    <div className="bg-white/30 dark:bg-white/[0.02] rounded-xl p-3 h-14 flex flex-col justify-center">
+                    <div className="bg-white/30 dark:bg-white/[0.02] rounded-xl p-3 min-h-14 flex flex-col justify-center">
                        <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest">Word Definition</span>
-                       <p className="text-xs font-medium truncate italic opacity-80">
+                       <p className="text-xs font-medium italic opacity-80">
                           <strong>{sentences[activeSentence].word}</strong>: {sentences[activeSentence].def}
                        </p>
                     </div>
                   </div>
 
                   {/* Large Content with Mock Cursor */}
-                  <div className="relative pt-4 space-y-8">
-                    <div className="flex flex-wrap items-end gap-x-3 gap-y-8">
+                  <div className="relative space-y-4">
+                    <div className="flex flex-wrap items-end gap-x-3 gap-y-4">
                        <ChineseTooltipText 
                          text={sentences[activeSentence].zh} 
                          variant="landing-hero"
@@ -202,7 +202,7 @@ export default function NewHeroSection() {
                        />
                     </div>
 
-                    <div className="flex flex-wrap items-end gap-x-3 gap-y-8">
+                    <div className="flex flex-wrap items-end gap-x-3 gap-y-4">
                        <ChineseTooltipText 
                          text={sentences[activeSentence].zh2} 
                          variant="landing-hero"

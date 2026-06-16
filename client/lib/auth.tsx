@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { supabase, supabaseConfigError } from "./supabase";
 import type { User, Session } from "@supabase/supabase-js";
+import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: User | null;
@@ -26,6 +27,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,17 +48,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = async (userId: string) => {
     try {
       if (!supabase) return null;
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("onboarding_complete, subscription_status, payment_bypass_until")
-        .eq("id", userId)
-        .maybeSingle();
       
-      if (error) throw error;
-      
-      const onboarding = data?.onboarding_complete ?? false;
-      const subStatus = data?.subscription_status ?? null;
-      const bypass = data?.payment_bypass_until ?? null;
+      // Get the session to get the access token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      // Call our Express API which performs the Stripe sync
+      const response = await fetch("/api/profile", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch profile from API");
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.message || "API returned failure");
+      }
+
+      const profileData = result.profile;
+      const onboarding = profileData?.onboardingComplete ?? false;
+      const subStatus = profileData?.subscriptionStatus ?? null;
+      const bypass = profileData?.paymentBypassUntil ?? null;
 
       const newProfile = { 
         onboardingComplete: onboarding, 
@@ -75,11 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (user) {
+      if (user.id === "debug-user") return profile;
       return await fetchProfile(user.id);
     }
     return null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, profile]);
 
   const clearAuthParamsFromUrl = () => {
     const url = new URL(window.location.href);
@@ -108,6 +124,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabase) {
       console.error(supabaseConfigError);
+      setIsLoading(false);
+      return;
+    }
+
+    // Local development bypass
+    const debugAuth = localStorage.getItem("DEBUG_AUTH") === "true";
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    
+    if (debugAuth && isLocal) {
+      console.log("DEBUG_AUTH active: Injecting mock user");
+      const mockUser = {
+        id: "debug-user",
+        email: "debug@polysia.com",
+        user_metadata: { full_name: "Debug User" },
+        app_metadata: {},
+      } as any;
+      setUser(mockUser);
+      setProfile({
+        onboardingComplete: false,
+        subscriptionStatus: "active",
+        paymentBypassUntil: null,
+        isLoaded: true
+      });
       setIsLoading(false);
       return;
     }
@@ -149,6 +188,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Handle post-payment verification and redirection
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkoutState = params.get("checkout");
+    const sessionId = params.get("session_id");
+
+    if (checkoutState === "success" && sessionId && session?.access_token) {
+      const verifyPayment = async () => {
+        try {
+          const response = await fetch("/api/billing/verify-session", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ sessionId }),
+          });
+          
+          if (response.ok) {
+            await refreshProfile();
+            toast({
+              title: "Payment successful!",
+              description: "Welcome to Pro! You now have full access.",
+            });
+            
+            // Clear URL and redirect to learning hub
+            const url = new URL(window.location.href);
+            url.searchParams.delete("checkout");
+            url.searchParams.delete("session_id");
+            url.searchParams.delete("plan");
+            window.history.replaceState({}, document.title, url.pathname);
+            
+            // If not already on learning-hub, redirect there
+            if (!window.location.pathname.startsWith("/learning-hub")) {
+              window.location.href = "/learning-hub";
+            }
+          } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Verification failed");
+          }
+        } catch (error) {
+          console.error("Global payment verification error:", error);
+          toast({
+            variant: "destructive",
+            title: "Verification failed",
+            description: error instanceof Error ? error.message : "Could not verify your payment. Please contact support.",
+          });
+        }
+      };
+      
+      void verifyPayment();
+    }
+  }, [session, refreshProfile, toast]);
 
   const signup = async (email: string, password: string) => {
     if (!supabase) {

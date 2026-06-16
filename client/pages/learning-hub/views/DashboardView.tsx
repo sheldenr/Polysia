@@ -1,17 +1,16 @@
 import React, { useState } from "react";
 import { 
-  BookOpen, 
   ChevronRight, 
   GraduationCap, 
   Zap, 
   Book, 
-  CheckCircle2,
-  Clock
+  CheckCircle2
 } from "lucide-react";
 import { ReviewMeta } from "@/hooks/use-review-system";
 import { Story } from "../hooks/use-story-hub";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 
 interface DashboardViewProps {
   stats: {
@@ -101,16 +100,13 @@ const DashboardView = ({
         {/* Box 1: Grammar Reference */}
         <div 
           onClick={() => onEnterFlow(3)}
-          className="group relative rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 p-5 cursor-pointer shadow-sm hover:shadow-md transition-all overflow-hidden"
+          className="group relative rounded-2xl bg-primary p-5 cursor-pointer shadow-sm hover:shadow-md transition-all overflow-hidden border border-primary/10"
         >
-          <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:scale-110 transition-transform">
-            <Book className="size-12 text-white" />
-          </div>
           <div className="relative z-10 flex flex-col h-full justify-between gap-4">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">Reference</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary-foreground/80">Reference</span>
             <div className="space-y-1">
-              <h3 className="text-lg font-heading font-bold text-white leading-tight">Grammar Hub</h3>
-              <p className="text-[10px] text-white/70 font-medium">HSK 1-6 Master Guide</p>
+              <h3 className="text-lg font-heading font-bold text-primary-foreground leading-tight">Grammar Hub</h3>
+              <p className="text-[10px] text-primary-foreground/70 font-medium">HSK 1-6 Master Guide</p>
             </div>
           </div>
         </div>
@@ -143,9 +139,6 @@ const DashboardView = ({
             <p className={cn("text-3xl font-heading tracking-tight", dueCount > 0 ? "text-primary" : "text-muted-foreground/40")}>
               {dueCount}
             </p>
-            <div className="size-8 flex items-center justify-center transition-all">
-              <Zap className={cn("size-5 text-white", dueCount > 0 && "fill-white/20")} />
-            </div>
           </div>
         </div>
       </section>
@@ -207,9 +200,10 @@ const DashboardView = ({
       <section className="space-y-4">
         <div className="grid grid-cols-12 px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
           <div className="col-span-1">Status</div>
-          <div className="col-span-6 px-2">Story Title</div>
+          <div className="col-span-5 px-2">Story Title</div>
           <div className="col-span-2">Difficulty</div>
-          <div className="col-span-3 text-right">Progress</div>
+          <div className="col-span-2">Added</div>
+          <div className="col-span-2 text-right">Progress</div>
         </div>
 
         <div className="space-y-1 rounded-2xl overflow-hidden border border-border/50 bg-muted/20">
@@ -228,22 +222,23 @@ const DashboardView = ({
                   }}
                   className={cn(
                     "grid grid-cols-12 items-center p-4 px-6 cursor-pointer transition-all group relative rounded-xl",
-                    index % 2 === 0 ? "bg-card" : "bg-muted/30",
-                    "hover:z-10 hover:ring-1 hover:ring-primary hover:ring-inset"
+                    index % 2 === 0 ? "bg-card hover:bg-muted/50" : "bg-muted/30 hover:bg-muted/50",
+                    "hover:z-10"
                   )}
                 >
                   <div className="col-span-1">
                     <div className="size-8 flex items-center justify-center transition-all">
                       {isFinished ? (
                         <CheckCircle2 className="size-5 text-emerald-500" />
-                      ) : isStarted ? (
-                        <Clock className="size-5 text-primary" />
                       ) : (
-                        <BookOpen className="size-5 text-muted-foreground/40 group-hover:text-primary/60" />
+                        <Book className={cn(
+                          "size-5 transition-all",
+                          isStarted ? "text-foreground" : "text-muted-foreground/40 group-hover:text-foreground/60"
+                        )} />
                       )}
                     </div>
                   </div>
-                  <div className="col-span-6 space-y-0.5 pr-4 px-2">
+                  <div className="col-span-5 space-y-0.5 pr-4 px-2">
                     <h4 className="font-heading text-sm font-medium transition-colors line-clamp-1">
                       {storyline.name}
                     </h4>
@@ -256,8 +251,13 @@ const DashboardView = ({
                       {levelNames[storyline.hsk_level]}
                     </span>
                   </div>
-                  <div className="col-span-3 flex flex-col items-end gap-1.5">
-                    <div className="flex items-center gap-2 w-24">
+                  <div className="col-span-2">
+                    <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+                      {storyline.chapters[0]?.created_at && format(new Date(storyline.chapters[0].created_at), "MMM d, yyyy")}
+                    </span>
+                  </div>
+                  <div className="col-span-2 flex flex-col items-end gap-1.5">
+                    <div className="flex items-center gap-2 w-20">
                       <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                         <div 
                           className={cn(
@@ -277,7 +277,7 @@ const DashboardView = ({
             })
           ) : (
             <div className="flex flex-col items-center justify-center py-20 bg-card">
-              <BookOpen className="size-10 text-muted-foreground/20 mb-3" />
+              <Book className="size-10 text-muted-foreground/20 mb-3" />
               <p className="text-xs text-muted-foreground font-medium">No stories found matching your filters</p>
               <Button 
                 variant="ghost" 

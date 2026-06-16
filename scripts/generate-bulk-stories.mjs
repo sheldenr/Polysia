@@ -85,7 +85,8 @@ async function generateChapter(storyline, chapterNum, previousChapters = [], ret
     {
       "title_zh": "Chinese title",
       "title_en": "English title",
-      "content_zh": "150-300 characters of HSK ${storyline.hsk_level} Chinese"
+      "content_zh": "150-300 characters of HSK ${storyline.hsk_level} Chinese",
+      "content_en": "Natural English translation of each sentence in content_zh, in order."
     }
   `;
 

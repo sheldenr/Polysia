@@ -54,7 +54,8 @@ async function generateChapter(storyline, chapterNum, previousChapters = [], ret
     {
       "title_zh": "Chapter title in Chinese",
       "title_en": "Natural English translation of the title",
-      "content_zh": "Passage between 150-250 characters. Ensure it continues the plot from previous chapters if any."
+      "content_zh": "Passage between 150-250 characters. Ensure it continues the plot from previous chapters if any.",
+      "content_en": "Natural English translation of each sentence in content_zh, in order."
     }
   `;
 

@@ -134,7 +134,7 @@ export default function SignUp() {
                   id="signup-email"
                   type="email"
                   placeholder="name@example.com"
-                  className="h-12 px-4 rounded-xl"
+                  className="h-12 px-4 rounded-xl bg-white dark:bg-black/20 text-foreground border-slate-200 dark:border-slate-800 shadow-sm"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -146,7 +146,7 @@ export default function SignUp() {
                   id="signup-password"
                   type="password"
                   placeholder="Create a password"
-                  className="h-12 px-4 rounded-xl"
+                  className="h-12 px-4 rounded-xl bg-white dark:bg-black/20 text-foreground border-slate-200 dark:border-slate-800 shadow-sm"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -158,7 +158,7 @@ export default function SignUp() {
                   id="signup-confirm-password"
                   type="password"
                   placeholder="Confirm your password"
-                  className="h-12 px-4 rounded-xl"
+                  className="h-12 px-4 rounded-xl bg-white dark:bg-black/20 text-foreground border-slate-200 dark:border-slate-800 shadow-sm"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required

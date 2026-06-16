@@ -43,6 +43,7 @@ type ChineseTooltipTextProps = {
   variant?: "default" | "reading" | "landing-hero";
   showPinyin?: boolean;
   onTokenHover?: (token: string, definition: CharacterDefinition | null) => void;
+  onTokenClick?: (token: string, definition: CharacterDefinition | null) => void;
 };
 
 function loadDictionaryCollection(): Promise<DictionaryCollection> {
@@ -98,6 +99,7 @@ export default function ChineseTooltipText({
   variant = "default",
   showPinyin = false,
   onTokenHover,
+  onTokenClick,
 }: ChineseTooltipTextProps) {
   const [dictionaries, setDictionaries] = useState<DictionaryCollection | null>(null);
   const [loadError, setLoadError] = useState<Error | null>(null);
@@ -231,17 +233,34 @@ export default function ChineseTooltipText({
           return (
             <span 
               key={`${token}-${index}`} 
-              className={cn(variant === "reading" && "opacity-40")}
+              className={cn(
+                "inline-flex flex-col items-center",
+                variant === "reading" && "opacity-40"
+              )}
             >
-              {token}
+              {showPinyin && (
+                <span className="text-[10px] leading-none select-none mb-0.5 invisible" aria-hidden="true">
+                  &nbsp;
+                </span>
+              )}
+              <span className="leading-none">{token}</span>
             </span>
           );
         }
 
         if (!enableTooltip || (!dictionaries && !loadError)) {
+          const pinyin = definition?.pinyin;
           return (
-            <span key={`${token}-${index}`} className={characterClassName}>
-              {token}
+            <span 
+              key={`${token}-${index}`} 
+              className={cn("inline-flex flex-col items-center", characterClassName)}
+            >
+              {showPinyin && pinyin && (
+                <span className="text-[10px] leading-none text-primary/60 font-bold select-none mb-0.5">
+                  {pinyin}
+                </span>
+              )}
+              <span className="leading-none">{token}</span>
             </span>
           );
         }
@@ -258,7 +277,7 @@ export default function ChineseTooltipText({
           
           return (
             <span key={tokenKey} className="inline-flex flex-col items-center relative group/token">
-              <span className="text-[10px] sm:text-xs text-primary/60 font-bold h-4 select-none mb-1">{pinyin}</span>
+              <span className="text-[10px] sm:text-xs text-primary/60 font-bold leading-none select-none mb-0.5">{pinyin}</span>
               <span className={cn(
                 "text-3xl sm:text-4xl lg:text-5xl font-heading font-medium leading-none transition-colors duration-300", 
                 characterClassName,
@@ -269,7 +288,7 @@ export default function ChineseTooltipText({
               {isHighlighted && (
                 <motion.div 
                   layoutId="hero-underline"
-                  className="absolute -bottom-2 inset-x-0 h-[3px] bg-[#008EC2] rounded-full" 
+                  className="absolute bottom-[-3px] inset-x-0 h-[3px] bg-[#008EC2] rounded-full" 
                   initial={{ opacity: 0, scaleX: 0 }}
                   animate={{ opacity: 1, scaleX: 1 }}
                   transition={{ duration: 0.3 }}
@@ -293,14 +312,17 @@ export default function ChineseTooltipText({
             <TooltipTrigger asChild>
               <span
                 className={cn(
-                  "inline-flex items-baseline cursor-help relative",
+                  "inline-flex flex-col items-center cursor-help relative",
                   isTouchDevice && "cursor-pointer",
-                  variant === "reading" && token.length > 1 && "after:content-[''] after:absolute after:-bottom-[2px] after:left-0 after:right-0 after:h-[3px] after:bg-primary after:rounded-full",
+                  variant === "reading" && token.length > 1 && "after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[3px] after:bg-primary after:rounded-full",
                   characterClassName,
                 )}
                 onMouseEnter={() => !isTouchDevice && onTokenHover?.(token, definition)}
                 onMouseLeave={() => !isTouchDevice && onTokenHover?.("", null)}
                 onClick={(event) => {
+                  if (onTokenClick) {
+                    onTokenClick(token, definition);
+                  }
                   if (!isTouchDevice) {
                     return;
                   }
@@ -309,7 +331,12 @@ export default function ChineseTooltipText({
                   setOpenTooltipKey((current) => (current === tokenKey ? null : tokenKey));
                 }}
               >
-                {token}
+                {showPinyin && pinyin && (
+                  <span className="text-[10px] leading-none text-primary/60 font-bold select-none mb-0.5">
+                    {pinyin}
+                  </span>
+                )}
+                <span className="leading-none">{token}</span>
               </span>
             </TooltipTrigger>
             <TooltipContent

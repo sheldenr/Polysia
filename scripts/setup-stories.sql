@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS public.stories (
   title_zh text NOT NULL UNIQUE,
   title_en text NOT NULL,
   content_zh text NOT NULL,
+  content_en text,
   hsk_level integer NOT NULL DEFAULT 1,
   category text NOT NULL DEFAULT 'General',
   storyline_id text,

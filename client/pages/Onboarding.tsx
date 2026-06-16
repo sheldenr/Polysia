@@ -148,6 +148,7 @@ export default function Onboarding() {
   );
 
   const currentStep = steps[activeStep];
+  const isCheckoutSuccessReturn = searchParams.get("checkout") === "success";
 
   const canContinue = useMemo(() => {
     switch (currentStep.key) {
@@ -169,51 +170,6 @@ export default function Onboarding() {
         return false;
     }
   }, [age, currentStep.key, dailyMinutes, goal, proficiencyLevel, reason, referral]);
-
-  // Handle payment success redirect from Stripe
-  useEffect(() => {
-    const checkoutState = searchParams.get("checkout");
-    if (checkoutState !== "success" || !user) return;
-
-    const sessionId = searchParams.get("session_id");
-
-    const finalizeSuccess = async () => {
-      setIsFinishing(true);
-
-      if (sessionId && session?.access_token) {
-        try {
-          const response = await fetch("/api/billing/verify-session", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({ sessionId }),
-          });
-          if (!response.ok) {
-            console.error("verify-session failed", await response.text());
-          }
-        } catch (e) {
-          console.error("verify-session error", e);
-        }
-      } else if (supabase) {
-        await supabase
-          .from("profiles")
-          .update({ onboarding_complete: true })
-          .eq("id", user.id);
-      }
-
-      toast({
-        title: "Payment successful!",
-        description: "Your account access has been updated. Welcome to Pro!",
-      });
-
-      await refreshProfile();
-      navigate("/learning-hub", { replace: true });
-    };
-
-    void finalizeSuccess();
-  }, [searchParams, user, session, toast, refreshProfile, navigate]);
 
   useEffect(() => {
     if (!supabase || !user || isPreview) {
@@ -351,7 +307,7 @@ export default function Onboarding() {
     }
   };
 
-  if (isFinishing) {
+  if (isFinishing || isCheckoutSuccessReturn) {
     return (
       <section className="min-h-screen bg-background flex items-center justify-center px-6">
         <Background />
@@ -359,9 +315,13 @@ export default function Onboarding() {
           <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-          <h1 className="text-3xl font-heading font-semibold text-foreground">Building your learning plan...</h1>
+          <h1 className="text-3xl font-heading font-semibold text-foreground">
+            {isCheckoutSuccessReturn ? "Verifying your payment..." : "Building your learning plan..."}
+          </h1>
           <p className="mt-3 text-muted-foreground">
-            Setting up your daily path based on your goals and level.
+            {isCheckoutSuccessReturn 
+              ? "We're confirming your subscription with Stripe. Just a moment!"
+              : "Setting up your daily path based on your goals and level."}
           </p>
         </div>
       </section>
@@ -387,7 +347,10 @@ export default function Onboarding() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 w-full max-w-4xl flex flex-col items-center px-6 pb-24 relative z-10">
+      <main className={cn(
+        "flex-1 w-full flex flex-col items-center px-6 pb-24 relative z-10 transition-all duration-500",
+        currentStep.key === "payment" ? "max-w-6xl" : "max-w-4xl"
+      )}>
         <div className="w-full pt-8 sm:pt-12">
           {/* Progress Bar */}
           <div className="w-full h-1 bg-muted rounded-full mb-12 overflow-hidden">
@@ -407,14 +370,16 @@ export default function Onboarding() {
               transition={{ duration: 0.4, ease: "easeOut" }}
               className="space-y-10"
             >
-              <div className="space-y-4 text-center sm:text-left">
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-semibold tracking-tight text-foreground leading-[1.1]">
-                  {currentStep.title}
-                </h1>
-                <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl leading-relaxed">
-                  {currentStep.description}
-                </p>
-              </div>
+              {currentStep.key !== "payment" && (
+                <div className="space-y-4 text-center sm:text-left">
+                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-semibold tracking-tight text-foreground leading-[1.1]">
+                    {currentStep.title}
+                  </h1>
+                  <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl leading-relaxed">
+                    {currentStep.description}
+                  </p>
+                </div>
+              )}
 
               {currentStep.key !== "payment" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -496,70 +461,122 @@ export default function Onboarding() {
               )}
 
               {currentStep.key === "payment" && (
-                <div className="max-w-xl mx-auto w-full">
-                  <div className="rounded-3xl bg-card border border-border p-8 shadow-2xl relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                    
-                    <div className="relative z-10">
-                      <div className="mb-8">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary mb-4">
-                          7-day free trial
-                        </span>
-                        <div className="flex items-baseline gap-2 mt-3">
-                          <span className="text-5xl font-heading font-bold text-foreground">$2.99</span>
-                          <span className="text-muted-foreground font-medium">/month after trial</span>
-                        </div>
-                        <p className="mt-4 text-muted-foreground leading-relaxed">
-                          No charge today. Cancel anytime before the trial ends. Full access to everything.
-                        </p>
+                <div className="max-w-4xl mx-auto w-full grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
+                  <div className="lg:col-span-3 space-y-12">
+                    <div className="space-y-6">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10">
+                        <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Limited Time Offer</span>
                       </div>
+                      <h2 className="text-4xl sm:text-5xl font-heading font-semibold tracking-tight text-foreground leading-[1.1]">
+                        Unlock your full potential in <span className="italic-serif text-primary">Chinese.</span>
+                      </h2>
+                      <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">
+                        Join 2,000+ students learning faster with adaptive AI conversations, personalized reading, and smart SRS flashcards.
+                      </p>
+                    </div>
 
-                      <div className="space-y-4 mb-10">
-                        {trialFeatures.map((feature) => (
-                          <div key={feature} className="flex items-center gap-3">
-                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                              <Check className="w-3.5 h-3.5 text-primary" strokeWidth={3} />
-                            </div>
-                            <span className="text-foreground font-medium">{feature}</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-10">
+                      {trialFeatures.map((feature, i) => (
+                        <motion.div 
+                          key={feature}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.1 }}
+                          className="flex gap-4"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <Check className="w-5 h-5 text-primary" strokeWidth={2.5} />
                           </div>
-                        ))}
+                          <div className="space-y-1">
+                            <span className="text-base font-semibold text-foreground block">{feature}</span>
+                            <span className="text-xs text-muted-foreground leading-normal">
+                              {i === 0 && "Practice anytime with our patient AI companion."}
+                              {i === 1 && "Retain words forever with science-backed review."}
+                              {i === 2 && "Read content that matches your current level."}
+                              {i === 3 && "Natural voices for immersive listening practice."}
+                              {i === 4 && "Track your progress with detailed insights."}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <div className="rounded-[2.5rem] bg-card border border-border p-10 shadow-2xl shadow-primary/5 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+                        <img src="/logo only.svg" alt="" className="w-32 h-32 rotate-12" />
                       </div>
+                      
+                      <div className="relative z-10">
+                        <div className="space-y-1 mb-8">
+                          <span className="text-sm font-bold uppercase tracking-widest text-primary">Pro Plan</span>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-6xl font-heading font-bold text-foreground tracking-tighter">$2.99</span>
+                            <span className="text-muted-foreground font-medium">/mo</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">after your <span className="font-bold text-foreground">7-day free trial</span></p>
+                        </div>
 
-                      <GlowButton
-                        type="button"
-                        onClick={() => void handleStartCheckout("pro_monthly")}
-                        disabled={activeCheckoutPlan !== null}
-                        className="w-full h-14 text-base font-bold rounded-2xl"
-                      >
-                        {activeCheckoutPlan === "pro_monthly" ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                            Redirecting...
-                          </>
-                        ) : (
-                          <>
-                            Start 7-day free trial
-                            <ChevronRight className="ml-1.5 w-5 h-5" />
-                          </>
-                        )}
-                      </GlowButton>
+                        <div className="space-y-4 pt-4">
+                          <GlowButton
+                            type="button"
+                            onClick={() => void handleStartCheckout("pro_monthly")}
+                            disabled={activeCheckoutPlan !== null}
+                            className="w-full h-16 text-lg font-bold rounded-2xl shadow-xl shadow-primary/20"
+                          >
+                            {activeCheckoutPlan === "pro_monthly" ? (
+                              <>
+                                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                Redirecting...
+                              </>
+                            ) : (
+                              <>
+                                Start Free Trial
+                                <ChevronRight className="ml-2 w-5 h-5" />
+                              </>
+                            )}
+                          </GlowButton>
+                          
+                          <p className="text-[11px] text-center text-muted-foreground px-4">
+                            No commitment. Cancel anytime in one click. We'll even email you a reminder 2 days before your trial ends.
+                          </p>
+                        </div>
 
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => void handleStartCheckout("lifetime")}
-                        disabled={activeCheckoutPlan !== null}
-                        className="mt-4 w-full h-12 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      >
-                        {activeCheckoutPlan === "lifetime" ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            Redirecting...
-                          </>
-                        ) : (
-                          "Prefer lifetime access? $44.99 one-time"
-                        )}
-                      </Button>
+                        <div className="mt-12 pt-8 border-t border-border/50">
+                          <button
+                            type="button"
+                            onClick={() => void handleStartCheckout("lifetime")}
+                            disabled={activeCheckoutPlan !== null}
+                            className="w-full group text-left"
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">Lifetime Access</span>
+                              <span className="text-sm font-bold text-foreground">$44.99</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground italic-serif">One-time payment, forever yours</span>
+                              <div className="w-5 h-5 rounded-full border border-border flex items-center justify-center group-hover:border-primary/50 transition-all">
+                                <ChevronRight className="w-3 h-3 text-muted-foreground group-hover:text-primary" />
+                              </div>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-8 flex items-center justify-center gap-6 opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded bg-foreground flex items-center justify-center">
+                          <Check className="w-3 h-3 text-background" strokeWidth={4} />
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Secure</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded bg-foreground flex items-center justify-center font-bold text-[8px] italic text-background">S</div>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Stripe</span>
+                      </div>
                     </div>
                   </div>
                 </div>
