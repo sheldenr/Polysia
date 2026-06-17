@@ -225,7 +225,7 @@ export default function ChineseTooltipText({
   return (
     <span className={cn(
       "inline-flex flex-wrap items-baseline", 
-      variant === "reading" ? "gap-x-0.5" : "gap-0",
+      variant === "reading" ? "gap-x-0.5 gap-y-4 sm:gap-y-6" : "gap-0",
       className
     )}>
       {tokensWithDefinitions.map(({ token, isHanzi, definition }, index) => {

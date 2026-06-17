@@ -75,6 +75,7 @@ const StoryHubView = ({
 }: StoryHubViewProps) => {
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState<string | null>(null);
+  const [pinnedWord, setPinnedWord] = useState<string | null>(null);
   const [hoveredData, setHoveredData] = useState<{
     word: string;
     definition: string;
@@ -82,25 +83,15 @@ const StoryHubView = ({
     translation: string;
   }>({ word: "", definition: "", sentence: "", translation: "" });
 
-  const handleAddSelection = async () => {
-    const selection = window.getSelection()?.toString().trim();
-    if (!selection) return;
+  const handleAddToReview = async (text: string) => {
+    if (!text) return;
 
-    if (selection.length > 10) {
-      toast({
-        title: "Selection too long",
-        description: "Please select a single word or a short phrase.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsAdding(selection);
+    setIsAdding(text);
     try {
-      await onAddToReview(selection);
+      await onAddToReview(text);
       toast({
         title: "Added to Review",
-        description: `"${selection}" has been added to your daily review queue.`,
+        description: `"${text}" has been added to your daily review queue.`,
       });
     } catch (err) {
       toast({
@@ -126,7 +117,11 @@ const StoryHubView = ({
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => onSelectStory(null)}
+              onClick={() => {
+                onSelectStory(null);
+                setPinnedWord(null);
+                setHoveredData({ word: "", definition: "", sentence: "", translation: "" });
+              }}
               className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" /> Back to Stories
@@ -134,30 +129,34 @@ const StoryHubView = ({
 
             <div className="flex items-center gap-2">
               <TooltipProvider>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-full border border-border/50">
-                  <span className="text-[10px] font-mono w-8 text-center">{readingSpeed}x</span>
-                  <input 
-                    type="range" 
-                    min="0.5" max="2.0" step="0.1" 
-                    value={readingSpeed}
-                    onChange={(e) => onSetReadingSpeed(parseFloat(e.target.value))}
-                    className="w-16 h-1 accent-primary"
-                  />
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-full border border-border/50 opacity-50 cursor-not-allowed">
+                      <span className="text-[10px] font-mono w-8 text-center">{readingSpeed}x</span>
+                      <input 
+                        type="range" 
+                        min="0.5" max="2.0" step="0.1" 
+                        value={readingSpeed}
+                        disabled
+                        className="w-16 h-1 accent-primary pointer-events-none"
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Audio settings (WIP)</TooltipContent>
+                </Tooltip>
 
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={onHandleTTS}
-                      disabled={isTTSLoading}
-                      className="h-9 w-9 rounded-xl border-border/50"
+                      disabled
+                      className="h-9 w-9 rounded-xl border-border/50 opacity-50 cursor-not-allowed"
                     >
-                      <Volume2 className={cn("h-4 w-4", isTTSLoading && "animate-pulse text-primary")} />
+                      <Volume2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Listen to story</TooltipContent>
+                  <TooltipContent>Listen to story (Coming Soon)</TooltipContent>
                 </Tooltip>
 
                 <Button
@@ -180,36 +179,45 @@ const StoryHubView = ({
                 {hoveredData.translation || <span className="opacity-30">Click a word to see sentence translation</span>}
               </p>
             </div>
-            <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-xl p-4 border border-border/50 transition-all min-h-16 flex flex-col justify-center">
-              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-1">Word Definition</span>
-              <p className="text-sm font-medium italic">
-                {hoveredData.word ? (
-                  <><strong>{hoveredData.word}</strong>: {hoveredData.definition}</>
-                ) : (
-                  <span className="opacity-30">Hover over a word for details</span>
-                )}
-              </p>
+            <div className="bg-black/[0.03] dark:bg-white/[0.04] rounded-xl p-4 border border-border/50 transition-all min-h-16 flex flex-row items-center justify-between">
+              <div className="flex flex-col justify-center">
+                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-1">Word Definition</span>
+                <p className="text-sm font-medium italic">
+                  {hoveredData.word ? (
+                    <><strong>{hoveredData.word}</strong>: {hoveredData.definition}</>
+                  ) : (
+                    <span className="opacity-30">Hover over a word for details</span>
+                  )}
+                </p>
+              </div>
+              {hoveredData.word && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="rounded-lg h-8 text-[10px] font-bold capitalize gap-2 border-primary/20 hover:border-primary/50 text-primary hover:bg-primary/5 transition-all"
+                  onClick={() => handleAddToReview(hoveredData.word)}
+                  disabled={!!isAdding}
+                >
+                  {isAdding === hoveredData.word ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                  Add to Review
+                </Button>
+              )}
             </div>
           </div>
 
-          <article className="w-full space-y-8 bg-black/[0.04] dark:bg-white/[0.06] rounded-xl p-8 sm:p-12 relative group/article">
-            <div className="mb-8 border-b border-border/50 pb-6">
+          <article className="w-full bg-black/[0.04] dark:bg-white/[0.06] rounded-xl p-8 sm:p-12 relative group/article">
+            <div className="border-b border-border/50 pb-4">
               <div className="flex items-center justify-between mb-1">
                 <div className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">
                   {levelNames[selectedStory.hsk_level]}
                 </div>
-                {selectedStory.created_at && (
-                  <div className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
-                    Added {format(new Date(selectedStory.created_at), "MMM d, yyyy")}
-                  </div>
-                )}
               </div>
               <h1 className="text-3xl font-heading leading-tight">{selectedStory.title_zh}</h1>
               <p className="text-muted-foreground italic">{selectedStory.title_en}</p>
             </div>
 
             <div className="relative">
-              <div className="text-2xl sm:text-3xl leading-[2.5] sm:leading-[3] text-foreground transition-all select-text flex flex-wrap">
+              <div className="text-2xl sm:text-3xl leading-[2.5] sm:leading-[3] text-foreground transition-all select-text flex flex-wrap gap-y-4 sm:gap-y-6">
                 {zhSentences.map((sentence, sIdx) => (
                   <div 
                     key={sIdx}
@@ -226,13 +234,16 @@ const StoryHubView = ({
                             word: token, 
                             definition: definition?.english || "No definition found"
                           }));
-                        } else {
+                        } else if (!pinnedWord) {
                           setHoveredData(prev => ({ ...prev, word: "", definition: "" }));
                         }
                       }}
                       onTokenClick={(token, definition) => {
+                        setPinnedWord(token);
                         setHoveredData(prev => ({ 
                           ...prev, 
+                          word: token,
+                          definition: definition?.english || "No definition found",
                           sentence: sentence,
                           translation: enSentences[sIdx] || "Translation unavailable"
                         }));
@@ -242,46 +253,33 @@ const StoryHubView = ({
                 ))}
               </div>
               
-              <div className="mt-12 pt-12 border-t border-border/50 flex flex-col items-center space-y-6">
-                <div className="text-center space-y-2">
+              <div className="mt-12 pt-12 border-t border-border/50 flex flex-col items-start space-y-6">
+                <div className="text-left space-y-2">
                   <h3 className="font-heading text-xl font-medium">Finished reading?</h3>
                   <p className="text-sm text-muted-foreground">Mark this story as complete to track your progress.</p>
                 </div>
                 
                 <Button 
                   onClick={() => onToggleComplete(selectedStory.id)}
+                  variant="outline"
                   className={cn(
-                    "h-14 px-10 rounded-2xl text-base font-bold transition-all duration-500 gap-3 shadow-xl",
+                    "h-10 px-6 rounded-xl text-sm font-bold transition-all duration-300 gap-2 border-2",
                     isStoryComplete(selectedStory.id) 
-                      ? "bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-emerald-500/20" 
-                      : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
+                      ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/10 hover:border-emerald-500/30" 
+                      : "bg-background text-foreground border-border/50 hover:bg-muted/50 hover:border-border"
                   )}
                 >
                   {isStoryComplete(selectedStory.id) ? (
                     <>
-                      <CheckCircle2 className="h-5 w-5" />
+                      <CheckCircle2 className="h-4 w-4" />
                       Story Completed
                     </>
                   ) : (
                     <>
                       Mark as Complete
-                      <ChevronRight className="h-5 w-5" />
+                      <ChevronRight className="h-4 w-4" />
                     </>
                   )}
-                </Button>
-              </div>
-
-              <div className="mt-12 pt-6 border-t border-dashed border-border/60 flex items-center justify-between text-muted-foreground">
-                <p className="text-xs">Highlight any text to add it to your <strong>Review</strong> queue.</p>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="rounded-lg h-8 text-[10px] font-bold capitalize gap-2"
-                  onClick={handleAddSelection}
-                  disabled={!!isAdding}
-                >
-                  {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                  Add Selection to Review
                 </Button>
               </div>
             </div>
@@ -320,7 +318,7 @@ const StoryHubView = ({
             <div className="space-y-4 px-2">
               <div className="flex items-center gap-2 mb-2">
                 <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-black/[0.03] dark:bg-white/[0.05]", levelColors[storyline.hsk_level])}>
-                  HSK {storyline.hsk_level}
+                  {levelNames[storyline.hsk_level]}
                 </span>
                 <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
                   {storyline.chapters.length} Chapters
