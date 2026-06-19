@@ -38,12 +38,12 @@ const levelNames: Record<number, string> = {
 };
 
 const levelColors: Record<number, string> = {
-  1: "text-emerald-600 dark:text-emerald-400",
-  2: "text-sky-600 dark:text-sky-400",
-  3: "text-blue-600 dark:text-blue-400",
-  4: "text-indigo-600 dark:text-indigo-400",
-  5: "text-purple-600 dark:text-purple-400",
-  6: "text-rose-600 dark:text-rose-400",
+  1: "text-green-500",
+  2: "text-emerald-500",
+  3: "text-yellow-500",
+  4: "text-orange-500",
+  5: "text-red-500",
+  6: "text-rose-600",
 };
 
 const DashboardView = ({
@@ -200,8 +200,7 @@ const DashboardView = ({
       <section className="space-y-4">
         <div className="grid grid-cols-12 px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
           <div className="col-span-1">Status</div>
-          <div className="col-span-5 px-2">Story Title</div>
-          <div className="col-span-2">Difficulty</div>
+          <div className="col-span-7 px-2">Story Title</div>
           <div className="col-span-2">Added</div>
           <div className="col-span-2 text-right">Progress</div>
         </div>
@@ -238,18 +237,13 @@ const DashboardView = ({
                       )}
                     </div>
                   </div>
-                  <div className="col-span-5 space-y-0.5 pr-4 px-2">
+                  <div className="col-span-7 space-y-0.5 pr-4 px-2">
                     <h4 className="font-heading text-sm font-medium transition-colors line-clamp-1">
                       {storyline.name}
                     </h4>
-                    <p className="text-[10px] text-muted-foreground/60 line-clamp-1 italic">
-                      {storyline.chapters.map(c => c.title_en).join(" · ")}
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg bg-background/50 border border-border/20", levelColors[storyline.hsk_level])}>
+                    <p className={cn("text-[10px] font-bold uppercase tracking-wider", levelColors[storyline.hsk_level])}>
                       {levelNames[storyline.hsk_level]}
-                    </span>
+                    </p>
                   </div>
                   <div className="col-span-2">
                     <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
