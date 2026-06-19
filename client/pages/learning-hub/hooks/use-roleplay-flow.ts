@@ -21,9 +21,15 @@ export function useRoleplayFlow(hskLevel: number, onActivityLog?: () => void) {
   const startRoleplay = (topic: string) => {
     setRoleplayTopic(topic);
     setIsTopicSelected(true);
-    setRoleplayMessages([
-      { role: "ai", text: `你好！我们开始练习吧。今天的场景是：${topic}。你先请！` },
-    ]);
+    if (topic === "Custom") {
+      setRoleplayMessages([
+        { role: "ai", text: "你好！请问今天你想练习什么场景的对话？比如：'在大使馆' 或 '去医院看医生'。\n[Hello! What scenario would you like to practice today? For example: 'At the embassy' or 'Seeing a doctor'.]" },
+      ]);
+    } else {
+      setRoleplayMessages([
+        { role: "ai", text: `你好！我们开始练习吧。今天的场景是：${topic}。你先请！\n[Hello! Let's start practicing. Today's scenario is: ${topic}. You first!]` },
+      ]);
+    }
   };
 
   const submitMessage = async () => {
@@ -31,6 +37,15 @@ export function useRoleplayFlow(hskLevel: number, onActivityLog?: () => void) {
 
     const userMsg = roleplayInput.trim();
     setRoleplayInput("");
+
+    if (roleplayTopic === "Custom") {
+      setRoleplayTopic(userMsg);
+      setRoleplayMessages([
+        { role: "ai", text: `你好！我们开始练习吧。今天的场景是：${userMsg}。你先请！\n[Hello! Let's start practicing. Today's scenario is: ${userMsg}. You first!]` },
+      ]);
+      return;
+    }
+
     setRoleplayMessages((prev) => [...prev, { role: "user", text: userMsg }]);
     setIsLoading(true);
 

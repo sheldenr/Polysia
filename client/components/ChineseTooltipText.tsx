@@ -225,7 +225,7 @@ export default function ChineseTooltipText({
   return (
     <span className={cn(
       "inline-flex flex-wrap items-baseline", 
-      variant === "reading" ? "gap-x-0.5 gap-y-4 sm:gap-y-6" : "gap-0",
+      variant === "reading" ? "gap-x-0.5 gap-y-1 sm:gap-y-1.5" : "gap-0",
       className
     )}>
       {tokensWithDefinitions.map(({ token, isHanzi, definition }, index) => {
@@ -288,7 +288,7 @@ export default function ChineseTooltipText({
               {isHighlighted && (
                 <motion.div 
                   layoutId="hero-underline"
-                  className="absolute bottom-[-3px] inset-x-0 h-[3px] bg-[#008EC2] rounded-full" 
+                  className="absolute bottom-[-6px] inset-x-0 h-[3px] bg-[#008EC2] rounded-full" 
                   initial={{ opacity: 0, scaleX: 0 }}
                   animate={{ opacity: 1, scaleX: 1 }}
                   transition={{ duration: 0.3 }}
@@ -314,7 +314,7 @@ export default function ChineseTooltipText({
                 className={cn(
                   "inline-flex flex-col items-center cursor-help relative",
                   isTouchDevice && "cursor-pointer",
-                  variant === "reading" && token.length > 1 && "after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[3px] after:bg-primary after:rounded-full",
+                  variant === "reading" && token.length > 1 && "after:content-[''] after:absolute after:bottom-[-4px] after:left-0 after:right-0 after:h-[3px] after:bg-zinc-300 dark:after:bg-zinc-700 after:rounded-full",
                   characterClassName,
                 )}
                 onMouseEnter={() => !isTouchDevice && onTokenHover?.(token, definition)}

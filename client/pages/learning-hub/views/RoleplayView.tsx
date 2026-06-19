@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { MessageCircle, Send, Loader2, ChevronLeft, User, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ const RoleplayView = ({
   onExit,
 }: RoleplayViewProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showTranslation, setShowTranslation] = useState(false);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -52,6 +53,8 @@ const RoleplayView = ({
             { id: "Market", title: "At the Market", desc: "Practice bargaining and asking for prices." },
             { id: "Taxi", title: "Taking a Taxi", desc: "Practice giving directions and small talk." },
             { id: "Greetings", title: "Introductions", desc: "Practice meeting someone for the first time." },
+            { id: "Restaurant", title: "At the Restaurant", desc: "Practice ordering food and asking about the menu." },
+            { id: "Custom", title: "Custom Scenario", desc: "Create your own roleplay topic or situation." },
           ].map((item) => (
             <div 
               key={item.id}
@@ -78,11 +81,21 @@ const RoleplayView = ({
   return (
     <div className="max-w-4xl mx-auto h-[calc(100vh-10rem)] flex flex-col animate-in fade-in duration-500 pb-4">
       <div className="flex items-center justify-between mb-4 shrink-0 px-2">
-        <Button variant="ghost" size="sm" onClick={onReset} className="rounded-xl gap-2 text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" /> Change Topic
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onReset} className="rounded-xl gap-2 text-muted-foreground hover:text-foreground">
+            <ChevronLeft className="h-4 w-4" /> Change Topic
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowTranslation(!showTranslation)}
+            className="rounded-xl h-8 px-3 text-[10px] font-bold uppercase tracking-wider border-border bg-card hover:bg-muted"
+          >
+            {showTranslation ? "Hide Translation" : "Show Translation"}
+          </Button>
+        </div>
         <div className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">
-          Scenario: {topic}
+          {topic === "Custom" ? "Custom Scenario" : `Scenario: ${topic}`}
         </div>
       </div>
 
@@ -104,15 +117,32 @@ const RoleplayView = ({
                 "size-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
                 msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-white dark:bg-slate-800"
               )}>
-                {msg.role === "user" ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4 text-amber-500" />}
+                {msg.role === "user" ? <User className="h-4 w-4" /> : <span className="text-[10px] font-bold text-muted-foreground/60">AI</span>}
               </div>
               <div className={cn(
-                "max-w-[80%] rounded-xl px-4 py-2.5 text-sm",
+                "max-w-[80%] rounded-xl px-4 py-2.5 text-sm flex flex-col gap-1.5",
                 msg.role === "user" 
                   ? "bg-primary text-primary-foreground shadow-sm" 
                   : "bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm"
               )}>
-                {msg.text}
+                {msg.role === "ai" ? (() => {
+                  const lines = msg.text.split("\n[");
+                  const chinese = lines[0].trim();
+                  const translation = lines[1] ? lines[1].replace("]", "").trim() : null;
+
+                  return (
+                    <>
+                      <span>{chinese}</span>
+                      {showTranslation && translation && (
+                        <span className="text-[11px] text-muted-foreground/80 dark:text-muted-foreground/90 border-t border-border/30 dark:border-white/5 pt-1.5 mt-0.5 animate-in fade-in duration-300">
+                          {translation}
+                        </span>
+                      )}
+                    </>
+                  );
+                })() : (
+                  <span>{msg.text}</span>
+                )}
               </div>
             </div>
           ))}
@@ -141,15 +171,15 @@ const RoleplayView = ({
             <Input 
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
-              placeholder="Type your message in Chinese..."
-              className="pr-12 h-12 rounded-xl bg-white dark:bg-slate-900 border-none shadow-sm focus:ring-primary/20"
+              placeholder={topic === "Custom" ? "Type your scenario (e.g. Booking a hotel)..." : "Type your message in Chinese..."}
+              className="pr-14 h-14 rounded-xl bg-white dark:bg-slate-900 border-none shadow-sm focus:ring-primary/20 dark:focus:ring-white/20"
               disabled={isLoading}
             />
             <Button 
               type="submit" 
               size="icon" 
               disabled={isLoading || !input.trim()}
-              className="absolute right-1.5 size-9 rounded-lg"
+              className="absolute right-1.5 size-11 rounded-xl"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>

@@ -38,12 +38,12 @@ const levelNames: Record<number, string> = {
 };
 
 const levelColors: Record<number, string> = {
-  1: "text-green-500",
-  2: "text-emerald-500",
-  3: "text-yellow-500",
-  4: "text-orange-500",
-  5: "text-red-500",
-  6: "text-rose-600",
+  1: "text-emerald-600/80 dark:text-emerald-400/70",
+  2: "text-teal-600/80 dark:text-teal-400/70",
+  3: "text-amber-600/85 dark:text-amber-400/75",
+  4: "text-orange-600/80 dark:text-orange-400/70",
+  5: "text-red-600/80 dark:text-red-400/70",
+  6: "text-purple-600/80 dark:text-purple-400/70",
 };
 
 const DashboardView = ({
@@ -103,10 +103,10 @@ const DashboardView = ({
           className="group relative rounded-2xl bg-primary p-5 cursor-pointer shadow-sm hover:shadow-md transition-all overflow-hidden border border-primary/10"
         >
           <div className="relative z-10 flex flex-col h-full justify-between gap-4">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-primary-foreground/80">Reference</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white">Reference</span>
             <div className="space-y-1">
-              <h3 className="text-lg font-heading font-bold text-primary-foreground leading-tight">Grammar Hub</h3>
-              <p className="text-[10px] text-primary-foreground/70 font-medium">HSK 1-6 Master Guide</p>
+              <h3 className="text-lg font-heading font-bold text-white leading-tight">Grammar Hub</h3>
+              <p className="text-[10px] text-white font-medium">HSK 1-6 Master Guide</p>
             </div>
           </div>
         </div>

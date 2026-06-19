@@ -38,21 +38,21 @@ const levelNames: Record<number, string> = {
 };
 
 const levelColors: Record<number, string> = {
-  1: "text-emerald-600 dark:text-emerald-400",
-  2: "text-sky-600 dark:text-sky-400",
-  3: "text-blue-600 dark:text-blue-400",
-  4: "text-indigo-600 dark:text-indigo-400",
-  5: "text-purple-600 dark:text-purple-400",
-  6: "text-rose-600 dark:text-rose-400",
+  1: "text-emerald-600/80 dark:text-emerald-400/70",
+  2: "text-teal-600/80 dark:text-teal-400/70",
+  3: "text-amber-600/85 dark:text-amber-400/75",
+  4: "text-orange-600/80 dark:text-orange-400/70",
+  5: "text-red-600/80 dark:text-red-400/70",
+  6: "text-purple-600/80 dark:text-purple-400/70",
 };
 
 const levelBgColors: Record<number, string> = {
-  1: "bg-emerald-500",
-  2: "bg-sky-500",
-  3: "bg-blue-500",
-  4: "bg-indigo-500",
-  5: "bg-purple-500",
-  6: "bg-rose-500",
+  1: "bg-emerald-500/80 dark:bg-emerald-500/20",
+  2: "bg-teal-500/80 dark:bg-teal-500/20",
+  3: "bg-amber-500/85 dark:bg-amber-500/20",
+  4: "bg-orange-500/80 dark:bg-orange-500/20",
+  5: "bg-red-500/80 dark:bg-red-500/20",
+  6: "bg-purple-500/80 dark:bg-purple-500/20",
 };
 
 const StoryHubView = ({
@@ -217,7 +217,7 @@ const StoryHubView = ({
             </div>
 
             <div className="relative">
-              <div className="text-2xl sm:text-3xl leading-[2.5] sm:leading-[3] text-foreground transition-all select-text flex flex-wrap gap-y-4 sm:gap-y-6">
+              <div className="text-2xl sm:text-3xl leading-normal font-light text-foreground transition-all select-text flex flex-wrap gap-y-1 sm:gap-y-1.5">
                 {zhSentences.map((sentence, sIdx) => (
                   <div 
                     key={sIdx}
@@ -266,7 +266,7 @@ const StoryHubView = ({
                     "h-10 px-6 rounded-xl text-sm font-bold transition-all duration-300 gap-2 border-2",
                     isStoryComplete(selectedStory.id) 
                       ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/10 hover:border-emerald-500/30" 
-                      : "bg-background text-foreground border-border/50 hover:bg-muted/50 hover:border-border"
+                      : "bg-background text-foreground border-border/50 hover:bg-muted/50 hover:border-border dark:bg-white dark:text-zinc-950 dark:border-white dark:hover:bg-white/90 dark:hover:border-white/90"
                   )}
                 >
                   {isStoryComplete(selectedStory.id) ? (

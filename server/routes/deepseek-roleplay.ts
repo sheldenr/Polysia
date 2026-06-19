@@ -109,8 +109,8 @@ export const handleDeepSeekRoleplay: RequestHandler = async (req, res) => {
   const hskConstraint = hskNum <= 1 ? "HSK 1" : hskNum >= 7 ? "Advanced" : `HSK ${hskNum}`;
   
   const vocabConstraint = knownVocab.length > 0 
-    ? `The user is at ${hskConstraint} level and knows these Chinese characters/words: [${vocabList}]. Heavily prioritize using these known words in your responses. You can introduce a very small amount of new vocabulary (1-2 new words per response) if necessary for the context, but keep it mostly within their level and known set.`
-    : `The user is a beginner at ${hskConstraint} level. Use only very basic vocabulary appropriate for this level.`;
+    ? `The user is at ${hskConstraint} level and knows these Chinese characters/words: [${vocabList}]. Heavily prioritize using these known words in your responses. You can introduce a very small amount of new vocabulary (1-2 new words per response) if necessary for the context, but keep it mostly within their level and known set. DO NOT include any emojis in your response. ALWAYS follow your Chinese response with a new line containing the English translation enclosed in square brackets, for example:\n你好！\n[Hello!]`
+    : `The user is a beginner at ${hskConstraint} level. Use only very basic vocabulary appropriate for this level. DO NOT include any emojis in your response. ALWAYS follow your Chinese response with a new line containing the English translation enclosed in square brackets, for example:\n你好！\n[Hello!]`;
 
   // Prepend vocabulary constraint to the system message if it exists
   const messages = [...parsed.data.messages];
