@@ -6,7 +6,6 @@ import { Search, Download, ArrowRight, Play, Sparkles, Menu } from "lucide-react
 import { useAuth } from "@/lib/auth";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import { GlowButton } from "@/components/ui/glow-button";
-import { MagneticButton } from "@/components/ui/magnetic-button";
 
 export default function NewHeroSection() {
   const { isAuthenticated } = useAuth();
@@ -77,9 +76,9 @@ export default function NewHeroSection() {
       <div className="mx-auto max-w-3xl text-left flex flex-col items-start relative pb-0 z-10">
         {/* Logo Icon */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.4 }}
           className="mb-6"
         >
           <img src="/logo only.svg" alt="Polysia" className="w-14 h-14" />
@@ -87,9 +86,9 @@ export default function NewHeroSection() {
 
         {/* Headline */}
         <motion.h1 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
           className="text-3xl sm:text-4xl lg:text-5xl font-heading font-semibold mb-2 tracking-tight leading-[1.05]"
         >
           Learn Chinese with stories <br />
@@ -98,9 +97,9 @@ export default function NewHeroSection() {
 
         {/* Subheadline */}
         <motion.p 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
           className="text-xl sm:text-2xl text-muted-foreground mb-6 max-w-2xl leading-relaxed"
         >
           Polysia has stories you can read at your level at a reasonable price.
@@ -108,21 +107,19 @@ export default function NewHeroSection() {
 
         {/* CTA Buttons */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
           className="flex flex-row items-center gap-4 mb-10 w-full sm:w-auto"
         >
-          <MagneticButton>
-            <GlowButton
-              asChild
-              className="w-auto"
-            >
-              <Link to={isAuthenticated ? "/learning-hub" : "/signup"}>
-                Start for free
-              </Link>
-            </GlowButton>
-          </MagneticButton>
+          <GlowButton
+            asChild
+            className="w-auto"
+          >
+            <Link to={isAuthenticated ? "/learning-hub" : "/signup"}>
+              Start for free
+            </Link>
+          </GlowButton>
           <Button
             variant="secondary"
             size="default"
@@ -171,10 +168,10 @@ export default function NewHeroSection() {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeSentence}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 2 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  exit={{ opacity: 0, y: -2 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="space-y-6 sm:space-y-8 will-change-[transform,opacity]"
                 >
                   {/* Two Row Meaning Display (Unified Style) */}

@@ -76,7 +76,7 @@ export function createServer() {
     console.error("Express error:", err);
     res.status(500).json({ 
       error: "Internal server error", 
-      message: err instanceof Error ? error.message : String(err) 
+      message: err instanceof Error ? err.message : String(err) 
     });
   });
 

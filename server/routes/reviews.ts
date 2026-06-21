@@ -240,7 +240,7 @@ export async function handleGetReviews(req: Request, res: Response) {
 
     const { data: hskStats } = await supabaseAdmin
       .from("reviews")
-      .select("hsk_level, state")
+      .select("hsk_level, state, due_date")
       .eq("user_id", userId);
 
     const levelStats: Record<number, { total: number; learned: number; active: number }> = {};

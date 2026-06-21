@@ -91,35 +91,6 @@
     --font-sans: "Inter", sans-serif;
   }
 
-  .dark {
-    --background: oklch(0.07 0.01 250);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.1 0.012 250);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.1 0.012 250);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: rgb(0 142 194);
-    --primary-foreground: oklch(0.984 0.01 250);
-    --secondary: oklch(0.14 0.015 250);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.09 0.01 250);
-    --muted-foreground: oklch(0.7 0.01 250);
-    --accent: oklch(0.12 0.015 250);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.6 0.12 25);
-    --border: oklch(0.18 0.01 250 / 0.4);
-    --input: oklch(0.1 0.01 250);
-    --ring: oklch(0.5 0.05 250);
-    --sidebar: oklch(0.08 0.012 250);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.5 0.05 250);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.12 0.015 250);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.5 0.05 250);
-  }
-
   * {
     @apply border-border;
   }
@@ -233,27 +204,5 @@
     font-family: var(--font-serif);
     letter-spacing: -0.035em;
     font-variant-ligatures: none;
-  }
-
-  .dark-gradient-dither {
-    position: relative;
-    isolation: isolate;
-  }
-
-  .dark .dark-gradient-dither::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.065;
-    mix-blend-mode: soft-light;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-    background-size: 180px 180px;
-  }
-
-  .dark-gradient-dither > * {
-    position: relative;
-    z-index: 1;
   }
 }

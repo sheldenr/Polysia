@@ -8,19 +8,6 @@
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="preconnect" href="https://fonts.cdnfonts.com" crossorigin />
     <title>Polysia: Learn at your own pace.</title>
-    <script>
-      (function() {
-        try {
-          var theme = localStorage.getItem('theme') || 'system';
-          var supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
-          if (theme === 'dark' || (theme === 'system' && supportDarkMode)) {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-        } catch (e) {}
-      })();
-    </script>
   </head>
 
   <body>

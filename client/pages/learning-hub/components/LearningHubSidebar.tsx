@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Layers, BookOpen, MessageCircle, LayoutDashboard, Settings, Search, Book } from "lucide-react";
 import { cn } from "@/lib/utils";
-import UserNav from "@/components/UserNav";
 import { useAuth } from "@/lib/auth";
 
 interface LearningHubSidebarProps {
@@ -111,10 +110,6 @@ const LearningHubSidebar = ({
               </SidebarMenu>
            </SidebarGroupContent>
         </SidebarGroup>
-
-        <div className="mt-auto pb-6 px-6 flex justify-start">
-           {user && <UserNav />}
-        </div>
       </SidebarContent>
     </Sidebar>
   );

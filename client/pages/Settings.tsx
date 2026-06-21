@@ -44,7 +44,7 @@ export default function Settings() {
             </Button>
             <h1 className="font-heading text-3xl tracking-tight sm:text-4xl">Settings</h1>
             <p className="text-sm text-muted-foreground sm:text-base">
-              Manage your profile, learning preferences, and appearance.
+              Manage your profile and account details.
             </p>
           </div>
 

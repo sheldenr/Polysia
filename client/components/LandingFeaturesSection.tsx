@@ -71,19 +71,20 @@ export default function LandingFeaturesSection() {
         {/* First Section: Features Grid */}
         <div className="mb-12">
           <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 6 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
             className="text-2xl sm:text-3xl font-heading mb-4 tracking-tight"
           >
             Turn your reading into <br />
             long-term memory.
           </motion.h2>
           <motion.p 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 6 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
             className="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed"
           >
             Polysia bridges the gap between passive reading <br />
@@ -95,10 +96,10 @@ export default function LandingFeaturesSection() {
           {features.map((feature, i) => (
             <motion.div 
               key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 6 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.2 + i * 0.1 }}
+              transition={{ duration: 0.4, delay: 0.15 + i * 0.05 }}
               className="p-6 sm:p-8 bg-card/50 dark:bg-zinc-900/50 backdrop-blur-sm flex flex-col gap-4 hover:bg-card dark:hover:bg-zinc-900 transition-colors"
             >
               <feature.icon className="h-5 w-5 text-primary" />
@@ -117,18 +118,19 @@ export default function LandingFeaturesSection() {
         {/* Second Section: Capability List */}
         <div className="max-w-3xl mb-12">
           <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 6 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
             className="text-2xl sm:text-3xl font-heading mb-4 tracking-tight"
           >
             Curated content for every step of your journey.
           </motion.h2>
           <motion.p 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 6 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
             className="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed"
           >
             From your first character to your first novel, <br />
@@ -140,10 +142,10 @@ export default function LandingFeaturesSection() {
           {capabilities.map((cap, i) => (
             <motion.div 
               key={cap.title}
-              initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 6 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.2 + (i * 0.05) }}
+              transition={{ duration: 0.4, delay: 0.15 + (i * 0.05) }}
               className="space-y-3"
             >
               <div className="flex items-center gap-2 mb-1">
