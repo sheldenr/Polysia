@@ -140,40 +140,28 @@ export default function PricingSection() {
                 key={plan.id}
                 className={cn(
                   "relative flex flex-col justify-between p-6 sm:p-10 transition-all duration-500 group rounded-xl",
-                  "bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] dark:shadow-none",
-                  plan.popular && "shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)]"
+                  "bg-zinc-950 dark:bg-zinc-900/60 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] dark:shadow-none",
+                  plan.popular && "ring-1 ring-zinc-800"
                 )}
               >
               <div>
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h3 className={cn(
-                      "text-[10px] font-bold capitalize tracking-[0.15em] mb-3",
-                      plan.popular ? "text-primary" : "text-muted-foreground"
-                    )}>
+                    <h3 className="text-[10px] font-bold capitalize tracking-[0.15em] mb-3 text-zinc-500">
                       {plan.name}
                     </h3>
                     <div className="flex items-baseline gap-2">
-                      <span className={cn(
-                        "text-4xl sm:text-5xl font-heading tracking-tighter",
-                        plan.popular ? "text-foreground dark:text-white" : "text-foreground"
-                      )}>
+                      <span className="text-4xl sm:text-5xl font-heading tracking-tighter text-zinc-50">
                         {plan.price}
                       </span>
-                      <span className={cn(
-                        "text-sm font-medium",
-                        plan.popular ? "text-zinc-500 dark:text-zinc-500" : "text-muted-foreground"
-                      )}>
+                      <span className="text-sm font-medium text-zinc-500">
                         {plan.period}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <p className={cn(
-                  "text-sm leading-relaxed mb-6 max-w-sm",
-                  plan.popular ? "text-muted-foreground dark:text-zinc-400" : "text-muted-foreground"
-                )}>
+                <p className="text-sm leading-relaxed mb-6 max-w-sm text-zinc-400">
                   {plan.description}
                 </p>
 
@@ -183,17 +171,11 @@ export default function PricingSection() {
                       <div className="mt-1 shrink-0">
                         <HugeiconsIcon 
                           icon={Tick02Icon} 
-                          className={cn(
-                            "h-3.5 w-3.5",
-                            plan.popular ? "text-primary" : "text-zinc-400"
-                          )} 
+                          className="h-3.5 w-3.5 text-zinc-400"
                           strokeWidth={2.5} 
                         />
                       </div>
-                      <span className={cn(
-                        "text-xs",
-                        plan.popular ? "text-foreground/80 dark:text-zinc-300" : "text-foreground/80"
-                      )}>
+                      <span className="text-xs text-zinc-300">
                         {feature}
                       </span>
                     </div>
@@ -208,8 +190,8 @@ export default function PricingSection() {
                 className={cn(
                   "w-full h-12 text-sm font-bold transition-all duration-300 rounded-xl",
                   plan.popular
-                    ? "bg-primary text-primary-foreground hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-primary/20"
-                    : "bg-transparent border-2 border-zinc-200 dark:border-zinc-700 text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl shadow-primary/20"
+                    : "bg-zinc-800 text-zinc-100 hover:bg-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                 )}
               >
                 {activeCheckoutPlan === plan.id ? (

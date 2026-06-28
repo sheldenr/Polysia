@@ -18,8 +18,6 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(), 
-    // Only use the express plugin if NOT running under Vercel CLI
-    // This allows vercel dev to handle the API routes via the api/ directory
     !process.env.VERCEL && expressPlugin()
   ].filter(Boolean) as Plugin[],
   resolve: {
@@ -37,7 +35,6 @@ function expressPlugin(): Plugin {
     configureServer(server) {
       const app = createServer();
 
-      // Add Express app as middleware to Vite dev server
       server.middlewares.use(app);
     },
   };

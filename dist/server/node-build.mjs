@@ -4,31 +4,16 @@ import * as express from "express";
 import express__default from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import Stripe from "stripe";
 const handleDemo = (req, res) => {
   const response = {
     message: "Hello from Express server"
   };
   res.status(200).json(response);
-};
-const handleProfile = (req, res) => {
-  const user = req.user;
-  if (!user) {
-    return res.status(401).json({ success: false, message: "Unauthorized" });
-  }
-  return res.json({
-    success: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      createdAt: user.created_at,
-      metadata: user.user_metadata
-    }
-  });
 };
 const supabaseUrl$1 = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE;
@@ -41,6 +26,61 @@ const supabaseAdmin = supabaseUrl$1 && supabaseServiceKey ? createClient(supabas
 if (!supabaseAdmin) {
   console.warn("⚠️ Supabase service role key is missing (SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_ROLE). Webhooks and admin tasks will fail.");
 }
+const handleProfile = async (req, res) => {
+  const userId = req.userId;
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+  try {
+    const { data: profile, error: profileError } = await supabaseAdmin.from("profiles").select("*").eq("id", userId).maybeSingle();
+    if (profileError) {
+      console.error("Error fetching profile:", profileError);
+      return res.status(500).json({ success: false, message: "Error fetching profile" });
+    }
+    if (!profile) {
+      return res.status(404).json({ success: false, message: "Profile not found" });
+    }
+    if (profile.stripe_customer_id) {
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const subscriptions = await stripe.subscriptions.list({
+        customer: profile.stripe_customer_id,
+        status: "active",
+        limit: 1
+      });
+      const isStillActive = subscriptions.data.length > 0;
+      const currentDbStatus = profile.subscription_status;
+      const newStatus = isStillActive ? "active" : "inactive";
+      if (currentDbStatus === "active" && !isStillActive) {
+        await supabaseAdmin.from("profiles").update({ subscription_status: "inactive" }).eq("id", userId);
+        profile.subscription_status = "inactive";
+        console.log(`[Stripe Sync] Deactivated subscription for user ${userId}`);
+      } else if (currentDbStatus !== "active" && isStillActive) {
+        await supabaseAdmin.from("profiles").update({ subscription_status: "active" }).eq("id", userId);
+        profile.subscription_status = "active";
+        console.log(`[Stripe Sync] Reactivated subscription for user ${userId}`);
+      }
+    }
+    return res.json({
+      success: true,
+      user: {
+        id: userId,
+        email: req.user?.email,
+        createdAt: req.user?.created_at,
+        metadata: req.user?.user_metadata
+      },
+      profile: {
+        streakDays: profile.streak_days,
+        onboardingComplete: profile.onboarding_complete,
+        subscriptionStatus: profile.subscription_status,
+        subscriptionPlan: profile.subscription_plan,
+        paymentBypassUntil: profile.payment_bypass_until
+      }
+    });
+  } catch (error) {
+    console.error("Profile handler error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
 const DICTIONARY_PATH = path.join(process.cwd(), "public", "chinese-dictionary-custom.json");
 const HSK_VOCAB_SUFFIX_REGEX = /\(HSK level \d+ vocabulary\)\s*$/i;
 const HSK_VOCAB_LABEL_REGEX = /^HSK level \d+ vocabulary$/i;
@@ -59,73 +99,85 @@ function parseExampleFromNotes(notes) {
     translation: translationPart.replace(HSK_VOCAB_SUFFIX_REGEX, "").trim()
   };
 }
-async function handleGetFlashcards(req, res) {
+async function handleGetReviews(req, res) {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  console.log(`[Reviews] Fetching for user: ${userId}`);
   try {
     if (!supabaseAdmin) {
       throw new Error("Supabase admin client not initialized");
     }
-    const { data: profile, error: profileError } = await supabaseAdmin.from("profiles").select("id, onboarding_hsk_level, daily_new_limit, daily_review_limit").eq("id", userId).single();
+    const { data: profile, error: profileError } = await supabaseAdmin.from("profiles").select("id, onboarding_hsk_level, daily_new_limit, daily_review_limit, streak_days").eq("id", userId).single();
     if (profileError) throw profileError;
+    const proficiencyToHsk = {
+      "Total Beginner": 1,
+      "Beginner": 1,
+      "Elementary": 2,
+      "Intermediate": 4,
+      "Advanced": 7,
+      "HSK 1": 1,
+      "HSK 2": 2,
+      "HSK 3": 3,
+      "HSK 4": 4,
+      "HSK 5": 5,
+      "HSK 6": 6,
+      "HSK 7": 7,
+      "HSK 8": 8,
+      "HSK 9": 9
+    };
+    const userLevelLabel = profile.onboarding_hsk_level || "HSK 1";
     const now = /* @__PURE__ */ new Date();
-    const rolloverHour = 4;
+    const rolloverHour = 3;
     const srsDayStart = new Date(now);
     if (now.getHours() < rolloverHour) {
       srsDayStart.setDate(srsDayStart.getDate() - 1);
     }
     srsDayStart.setHours(rolloverHour, 0, 0, 0);
-    const { data: existingCards, error: cardsError } = await supabaseAdmin.from("flashcards").select("*").eq("user_id", userId).lte("due_date", now.toISOString()).order("due_date", { ascending: true });
+    console.log(`[Reviews] SRS Day Start: ${srsDayStart.toISOString()} (Now: ${now.toISOString()})`);
+    const { data: existingCards, error: cardsError } = await supabaseAdmin.from("reviews").select("*").eq("user_id", userId).lte("due_date", now.toISOString()).order("due_date", { ascending: true });
     if (cardsError) throw cardsError;
     const learningDue = existingCards.filter((c) => c.state === "LEARNING" || c.state === "RELEARNING");
     const reviewLimit = profile.daily_review_limit || 50;
     const reviewDue = existingCards.filter((c) => c.state === "REVIEW").slice(0, reviewLimit);
+    console.log(`[Reviews] Existing due: learning=${learningDue.length}, review=${reviewDue.length} (limit=${reviewLimit})`);
     const newLimit = profile.daily_new_limit || 10;
-    const { count: newStartedToday, error: newTodayError } = await supabaseAdmin.from("flashcards").select("*", { count: "exact", head: true }).eq("user_id", userId).gte("created_at", srsDayStart.toISOString()).neq("state", "NEW");
+    const { count: newStartedToday, error: newTodayError } = await supabaseAdmin.from("reviews").select("*", { count: "exact", head: true }).eq("user_id", userId).gte("created_at", srsDayStart.toISOString()).neq("state", "NEW");
     if (newTodayError) throw newTodayError;
-    const { data: existingNew, error: existingNewError } = await supabaseAdmin.from("flashcards").select("*").eq("user_id", userId).eq("state", "NEW").order("created_at", { ascending: true });
+    console.log(`[Reviews] New cards started today: ${newStartedToday || 0} (limit=${newLimit})`);
+    const { data: existingNew, error: existingNewError } = await supabaseAdmin.from("reviews").select("*").eq("user_id", userId).eq("state", "NEW").order("created_at", { ascending: true });
     if (existingNewError) throw existingNewError;
+    console.log(`[Reviews] Existing NEW cards in DB: ${existingNew.length}`);
     let sessionNewCards = [...existingNew];
     const canPullMore = (newStartedToday || 0) < newLimit;
     let newNeeded = 0;
     if (canPullMore) {
-      newNeeded = newLimit - (newStartedToday || 0);
+      newNeeded = Math.max(0, newLimit - (newStartedToday || 0) - existingNew.length);
     }
+    console.log(`[Reviews] canPullMore=${canPullMore}, newNeeded=${newNeeded}`);
     if (newNeeded > 0) {
       try {
-        const dictionaryRaw = await readFile(DICTIONARY_PATH, "utf-8");
-        const dictionary = JSON.parse(dictionaryRaw);
-        const proficiencyToHsk = {
-          "Total Beginner": 1,
-          "Beginner": 1,
-          "Elementary": 2,
-          "Intermediate": 4,
-          "Advanced": 7,
-          "HSK 1": 1,
-          "HSK 2": 2,
-          "HSK 3": 3,
-          "HSK 4": 4,
-          "HSK 5": 5,
-          "HSK 6": 6,
-          "HSK 7": 7,
-          "HSK 8": 8,
-          "HSK 9": 9
-        };
-        const userLevelLabel = profile.onboarding_hsk_level || "HSK 1";
+        const dictionaryRaw2 = await readFile(DICTIONARY_PATH, "utf-8");
+        const dictionary2 = JSON.parse(dictionaryRaw2);
         let targetHskLevel = proficiencyToHsk[userLevelLabel];
         if (!targetHskLevel) {
           const match = userLevelLabel.match(/\d+/);
           targetHskLevel = match ? parseInt(match[0], 10) : 1;
         }
         let allLevelCards = [];
-        for (let i = 1; i <= targetHskLevel; i++) {
+        for (let i = targetHskLevel; i <= 7; i++) {
           const levelKey = `hsk-L${i}`;
-          allLevelCards.push(...dictionary.filter((d) => d.h.startsWith(levelKey)));
+          allLevelCards.push(...dictionary2.filter((d) => d.h.startsWith(levelKey)));
+        }
+        if (allLevelCards.length < newNeeded) {
+          for (let i = targetHskLevel - 1; i >= 1; i--) {
+            const levelKey = `hsk-L${i}`;
+            allLevelCards.push(...dictionary2.filter((d) => d.h.startsWith(levelKey)));
+          }
         }
         if (allLevelCards.length === 0) {
-          allLevelCards = dictionary.filter((d) => d.h.startsWith("hsk-L"));
+          allLevelCards = dictionary2.filter((d) => d.h.startsWith("hsk-L"));
         }
-        const { data: userCardSourceIds } = await supabaseAdmin.from("flashcards").select("source_id").eq("user_id", userId);
+        const { data: userCardSourceIds } = await supabaseAdmin.from("reviews").select("source_id").eq("user_id", userId);
         const existingSourceIds = new Set((userCardSourceIds || []).map((c) => c.source_id));
         const availableCards = allLevelCards.filter((c) => !existingSourceIds.has(c.h));
         const newEntries = availableCards.slice(0, newNeeded);
@@ -147,7 +199,7 @@ async function handleGetFlashcards(req, res) {
               due_date: now.toISOString()
             };
           });
-          const { data: insertedCards, error: insertError } = await supabaseAdmin.from("flashcards").insert(inserts).select();
+          const { data: insertedCards, error: insertError } = await supabaseAdmin.from("reviews").insert(inserts).select();
           if (insertError) throw insertError;
           if (insertedCards) {
             sessionNewCards.push(...insertedCards);
@@ -157,13 +209,46 @@ async function handleGetFlashcards(req, res) {
         console.error("Dictionary pull error:", dictErr);
       }
     }
+    const dictionaryRaw = await readFile(DICTIONARY_PATH, "utf-8");
+    const dictionary = JSON.parse(dictionaryRaw);
+    const { data: hskStats } = await supabaseAdmin.from("reviews").select("hsk_level, state, due_date").eq("user_id", userId);
+    const levelStats = {};
+    for (let i = 1; i <= 7; i++) {
+      const totalInDict = dictionary.filter((d) => d.h.startsWith(`hsk-L${i}`)).length;
+      const userCardsForLevel = (hskStats || []).filter((c) => c.hsk_level === i);
+      const learned = userCardsForLevel.filter((c) => c.state === "REVIEW").length;
+      const active = userCardsForLevel.filter((c) => c.state !== "NEW").length;
+      levelStats[i] = {
+        total: totalInDict,
+        learned,
+        active
+      };
+    }
+    const hskLearned = (hskStats || []).filter((c) => c.state === "REVIEW").length;
+    const hskTotal = hskStats?.length || 0;
+    const currentHskLevel = hskStats?.length ? Math.min(...hskStats.map((c) => c.hsk_level)) : proficiencyToHsk[userLevelLabel] || 1;
     res.json({
       learning: learningDue,
       review: reviewDue,
-      new: sessionNewCards.slice(0, Math.max(0, newLimit - (newStartedToday || 0)))
+      new: sessionNewCards.slice(0, Math.max(0, newLimit - (newStartedToday || 0))),
+      meta: {
+        newLimit,
+        reviewLimit,
+        streak: profile.streak_days || 0,
+        newStartedToday: newStartedToday || 0,
+        reviewDueCount: (hskStats || []).filter((c) => c.state === "REVIEW" && new Date(c.due_date) <= now).length,
+        learningDueCount: learningDue.length,
+        nextReviewDate: existingCards.length === 0 ? (await supabaseAdmin.from("reviews").select("due_date").eq("user_id", userId).gt("due_date", now.toISOString()).order("due_date", { ascending: true }).limit(1).single()).data?.due_date : null,
+        hskProgress: {
+          currentLevel: currentHskLevel,
+          learned: hskLearned,
+          total: hskTotal,
+          levelStats
+        }
+      }
     });
   } catch (error) {
-    console.error("Error in handleGetFlashcards:", error);
+    console.error("Error in handleGetReviews:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -176,7 +261,7 @@ async function handleSubmitAnswer(req, res) {
     if (!supabaseAdmin) {
       throw new Error("Supabase admin client not initialized");
     }
-    const { data: card, error: cardError } = await supabaseAdmin.from("flashcards").select("*").eq("id", cardId).eq("user_id", userId).single();
+    const { data: card, error: cardError } = await supabaseAdmin.from("reviews").select("*").eq("id", cardId).eq("user_id", userId).single();
     if (cardError) throw cardError;
     let newState = card.state;
     let newStepIndex = card.step_index;
@@ -186,11 +271,11 @@ async function handleSubmitAnswer(req, res) {
     let newDueDate;
     const now = /* @__PURE__ */ new Date();
     const nextRollover = new Date(now);
-    if (now.getHours() < 4) {
-      nextRollover.setHours(4, 0, 0, 0);
+    if (now.getHours() < 3) {
+      nextRollover.setHours(3, 0, 0, 0);
     } else {
       nextRollover.setDate(nextRollover.getDate() + 1);
-      nextRollover.setHours(4, 0, 0, 0);
+      nextRollover.setHours(3, 0, 0, 0);
     }
     if (card.state === "NEW" || card.state === "LEARNING" || card.state === "RELEARNING") {
       if (rating === "AGAIN") {
@@ -254,7 +339,7 @@ async function handleSubmitAnswer(req, res) {
     } else {
       newDueDate = nextRollover;
     }
-    const { error: updateError } = await supabaseAdmin.from("flashcards").update({
+    const { error: updateError } = await supabaseAdmin.from("reviews").update({
       state: newState,
       step_index: newStepIndex,
       interval: newInterval,
@@ -264,14 +349,14 @@ async function handleSubmitAnswer(req, res) {
       seen_at: now.toISOString()
     }).eq("id", cardId);
     if (updateError) throw updateError;
-    let action = "stat:flashcard-success";
-    if (card.state === "NEW") action = "stat:flashcard-new";
-    else if (card.state === "REVIEW") action = "stat:flashcard-review";
-    else if (card.state === "LEARNING" || card.state === "RELEARNING") action = "stat:flashcard-learning";
-    if (rating === "AGAIN") action = "stat:flashcard-failure";
+    let actionType = "learning";
+    if (card.state === "NEW") actionType = "new";
+    else if (card.state === "REVIEW") actionType = "review";
+    const actionResult = rating === "AGAIN" ? "failure" : "success";
+    const action = `stat:review-${actionType}-${actionResult}`;
     await supabaseAdmin.from("learning_activity").insert({
       user_id: userId,
-      mode: "flashcards",
+      mode: "review",
       action,
       minutes_spent: 0
     });
@@ -288,12 +373,12 @@ async function handleSimulateNextDay(req, res) {
     if (!supabaseAdmin) {
       throw new Error("Supabase admin client not initialized");
     }
-    const { data: cards } = await supabaseAdmin.from("flashcards").select("id, due_date, created_at").eq("user_id", userId);
+    const { data: cards } = await supabaseAdmin.from("reviews").select("id, due_date, created_at").eq("user_id", userId);
     if (cards) {
       for (const card of cards) {
         const newDueDate = new Date(new Date(card.due_date).getTime() - 24 * 60 * 60 * 1e3);
         const newCreatedAt = new Date(new Date(card.created_at).getTime() - 24 * 60 * 60 * 1e3);
-        await supabaseAdmin.from("flashcards").update({
+        await supabaseAdmin.from("reviews").update({
           due_date: newDueDate.toISOString(),
           created_at: newCreatedAt.toISOString()
         }).eq("id", card.id);
@@ -306,6 +391,127 @@ async function handleSimulateNextDay(req, res) {
     res.json({ success: true });
   } catch (error) {
     console.error("Error in handleSimulateNextDay:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+async function handleResetProgress(req, res) {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  console.log(`[Reviews] Resetting progress for user: ${userId}`);
+  try {
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+    console.log(`[Reset] Deleting reviews for ${userId}...`);
+    const { error: reviewsError } = await supabaseAdmin.from("reviews").delete().eq("user_id", userId);
+    if (reviewsError) {
+      console.error("[Reset] Reviews delete error:", reviewsError);
+      throw reviewsError;
+    }
+    console.log(`[Reset] Deleting learning activity for ${userId}...`);
+    const { error: activityError } = await supabaseAdmin.from("learning_activity").delete().eq("user_id", userId);
+    if (activityError) {
+      console.error("[Reset] Activity delete error:", activityError);
+      throw activityError;
+    }
+    console.log(`[Reset] Updating profile for ${userId}...`);
+    const { error: profileError } = await supabaseAdmin.from("profiles").update({
+      streak_days: 0,
+      last_activity_date: null,
+      current_word_index: 1
+    }).eq("id", userId);
+    if (profileError) {
+      console.error("[Reset] Profile update error:", profileError);
+      throw profileError;
+    }
+    res.json({ success: true, message: "Progress reset successfully" });
+  } catch (error) {
+    console.error("Error in handleResetProgress:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+async function handleAddToReview(req, res) {
+  const userId = req.user?.id;
+  const { text } = req.body;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!text) return res.status(400).json({ error: "Missing text" });
+  try {
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+    const dictionaryRaw = await readFile(DICTIONARY_PATH, "utf-8");
+    const dictionary = JSON.parse(dictionaryRaw);
+    let entry = dictionary.find((d) => d.s === text || d.t === text);
+    let insertData;
+    if (entry) {
+      const parsed = parseExampleFromNotes(entry.n);
+      insertData = {
+        user_id: userId,
+        simplified: entry.s,
+        traditional: entry.t,
+        pinyin: entry.p,
+        english: entry.e,
+        grammar: entry.g,
+        notes: entry.n,
+        example_sentence: parsed.sentence || "",
+        source_id: entry.h,
+        hsk_level: parseInt(entry.h.match(/L(\d+)/)?.[1] || "1")
+      };
+    } else {
+      return res.status(404).json({ error: "Word not found in dictionary" });
+    }
+    const { data, error } = await supabaseAdmin.from("reviews").upsert({
+      ...insertData,
+      state: "NEW",
+      due_date: (/* @__PURE__ */ new Date()).toISOString()
+    }, { onConflict: "user_id, source_id" }).select().single();
+    if (error) throw error;
+    res.json({ success: true, card: data });
+  } catch (error) {
+    console.error("Error in handleAddToReview:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+async function handleGetStories(req, res) {
+  try {
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+    const { data, error } = await supabaseAdmin.from("stories").select("*").order("hsk_level", { ascending: true }).order("storyline_id", { ascending: true }).order("chapter_number", { ascending: true });
+    if (error) throw error;
+    const mappedData = (data || []).map((story) => {
+      const parts = (story.content_zh || "").split("|||");
+      return {
+        ...story,
+        content_zh: parts[0]?.trim(),
+        content_en: parts[1]?.trim() || ""
+      };
+    });
+    res.json(mappedData);
+  } catch (error) {
+    console.error("Error in handleGetStories:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+async function handleGetStoryById(req, res) {
+  const { id } = req.params;
+  try {
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+    const { data, error } = await supabaseAdmin.from("stories").select("*").eq("id", id).single();
+    if (error) throw error;
+    if (data) {
+      const parts = (data.content_zh || "").split("|||");
+      data.content_zh = parts[0]?.trim();
+      data.content_en = parts[1]?.trim() || "";
+    }
+    res.json(data);
+  } catch (error) {
+    console.error("Error in handleGetStoryById:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -385,7 +591,11 @@ const handleDeepSeekRoleplay = async (req, res) => {
   }
   const vocabList = knownVocab.length > 0 ? knownVocab.join(", ") : "basic HSK 1";
   const hskConstraint = hskNum <= 1 ? "HSK 1" : hskNum >= 7 ? "Advanced" : `HSK ${hskNum}`;
-  const vocabConstraint = knownVocab.length > 0 ? `The user is at ${hskConstraint} level and knows these Chinese characters/words: [${vocabList}]. Heavily prioritize using these known words in your responses. You can introduce a very small amount of new vocabulary (1-2 new words per response) if necessary for the context, but keep it mostly within their level and known set.` : `The user is a beginner at ${hskConstraint} level. Use only very basic vocabulary appropriate for this level.`;
+  const vocabConstraint = knownVocab.length > 0 ? `The user is at ${hskConstraint} level and knows these Chinese characters/words: [${vocabList}]. Heavily prioritize using these known words in your responses. You can introduce a very small amount of new vocabulary (1-2 new words per response) if necessary for the context, but keep it mostly within their level and known set. DO NOT include any emojis in your response. ALWAYS follow your Chinese response with a new line containing the English translation enclosed in square brackets, for example:
+你好！
+[Hello!]` : `The user is a beginner at ${hskConstraint} level. Use only very basic vocabulary appropriate for this level. DO NOT include any emojis in your response. ALWAYS follow your Chinese response with a new line containing the English translation enclosed in square brackets, for example:
+你好！
+[Hello!]`;
   const messages = [...parsed.data.messages];
   const systemMessageIdx = messages.findIndex((m) => m.role === "system");
   if (systemMessageIdx !== -1) {
@@ -905,6 +1115,7 @@ const handleStripeWebhook = async (req, res) => {
     const { error } = await supabaseAdmin.from("profiles").update({
       subscription_status: "active",
       subscription_plan: plan,
+      stripe_customer_id: session.customer,
       onboarding_complete: true,
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     }).eq("id", userId);
@@ -937,27 +1148,33 @@ const handleVerifyCheckoutSession = async (req, res) => {
   }
   const stripe = new Stripe(secretKey);
   try {
+    console.log(`[Verify Session] Verifying session ${parsed.data.sessionId} for user ${userId}`);
     const session = await stripe.checkout.sessions.retrieve(parsed.data.sessionId);
     const sessionUserId = session.client_reference_id || session.metadata?.user_id;
     if (sessionUserId !== userId) {
+      console.error(`[Verify Session] Session owner mismatch. Session: ${sessionUserId}, Current: ${userId}`);
       return res.status(403).json({ error: "Session does not belong to this user." });
     }
     const isPaid = session.payment_status === "paid" || session.status === "complete";
     if (!isPaid) {
+      console.log(`[Verify Session] Session not paid yet. Status: ${session.status}, Payment: ${session.payment_status}`);
       return res.status(200).json({ verified: false });
     }
     const plan = session.metadata?.product_plan;
     const subscriptionStatus = session.mode === "subscription" ? "trialing" : "active";
+    console.log(`[Verify Session] Updating DB for user ${userId} with status ${subscriptionStatus}`);
     const { error } = await supabaseAdmin.from("profiles").update({
       subscription_status: subscriptionStatus,
       subscription_plan: plan,
+      stripe_customer_id: session.customer,
       onboarding_complete: true,
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     }).eq("id", userId);
     if (error) {
       console.error("[Verify Session] DB update failed:", error);
-      return res.status(500).json({ error: "Failed to update profile." });
+      return res.status(500).json({ error: `Database update failed: ${error.message}` });
     }
+    console.log(`[Verify Session] Success for user ${userId}`);
     return res.status(200).json({ verified: true, subscriptionStatus });
   } catch (err) {
     console.error("[Verify Session] Error:", err);
@@ -1036,9 +1253,13 @@ function createServer() {
   apiRouter.post("/billing/checkout", requireAuth, handleCreateCheckoutSession);
   apiRouter.post("/billing/verify-session", requireAuth, handleVerifyCheckoutSession);
   apiRouter.get("/profile", requireAuth, handleProfile);
-  apiRouter.get("/flashcards", requireAuth, handleGetFlashcards);
-  apiRouter.post("/flashcards/answer", requireAuth, handleSubmitAnswer);
-  apiRouter.post("/flashcards/simulate-next-day", requireAuth, handleSimulateNextDay);
+  apiRouter.get("/reviews", requireAuth, handleGetReviews);
+  apiRouter.post("/reviews/answer", requireAuth, handleSubmitAnswer);
+  apiRouter.post("/reviews/add", requireAuth, handleAddToReview);
+  apiRouter.post("/reviews/simulate-next-day", requireAuth, handleSimulateNextDay);
+  apiRouter.post("/reviews/reset", requireAuth, handleResetProgress);
+  apiRouter.get("/stories", requireAuth, handleGetStories);
+  apiRouter.get("/stories/:id", requireAuth, handleGetStoryById);
   app2.use("/api", apiRouter);
   app2.use(apiRouter);
   app2.use((err, _req, res, _next) => {

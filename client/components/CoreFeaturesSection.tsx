@@ -64,7 +64,7 @@ const capabilities = [
   },
 ];
 
-export default function LandingFeaturesSection() {
+export default function CoreFeaturesSection() {
   return (
     <section className="bg-white dark:bg-background text-foreground py-24 sm:py-32 px-6 lg:px-8 overflow-hidden">
       <div className="mx-auto max-w-3xl">

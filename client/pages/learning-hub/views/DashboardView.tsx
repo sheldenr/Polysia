@@ -1,10 +1,6 @@
 import React, { useState } from "react";
 import { 
-  ChevronRight, 
-  GraduationCap, 
-  Zap, 
-  Book, 
-  CheckCircle2
+  Book
 } from "lucide-react";
 import { ReviewMeta } from "@/hooks/use-review-system";
 import { Story } from "../hooks/use-story-hub";
@@ -37,13 +33,13 @@ const levelNames: Record<number, string> = {
   6: "Master",
 };
 
-const levelColors: Record<number, string> = {
-  1: "text-emerald-600/80 dark:text-emerald-400/70",
-  2: "text-teal-600/80 dark:text-teal-400/70",
-  3: "text-amber-600/85 dark:text-amber-400/75",
-  4: "text-orange-600/80 dark:text-orange-400/70",
-  5: "text-red-600/80 dark:text-red-400/70",
-  6: "text-purple-600/80 dark:text-purple-400/70",
+const levelDotColors: Record<number, string> = {
+  1: "bg-emerald-500",
+  2: "bg-teal-500",
+  3: "bg-amber-500",
+  4: "bg-orange-500",
+  5: "bg-red-500",
+  6: "bg-purple-500",
 };
 
 const DashboardView = ({
@@ -68,16 +64,19 @@ const DashboardView = ({
   };
 
   const groupedByStoryline = stories.reduce((acc, story) => {
-    if (!acc[story.category]) {
-      acc[story.category] = {
-        name: story.category,
+    const id = story.storyline_id || "general";
+    if (!acc[id]) {
+      acc[id] = {
+        id,
+        name: story.storyline_id || "General Series",
         hsk_level: story.hsk_level,
+        category: story.category,
         chapters: [],
       };
     }
-    acc[story.category].chapters.push(story);
+    acc[id].chapters.push(story);
     return acc;
-  }, {} as Record<string, { name: string; hsk_level: number; chapters: Story[] }>);
+  }, {} as Record<string, { id: string; name: string; hsk_level: number; category: string; chapters: Story[] }>);
 
   const storylines = Object.values(groupedByStoryline).sort((a, b) => {
     if (a.hsk_level !== b.hsk_level) return a.hsk_level - b.hsk_level;
@@ -147,22 +146,23 @@ const DashboardView = ({
       <section className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           {/* View Tabs */}
-          <div className="flex p-1 bg-muted/30 rounded-xl mr-4">
-            {(["all", "in-progress", "completed"] as const).map((tab) => (
+          {(["all", "in-progress", "completed"] as const).map((tab) => {
+            const isActive = activeTab === tab;
+            return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all",
-                  activeTab === tab 
-                    ? "bg-white dark:bg-zinc-800 shadow-sm text-foreground" 
-                    : "text-muted-foreground hover:text-foreground"
+                  "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all shadow-xs",
+                  isActive 
+                    ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 shadow-sm font-semibold" 
+                    : "bg-zinc-200/50 dark:bg-zinc-900/40 text-muted-foreground hover:bg-zinc-200 dark:hover:bg-zinc-800/50 hover:text-foreground"
                 )}
               >
                 {tab.replace("-", " ")}
               </button>
-            ))}
-          </div>
+            );
+          })}
 
           {/* Level Pills */}
           <div className="h-4 w-[1px] bg-border/60 mx-2" />
@@ -170,28 +170,32 @@ const DashboardView = ({
             <button 
               onClick={onClearLevels}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all",
+                "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-xs",
                 selectedLevels.length === 0
-                  ? "bg-foreground/5 border-foreground text-foreground"
-                  : "bg-transparent border-border text-muted-foreground hover:bg-muted/50"
+                  ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 shadow-sm font-semibold"
+                  : "bg-zinc-200/50 dark:bg-zinc-900/40 text-muted-foreground hover:bg-zinc-200 dark:hover:bg-zinc-800/50 hover:text-foreground"
               )}
             >
               All Levels
             </button>
-            {[1, 2, 3, 4, 5, 6].map((lvl) => (
-              <button 
-                key={lvl} 
-                onClick={() => onSelectLevel(lvl)}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all",
-                  selectedLevels.includes(lvl)
-                    ? "bg-foreground/5 border-foreground text-foreground"
-                    : "bg-transparent border-border text-muted-foreground hover:bg-muted/50"
-                )}
-              >
-                {levelNames[lvl]}
-              </button>
-            ))}
+            {[1, 2, 3, 4, 5, 6].map((lvl) => {
+              const isActive = selectedLevels.includes(lvl);
+              return (
+                <button 
+                  key={lvl} 
+                  onClick={() => onSelectLevel(lvl)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-xs",
+                    isActive
+                      ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 shadow-sm font-semibold"
+                      : "bg-zinc-200/50 dark:bg-zinc-900/40 text-muted-foreground hover:bg-zinc-200 dark:hover:bg-zinc-800/50 hover:text-foreground"
+                  )}
+                >
+                  <span className={cn("size-1.5 rounded-full shrink-0", levelDotColors[lvl])} />
+                  {levelNames[lvl]}
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -199,51 +203,44 @@ const DashboardView = ({
       {/* Row-Based Story List */}
       <section className="space-y-4">
         <div className="grid grid-cols-12 px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
-          <div className="col-span-1">Status</div>
-          <div className="col-span-7 px-2">Story Title</div>
+          <div className="col-span-8 px-2">Story Title</div>
           <div className="col-span-2">Added</div>
           <div className="col-span-2 text-right">Progress</div>
         </div>
 
-        <div className="space-y-1 rounded-2xl overflow-hidden border border-border/50 bg-muted/20">
+        <div className="flex flex-col gap-3">
           {filteredStorylines.length > 0 ? (
-            filteredStorylines.map((storyline, index) => {
+            filteredStorylines.map((storyline) => {
               const progress = getProgress(storyline.chapters);
               const isFinished = progress === 100;
-              const isStarted = progress > 0;
 
               return (
                 <div 
                   key={storyline.name}
                   onClick={() => {
-                    onSelectCategory(storyline.name);
+                    onSelectCategory(storyline.id);
                     onEnterFlow(1);
                   }}
                   className={cn(
-                    "grid grid-cols-12 items-center p-4 px-6 cursor-pointer transition-all group relative rounded-xl",
-                    index % 2 === 0 ? "bg-card hover:bg-muted/50" : "bg-muted/30 hover:bg-muted/50",
+                    "grid grid-cols-12 items-center p-5 px-6 cursor-pointer transition-all duration-300 group relative rounded-2xl bg-card border border-border/50 shadow-xs",
+                    "hover:bg-white dark:hover:bg-zinc-800/80 hover:shadow-md hover:-translate-y-0.5",
                     "hover:z-10"
                   )}
                 >
-                  <div className="col-span-1">
-                    <div className="size-8 flex items-center justify-center transition-all">
-                      {isFinished ? (
-                        <CheckCircle2 className="size-5 text-emerald-500" />
-                      ) : (
-                        <Book className={cn(
-                          "size-5 transition-all",
-                          isStarted ? "text-foreground" : "text-muted-foreground/40 group-hover:text-foreground/60"
-                        )} />
-                      )}
-                    </div>
-                  </div>
-                  <div className="col-span-7 space-y-0.5 pr-4 px-2">
-                    <h4 className="font-heading text-sm font-medium transition-colors line-clamp-1">
+                  <div className="col-span-8 space-y-1 pr-4 px-2">
+                    <h4 className="font-heading text-sm font-medium transition-colors line-clamp-1 group-hover:text-primary">
                       {storyline.name}
                     </h4>
-                    <p className={cn("text-[10px] font-bold uppercase tracking-wider", levelColors[storyline.hsk_level])}>
-                      {levelNames[storyline.hsk_level]}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("size-1.5 rounded-full shrink-0", levelDotColors[storyline.hsk_level])} />
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                        {levelNames[storyline.hsk_level]}
+                      </p>
+                      <span className="text-muted-foreground/30">•</span>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">
+                        {storyline.category}
+                      </p>
+                    </div>
                   </div>
                   <div className="col-span-2">
                     <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">

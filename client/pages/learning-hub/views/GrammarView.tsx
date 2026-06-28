@@ -17,13 +17,13 @@ const levelNames: Record<number, string> = {
   6: "Master",
 };
 
-const levelColors: Record<number, string> = {
-  1: "text-emerald-600/80 dark:text-emerald-400/70",
-  2: "text-teal-600/80 dark:text-teal-400/70",
-  3: "text-amber-600/85 dark:text-amber-400/75",
-  4: "text-orange-600/80 dark:text-orange-400/70",
-  5: "text-red-600/80 dark:text-red-400/70",
-  6: "text-purple-600/80 dark:text-purple-400/70",
+const levelDotColors: Record<number, string> = {
+  1: "bg-emerald-500",
+  2: "bg-teal-500",
+  3: "bg-amber-500",
+  4: "bg-orange-500",
+  5: "bg-red-500",
+  6: "bg-purple-500",
 };
 
 const GrammarView = ({ onExit }: GrammarViewProps) => {
@@ -65,11 +65,14 @@ const GrammarView = ({ onExit }: GrammarViewProps) => {
                       : "bg-transparent border-transparent hover:bg-black/[0.03] dark:hover:bg-white/[0.03] text-muted-foreground"
                   )}
                 >
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">HSK {lvl}</span>
-                    <span className={cn("text-sm font-semibold", selectedLevel === lvl && levelColors[lvl])}>
-                      {levelNames[lvl]}
-                    </span>
+                  <div className="flex items-center gap-2.5">
+                    <span className={cn("size-1.5 rounded-full shrink-0", levelDotColors[lvl])} />
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">HSK {lvl}</span>
+                      <span className="text-sm font-semibold text-foreground">
+                        {levelNames[lvl]}
+                      </span>
+                    </div>
                   </div>
                   <span className="text-xs opacity-40 font-mono">{grammarData[lvl]?.length || 0}</span>
                 </button>
@@ -93,7 +96,8 @@ const GrammarView = ({ onExit }: GrammarViewProps) => {
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-black/[0.03] dark:bg-white/[0.05]", levelColors[selectedLevel])}>
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-black/[0.03] dark:bg-white/[0.05] text-muted-foreground/60">
+                    <span className={cn("size-1.5 rounded-full shrink-0", levelDotColors[selectedLevel])} />
                     HSK {selectedLevel}
                   </div>
                 </div>

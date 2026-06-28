@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 export default function Contact() {
   return (
     <Layout>
-      <section className="px-6 py-20 sm:py-24 transition-colors duration-300">
+      <section className="bg-white dark:bg-background px-6 py-20 sm:py-24 transition-colors duration-300">
         <article className="max-w-3xl mx-auto">
           <div className="mb-12">
             <h1 className="text-4xl sm:text-5xl font-heading font-semibold tracking-tight text-foreground">

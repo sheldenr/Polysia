@@ -37,13 +37,13 @@ const levelNames: Record<number, string> = {
   6: "Master",
 };
 
-const levelColors: Record<number, string> = {
-  1: "text-emerald-600/80 dark:text-emerald-400/70",
-  2: "text-teal-600/80 dark:text-teal-400/70",
-  3: "text-amber-600/85 dark:text-amber-400/75",
-  4: "text-orange-600/80 dark:text-orange-400/70",
-  5: "text-red-600/80 dark:text-red-400/70",
-  6: "text-purple-600/80 dark:text-purple-400/70",
+const levelDotColors: Record<number, string> = {
+  1: "bg-emerald-500",
+  2: "bg-teal-500",
+  3: "bg-amber-500",
+  4: "bg-orange-500",
+  5: "bg-red-500",
+  6: "bg-purple-500",
 };
 
 const levelBgColors: Record<number, string> = {
@@ -291,10 +291,11 @@ const StoryHubView = ({
 
   // Storyline Detail Mode
   if (selectedCategory) {
-    const categoryStories = stories.filter(s => s.category === selectedCategory);
+    const categoryStories = stories.filter(s => s.storyline_id === selectedCategory);
     const storyline = categoryStories.length > 0 ? {
-      name: selectedCategory,
+      name: categoryStories[0].storyline_id || "General Series",
       hsk_level: categoryStories[0].hsk_level,
+      category: categoryStories[0].category,
       chapters: [...categoryStories].sort((a, b) => (a.chapter_number || 0) - (b.chapter_number || 0))
     } : null;
 
@@ -317,16 +318,21 @@ const StoryHubView = ({
 
             <div className="space-y-4 px-2">
               <div className="flex items-center gap-2 mb-2">
-                <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-black/[0.03] dark:bg-white/[0.05]", levelColors[storyline.hsk_level])}>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-black/[0.03] dark:bg-white/[0.05] text-muted-foreground/60">
+                  <span className={cn("size-1.5 rounded-full shrink-0", levelDotColors[storyline.hsk_level])} />
                   {levelNames[storyline.hsk_level]}
                 </span>
                 <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
                   {storyline.chapters.length} Chapters
                 </span>
+                <span className="text-[10px] font-bold text-muted-foreground/30 uppercase">•</span>
+                <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
+                  {storyline.category}
+                </span>
               </div>
               <h1 className="text-3xl font-heading tracking-tight">{storyline.name}</h1>
               <p className="text-muted-foreground leading-relaxed max-w-2xl">
-                A {storyline.chapters.length}-part journey through {storyline.name.toLowerCase()}. Progress through each chapter to master the content.
+                A {storyline.chapters.length}-part journey through {storyline.category.toLowerCase()}. Progress through each chapter to master the content.
               </p>
               
               <div className="flex flex-col gap-2 w-full max-w-[200px] pt-2">

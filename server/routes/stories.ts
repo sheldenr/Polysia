@@ -16,7 +16,16 @@ export async function handleGetStories(req: Request, res: Response) {
 
     if (error) throw error;
 
-    res.json(data || []);
+    const mappedData = (data || []).map((story) => {
+      const parts = (story.content_zh || "").split("|||");
+      return {
+        ...story,
+        content_zh: parts[0]?.trim(),
+        content_en: parts[1]?.trim() || "",
+      };
+    });
+
+    res.json(mappedData);
   } catch (error) {
     console.error("Error in handleGetStories:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -37,6 +46,12 @@ export async function handleGetStoryById(req: Request, res: Response) {
       .single();
 
     if (error) throw error;
+
+    if (data) {
+      const parts = (data.content_zh || "").split("|||");
+      data.content_zh = parts[0]?.trim();
+      data.content_en = parts[1]?.trim() || "";
+    }
 
     res.json(data);
   } catch (error) {

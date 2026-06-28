@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 export default function Terms() {
   return (
     <Layout>
-      <section className="px-6 py-20 sm:py-24 transition-colors duration-300">
+      <section className="bg-white dark:bg-background px-6 py-20 sm:py-24 transition-colors duration-300">
         <article className="max-w-3xl mx-auto">
           <div className="mb-12">
             <h1 className="text-4xl sm:text-5xl font-heading font-semibold tracking-tight text-foreground">
@@ -13,7 +13,6 @@ export default function Terms() {
               The basic terms for using Polysia. Please read them carefully to understand your rights and responsibilities.
             </p>
             <div className="mt-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground/50">
-              <div className="size-1.5 rounded-full bg-primary" />
               Last updated: March 2026
             </div>
           </div>
