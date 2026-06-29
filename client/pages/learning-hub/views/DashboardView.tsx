@@ -78,10 +78,12 @@ const DashboardView = ({
     return acc;
   }, {} as Record<string, { id: string; name: string; hsk_level: number; category: string; chapters: Story[] }>);
 
-  const storylines = Object.values(groupedByStoryline).sort((a, b) => {
-    if (a.hsk_level !== b.hsk_level) return a.hsk_level - b.hsk_level;
-    return a.name.localeCompare(b.name);
-  });
+  const storylines = Object.values(groupedByStoryline)
+    .filter(s => s.id !== "general" && s.id !== "test" && s.id !== "General Series")
+    .sort((a, b) => {
+      if (a.hsk_level !== b.hsk_level) return a.hsk_level - b.hsk_level;
+      return a.name.localeCompare(b.name);
+    });
 
   const filteredStorylines = storylines.filter(s => {
     const matchesLevel = selectedLevels.length === 0 || selectedLevels.includes(s.hsk_level);
