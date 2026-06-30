@@ -1,5 +1,5 @@
 import Layout from "@/components/Layout";
-import NewHeroSection from "@/components/NewHeroSection";
+import HeroSection from "@/components/HeroSection";
 import CoreFeaturesSection from "@/components/CoreFeaturesSection";
 import PricingSection from "@/components/PricingSection";
 import FAQSection from "@/components/FAQSection";
@@ -7,7 +7,7 @@ import FAQSection from "@/components/FAQSection";
 export default function Index() {
   return (
     <Layout>
-      <NewHeroSection />
+      <HeroSection />
       <CoreFeaturesSection />
       <PricingSection />
       <FAQSection />

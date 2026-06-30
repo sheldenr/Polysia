@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 import ChineseTooltipText from "@/components/ChineseTooltipText";
 import { GlowButton } from "@/components/ui/glow-button";
 
-export default function NewHeroSection() {
+export default function HeroSection() {
   const { isAuthenticated } = useAuth();
   const [activeSentence, setActiveSentence] = useState(0);
 
@@ -135,7 +135,7 @@ export default function NewHeroSection() {
         {/* Browser Window (The "Story Thing") */}
         <div className="w-full flex justify-center relative mt-16 sm:mt-24 transform-gpu" style={{ transform: 'translateZ(0)' }}>
           <motion.div 
-            className="w-[min(90vw,900px)] shrink-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-md rounded-t-xl overflow-hidden text-left min-h-[480px] relative group border-x border-t border-border/50 shadow-2xl"
+            className="w-[min(90vw,900px)] shrink-0 bg-white dark:bg-zinc-950 rounded-t-xl overflow-hidden text-left min-h-[480px] relative group border-x border-t border-border/50 shadow-2xl z-10"
           >
             {/* Mock Showcase Header */}
             <div className="px-6 py-5 flex items-center justify-between">
@@ -151,7 +151,7 @@ export default function NewHeroSection() {
               {/* Center: Story Hub Pill */}
               <div className="flex justify-center w-1/3">
                 <div className="h-8 px-4 rounded-full bg-white/70 dark:bg-zinc-800/70 backdrop-blur-md shadow-[0_2px_10px_rgb(0,0,0,0.06)] flex items-center">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Story Hub</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">NEW STORY</span>
                 </div>
               </div>
 
@@ -211,19 +211,10 @@ export default function NewHeroSection() {
                 </motion.div>
               </AnimatePresence>
 
-              {/* Animation indicator */}
-              <div className="absolute bottom-10 right-10 flex items-center gap-2">
-                 <div className="flex gap-1">
-                   {sentences.map((_, i) => (
-                     <div 
-                       key={i} 
-                       className={`size-1.5 rounded-full transition-all duration-300 ${activeSentence === i ? 'w-3 bg-primary' : 'bg-muted-foreground/30'}`} 
-                     />
-                   ))}
-                 </div>
-              </div>
+         
             </div>
           </motion.div>
+
           {/* Horizontal Line at the bottom of the showcase container */}
           <div className="absolute bottom-0 left-[-100vw] right-[-100vw] h-px bg-border dark:bg-white/[0.1] z-20" />
         </div>
