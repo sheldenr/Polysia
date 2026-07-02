@@ -46,5 +46,5 @@ export function ProtectedRoute({ children, allowOnboarding = false }: ProtectedR
     return <>{children}</>;
   }
 
-  return <PaymentGate>{children}</PaymentGate>;
+  return <>{children}</>;
 }
